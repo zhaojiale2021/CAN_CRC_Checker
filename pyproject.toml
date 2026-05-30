@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crc-checker"
+version = "0.1.0"
+description = "CAN bus CRC/Rolling Counter verification tool with DBC-aware signal parsing"
+requires-python = ">=3.9"
+dependencies = [
+    "python-can>=4.5",
+    "canmatrix>=1.1",
+    "click>=8.1",
+    "textual>=0.70",
+    "bitstruct>=8.19",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+]
+
+[project.scripts]
+crc-check = "cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["crc_checker*", "cli*", "tui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

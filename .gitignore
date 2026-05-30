@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.idea/
+.vscode/
+
+# Generated reports
+*.html
+report*.csv
+report*.json
+
+# Test data (proprietary)
+test_data/
+test_dbc/
