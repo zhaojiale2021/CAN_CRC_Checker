@@ -1,0 +1,16 @@
+# Core dependencies
+python-can>=4.5
+canmatrix>=1.1
+click>=8.1
+bitstruct>=8.19
+openpyxl>=3.0
+
+# TUI (optional, omit for CLI-only usage)
+textual>=0.70
+
+# Development
+pytest>=8
+pytest-cov
+
+# Build (for standalone .exe)
+pyinstaller>=6.0

@@ -190,7 +190,8 @@ class ResultsScreen(Screen):
 
     #result-action-bar Button {
         margin: 0 1;
-        min-width: 14;
+        min-width: 16;
+        color: $text;
     }
 
     #result-status {
@@ -435,6 +436,7 @@ class SetupScreen(Screen):
     #setup-container {
         padding: 1 2;
         height: 1fr;
+        overflow-y: auto;
     }
 
     .section-title {
@@ -462,20 +464,28 @@ class SetupScreen(Screen):
     }
 
     #dir-tree {
-        height: 12;
+        height: 1fr;
+        min-height: 8;
         border: solid $primary-background;
         margin-top: 1;
         margin-bottom: 1;
     }
 
     #selected-files {
-        height: 5;
+        height: auto;
+        min-height: 3;
+        max-height: 8;
         border: solid $primary-background;
         padding: 1;
         margin-top: 1;
     }
 
     #start-btn {
+        width: 100%;
+        margin-top: 1;
+    }
+
+    #load-config-btn {
         width: 100%;
         margin-top: 1;
     }
@@ -630,7 +640,6 @@ class SetupScreen(Screen):
             text += "or type a directory path to scan."
         label.update(text)
 
-    @on(Button.Pressed, "#start-btn")
     @on(Button.Pressed, "#load-config-btn")
     def on_load_config(self, event: Button.Pressed):
         """Prompt for a config JSON path and populate fields."""
@@ -703,6 +712,7 @@ class SetupScreen(Screen):
 
         self.notify(f"Loaded config: {os.path.basename(config_path)}")
 
+    @on(Button.Pressed, "#start-btn")
     def on_start(self, event: Button.Pressed):
         dbc_path = self.query_one("#dbc-path", Input).value.strip()
         if not dbc_path or not os.path.exists(dbc_path):
@@ -759,7 +769,9 @@ class SetupScreen(Screen):
 
         if crc_params:
             protection_map.apply_crc_params(crc_params)
-        protection_map.apply_crc_range(crc_range)
+        # Only apply range if it's not the default (let auto-detect work otherwise)
+        if crc_range.mode != "exclude_crc":
+            protection_map.apply_crc_range(crc_range)
 
         dataid_path = self.query_one("#dataid-path", Input).value.strip()
         dataid_sheet = self.query_one("#dataid-sheet", Input).value.strip() or None
@@ -794,6 +806,15 @@ class CRCCheckerApp(App):
     CSS = """
     Screen {
         layers: base;
+    }
+    """
+
+    CSS = """
+    Screen {
+        layers: base;
+    }
+    Button {
+        color: $text;
     }
     """
 

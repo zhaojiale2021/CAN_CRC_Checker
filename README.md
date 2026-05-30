@@ -23,6 +23,27 @@ Requires Python ≥ 3.9.
 
 ## Quick Start
 
+### Standalone .exe (no Python required)
+
+Download `crc-check.exe` from [GitHub Releases](https://github.com/zhaojiale2021/CAN_CRC_Checker/releases), then:
+
+```powershell
+# Generate example config
+.\crc-check.exe gen-config my_config.json
+
+# Edit my_config.json with your DBC/trace paths, then run
+.\crc-check.exe run -c my_config.json
+
+# Or launch TUI
+.\crc-check.exe tui
+```
+
+### From source (Python)
+
+```bash
+pip install -e .
+```
+
 ### 0. Easiest: run from a JSON config file
 
 ```bash
@@ -311,6 +332,46 @@ crc_checker/
 └── bit_utils.py  CAN signal bit extraction
 cli/main.py       Click CLI
 tui/app.py        Textual TUI
+```
+
+## Build
+
+### From source
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
+
+### Standalone .exe
+
+```bash
+# Windows
+build.bat           # Full build with TUI (~107 MB)
+build.bat cli       # CLI-only (~32 MB)
+
+# Manual build
+pip install pyinstaller
+pyinstaller --onefile --name crc-check \
+    --hidden-import canmatrix --hidden-import canmatrix.formats \
+    --hidden-import canmatrix.formats.dbc \
+    --hidden-import openpyxl --hidden-import textual \
+    --collect-all canmatrix \
+    cli/main.py
+```
+
+Output: `dist/crc-check.exe`
+
+## Dependencies
+
+```
+python-can>=4.5       # Trace file reading (BLF/ASC/MF4/TRC)
+canmatrix>=1.1        # DBC parsing
+click>=8.1            # CLI framework
+bitstruct>=8.19       # Bit-level signal extraction
+openpyxl>=3.0         # DataID Excel parsing
+textual>=0.70         # TUI (optional, omit for CLI-only)
+pyinstaller>=6.0      # .exe packaging (dev only)
 ```
 
 ## License

@@ -13,6 +13,12 @@ build/
 report*.csv
 report*.json
 
+# Build artifacts
+build/
+dist/
+*.spec
+*.zip
+
 # Test data (proprietary)
 test_data/
 test_dbc/
