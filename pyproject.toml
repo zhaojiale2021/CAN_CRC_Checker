@@ -11,8 +11,8 @@ dependencies = [
     "python-can>=4.5",
     "canmatrix>=1.1",
     "click>=8.1",
-    "textual>=0.70",
     "bitstruct>=8.19",
+    "openpyxl>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -26,7 +26,7 @@ crc-check = "cli.main:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["crc_checker*", "cli*", "tui*"]
+include = ["crc_checker*", "cli*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

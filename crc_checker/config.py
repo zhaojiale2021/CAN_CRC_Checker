@@ -62,10 +62,9 @@ class RunConfig:
     max_frames: int | None = None               # Frame limit
     checksum_pattern: str | None = None         # Regex override
     rc_pattern: str | None = None               # Regex override
-    output_format: str = "table"                # table | html | csv | json
+    output_format: str = "table"                # table | html
     output_file: str = ""                       # Output path
     only_failures: bool = False                 # Show failures only
-    tui: bool = False                           # Launch TUI
     rc_max_valid: int | None = None             # Max valid RC value (None = auto from bit length)
 
     # Derived / resolved fields
@@ -173,7 +172,7 @@ CONFIG_SCHEMA_DOC = """
 
   // === Output ===
   "output": {
-    "format": "html",                    // table | html | csv | json
+    "format": "html",                    // table | html
     "file": "report.html",
     "only_failures": false
   },
@@ -273,9 +272,6 @@ def load_config(config_path: str) -> RunConfig:
         cfg.output_file = out.get("file", "")
         cfg.only_failures = out.get("only_failures", False)
 
-    # UI
-    cfg.tui = data.get("tui", False)
-
     # RC config
     rc_cfg = data.get("rc", {})
     if rc_cfg:
@@ -322,8 +318,7 @@ def generate_example_config(output_path: str):
         "rc": {
             "_comment": "Optional RC range config. Remove to auto-detect from bit length.",
             "max_valid": None
-        },
-        "tui": False
+        }
     }
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(example, f, indent=2, ensure_ascii=False)

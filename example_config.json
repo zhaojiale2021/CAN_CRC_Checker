@@ -25,6 +25,5 @@
   },
   "rc": {
     "max_valid": 14
-  },
-  "tui": false
+  }
 }

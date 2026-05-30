@@ -5,9 +5,6 @@ click>=8.1
 bitstruct>=8.19
 openpyxl>=3.0
 
-# TUI (optional, omit for CLI-only usage)
-textual>=0.70
-
 # Development
 pytest>=8
 pytest-cov

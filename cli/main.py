@@ -12,8 +12,6 @@ from crc_checker.crc.presets import get_preset, list_presets
 from crc_checker.dbc.parser import parse_dbc
 from crc_checker.trace.reader import TraceReader
 from crc_checker.verify.engine import VerifyEngine
-from crc_checker.report.csv_writer import write_csv
-from crc_checker.report.json_writer import write_json
 from crc_checker.report.html import write_html
 
 
@@ -119,19 +117,18 @@ def cli():
               help="Column mapping: builtin name (greatwall_j6m, generic_abc, simple_8bit) or JSON string")
 @click.option("--frame-ids", default=None, help="Comma-separated CAN IDs to filter (e.g. 0x323,0x299)")
 @click.option("--output", "output_fmt", default="table",
-              type=click.Choice(["table", "csv", "json", "html"]),
+              type=click.Choice(["table", "html"]),
               help="Output format")
 @click.option("--output-file", default=None, type=click.Path(), help="Output file path")
 @click.option("--only-failures", is_flag=True, help="Only show/write failed verdicts")
 @click.option("--max-frames", type=int, default=None, help="Maximum frames to process")
-@click.option("--tui", "launch_tui", is_flag=True, help="Launch Textual TUI instead of CLI output")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def verify(dbc, trace_files, algo, custom_crc,
            range_mode, range_start, range_end,
            checksum_pattern, rc_pattern,
            dataid_xlsx, dataid_sheet, dataid_mapping,
            frame_ids, output_fmt, output_file,
-           only_failures, max_frames, launch_tui, verbose):
+           only_failures, max_frames, verbose):
     """Verify CRC and Rolling Counter in CAN trace files."""
 
     # Parse CRC params
@@ -187,12 +184,6 @@ def verify(dbc, trace_files, algo, custom_crc,
     if verbose:
         click.echo(f"Found protection signals in {len(protection_map.all_frame_ids())} CAN IDs")
 
-    # TUI mode
-    if launch_tui:
-        from tui.app import run_tui
-        run_tui(protection_map, trace_files, crc_params, crc_range, id_filter, max_frames)
-        return
-
     # Process each trace file — create engine ONCE per file
     for trace_path in trace_files:
         if verbose:
@@ -213,14 +204,6 @@ def verify(dbc, trace_files, algo, custom_crc,
         # Output
         if output_fmt == "table":
             _print_table(report, only_failures)
-        elif output_fmt == "csv":
-            write_csv(report, output_file, only_failures)
-            if output_file:
-                click.echo(f"CSV report written to {output_file}")
-        elif output_fmt == "json":
-            write_json(report, output_file, only_failures)
-            if output_file:
-                click.echo(f"JSON report written to {output_file}")
         elif output_fmt == "html":
             path = output_file or "crc_report.html"
             write_html(report, path, only_failures)
@@ -296,12 +279,6 @@ def run_cmd(config_path, verbose):
     if cfg.rc_max_valid is not None:
         protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
 
-    if cfg.tui:
-        from tui.app import run_tui
-        run_tui(protection_map, cfg.traces, crc_params, crc_range,
-                cfg.frame_ids, cfg.max_frames)
-        return
-
     for trace_path in cfg.traces:
         from crc_checker.protect.checksum import CRCVerifier
         from crc_checker.protect.rolling_counter import RollingCounterVerifier
@@ -337,50 +314,6 @@ def gen_config_cmd(output_path):
     generate_example_config(output_path)
     click.echo(f"Example config written to {output_path}")
     click.echo(f"Edit it, then: crc-check run -c {output_path}")
-
-
-@cli.command()
-@click.option("--dbc", default=None, type=click.Path(exists=True), help="Path to DBC file (optional)")
-@click.option("--trace", "trace_files", default=None, multiple=True,
-              type=click.Path(exists=True), help="Path to trace file(s)")
-@click.option("--algo", default=None, help="CRC preset name")
-@click.option("--dataid-xlsx", default=None, type=click.Path(exists=True), help="DataID Excel file")
-@click.option("--dataid-sheet", default=None, help="DataID sheet name")
-def tui(dbc, trace_files, algo, dataid_xlsx, dataid_sheet):
-    """Launch interactive TUI — with or without pre-loaded files.
-
-    Without arguments, opens a file-picker setup screen where you can
-    browse directories, select DBC/DataID/trace files, and choose a
-    CRC algorithm before starting verification.
-
-    With arguments, skips setup and jumps directly to the results view:
-
-        crc-check tui --dbc net.dbc --trace trace.blf --algo CRC8/AUTOSAR
-    """
-    from tui.app import run_tui
-    from crc_checker.dbc.parser import parse_dbc
-    from crc_checker.crc.presets import get_preset
-    from crc_checker.crc.models import CRCRange
-
-    crc_range = CRCRange(mode="exclude_crc")
-
-    if dbc and trace_files:
-        # Pre-loaded mode — skip setup screen
-        crc_params = get_preset(algo) if algo else None
-        protection_map = parse_dbc(dbc)
-        if crc_params:
-            protection_map.apply_crc_params(crc_params)
-        protection_map.apply_crc_range(crc_range)
-
-        if dataid_xlsx:
-            from crc_checker.dataid import parse_dataid_xlsx
-            dataid_map = parse_dataid_xlsx(dataid_xlsx, dataid_sheet or None)
-            protection_map.apply_dataid_map(dataid_map)
-
-        run_tui(protection_map, trace_files, crc_params, crc_range)
-    else:
-        # Setup-first mode
-        run_tui()
 
 
 @cli.command()

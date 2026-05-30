@@ -1,8 +1,6 @@
 @echo off
 REM ============================================================
 REM  CAN CRC Checker — Build standalone .exe
-REM  Usage: build.bat           (full build with TUI)
-REM         build.bat cli       (CLI-only, smaller ~32 MB)
 REM ============================================================
 setlocal
 
@@ -22,26 +20,21 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 if exist crc-check.spec del crc-check.spec
 
-REM Common hidden imports
-set HIDDEN=--hidden-import canmatrix --hidden-import canmatrix.formats --hidden-import canmatrix.formats.dbc --hidden-import openpyxl --collect-all canmatrix
+echo Building...
+pyinstaller --onefile --name crc-check ^
+    --hidden-import canmatrix ^
+    --hidden-import canmatrix.formats ^
+    --hidden-import canmatrix.formats.dbc ^
+    --hidden-import openpyxl ^
+    --collect-all canmatrix ^
+    cli/main.py
 
-if "%1"=="cli" (
-    echo Building CLI-only version (no TUI)...
-    pyinstaller --onefile --name crc-check %HIDDEN% --exclude-module textual --exclude-module rich cli/main.py
-    echo.
-    echo Done: dist\crc-check.exe
-) else (
-    echo Building full version (CLI + TUI)...
-    pyinstaller --onefile --name crc-check %HIDDEN% --hidden-import textual cli/main.py
-    echo.
-    echo Done: dist\crc-check.exe
-)
-
-REM Show size
+echo.
 if exist dist\crc-check.exe (
-    for %%A in (dist\crc-check.exe) do echo Size: %%~zA bytes
+    for %%A in (dist\crc-check.exe) do echo Done: dist\crc-check.exe (%%~zA bytes)
+) else (
+    echo Build failed!
 )
 
 echo.
-echo === Build Complete ===
 endlocal
