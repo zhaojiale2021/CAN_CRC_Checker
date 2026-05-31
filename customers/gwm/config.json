@@ -1,6 +1,8 @@
 {
   "dbc": "dbc",
-  "traces": ["trace"],
+  "traces": [
+    "trace"
+  ],
   "crc": {
     "preset": "CRC8/SAE-J1850-ZERO"
   },
@@ -13,7 +15,7 @@
   },
   "filter": {
     "frame_ids": null,
-    "max_frames": 200
+    "max_frames": 2000
   },
   "output": {
     "format": "html",
