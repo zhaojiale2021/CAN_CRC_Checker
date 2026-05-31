@@ -225,8 +225,8 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         stats_html += f'<span class="ok">RC:{rc_ok}</span>' if rc_ok > 0 else ""
         stats_html += f'<span class="err">RC:{rc_err}</span>' if rc_err > 0 else ""
 
-    # Channel tag
-    ch_tag = f'<span class="channel-tag channel-{channel % 4}">CH{channel}</span>' if channel else ""
+    # Channel tag (always show, channel 0 is valid)
+    ch_tag = f'<span class="channel-tag channel-{channel % 4}">CH{channel}</span>'
 
     # DBC source tag
     dbc_tag = f'<span class="dbc-tag" title="{dbc_source}">{dbc_source}</span>' if dbc_source else ""

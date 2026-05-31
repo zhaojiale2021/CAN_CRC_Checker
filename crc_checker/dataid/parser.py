@@ -216,6 +216,88 @@ BUILTIN_MAPPINGS: dict[str, ColumnMapping] = {
 }
 
 
+def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapping:
+    """Auto-detect column positions from header names.
+
+    Matches common header patterns (English, Chinese, mixed).
+    Returns a new ColumnMapping with resolved indices.
+    """
+    if mapping.use_header_names:
+        return mapping.resolve_columns(header_row)
+
+    # Try to auto-locate columns by common header name patterns
+    SIG_PATTERNS = [
+        "checksum signal name", "signalname", "signal name",
+        "signals", "checksumsignal", "e2e checksum",
+    ]
+    ID_PATTERNS = [
+        "message id", "messageid", "msg id", "can id", "canid",
+        "pdu id", "pduid", "arbitration id",
+    ]
+    HI_PATTERNS = [
+        "dataid_hi", "data id hi", "dataid high",
+        "data_id_hi", "data id (high byte)", "data_id (high byte)",
+        "high byte of data id", "highbyte",
+    ]
+    LO_PATTERNS = [
+        "dataid_lo", "data id lo", "dataid low",
+        "data_id_lo", "data id (low byte)", "data_id (low byte)",
+        "low byte of data id", "lowbyte",
+    ]
+    DID_PATTERNS = [
+        "data id", "dataid", "data_id", "data identifier",
+    ]
+
+    def _match(cell, patterns: list[str]) -> bool:
+        if cell is None:
+            return False
+        s = str(cell).strip().lower().replace(" ", "").replace("_", "")
+        # Direct match
+        for p in patterns:
+            if s == p.replace(" ", "").replace("_", ""):
+                return True
+            if p.replace(" ", "") in s:
+                return True
+        return False
+
+    sig_col = mapping.col_signal_name
+    id_col = mapping.col_message_id
+    hi_col = mapping.col_dataid_hi
+    lo_col = mapping.col_dataid_lo
+
+    for i, cell in enumerate(header_row):
+        if cell is None:
+            continue
+        s = str(cell).strip()
+        if not s:
+            continue
+        if _match(s, SIG_PATTERNS):
+            sig_col = i
+        elif _match(s, ID_PATTERNS):
+            id_col = i
+        elif _match(s, HI_PATTERNS):
+            hi_col = i
+        elif _match(s, LO_PATTERNS):
+            lo_col = i
+        elif _match(s, DID_PATTERNS):
+            if hi_col == mapping.col_dataid_hi:
+                hi_col = i
+            if lo_col == mapping.col_dataid_lo:
+                lo_col = i
+
+    return ColumnMapping(
+        col_signal_name=sig_col,
+        col_message_id=id_col,
+        col_dataid_hi=hi_col,
+        col_dataid_lo=lo_col,
+        dataid_format=mapping.dataid_format,
+        data_row_start=mapping.data_row_start,
+        message_id_base=mapping.message_id_base,
+        signal_name_filter=mapping.signal_name_filter,
+        use_header_names=False,
+    )
+
+
 def _parse_dataid_value(hi_val, lo_val, fmt: str) -> int | None:
     """Parse raw Excel cell values into a 16-bit DataID integer."""
     def _to_int(v):
@@ -300,10 +382,12 @@ def parse_dataid_xlsx(xlsx_path: str,
     ws = wb[sheet_name]
     dataid_map = DataIDMap(sheet_name=sheet_name)
 
-    # Resolve name-based column mapping to indices
-    if mapping.use_header_names and mapping.data_row_start > 1:
-        header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
-        mapping = mapping.resolve_columns(header_row)
+    # Auto-detect columns from header row (row 1 or data_row_start - 1)
+    header_row_num = 1 if mapping.data_row_start > 1 else None
+    if header_row_num:
+        header_row = list(ws.iter_rows(min_row=header_row_num, max_row=header_row_num, values_only=True))
+        if header_row:
+            mapping = _auto_detect_columns(mapping, header_row[0])
 
     for row in ws.iter_rows(min_row=mapping.data_row_start, values_only=True):
         if not row:
