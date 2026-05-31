@@ -21,8 +21,8 @@ class RollingCounterVerifier(ProtectionAlgorithm):
     algorithm_type = "rolling_counter"
 
     def __init__(self):
-        self._state: dict[tuple[int, str], int] = {}   # (frame_id, signal_name) -> prev_value
-        self._first_seen: dict[tuple[int, str], bool] = {}  # track first occurrence
+        self._state: dict[tuple[int, int, str], int] = {}   # (frame_id, channel, signal_name) -> prev_value
+        self._first_seen: dict[tuple[int, int, str], bool] = {}  # track first occurrence
 
     def reset(self):
         """Clear all accumulated RC state."""
@@ -39,7 +39,7 @@ class RollingCounterVerifier(ProtectionAlgorithm):
             frame.data, rc_signal.start_bit, rc_signal.length, rc_signal.byte_order
         )
 
-        key = (frame.arbitration_id, rc_signal.name)
+        key = (frame.arbitration_id, frame.channel, rc_signal.name)
         bit_max = (1 << rc_signal.length) - 1
         # rc_max_valid: max value before wrapping (e.g., 14 means valid range 0-14, 15=invalid)
         max_valid = protection.rc_max_valid if protection.rc_max_valid is not None else bit_max

@@ -137,20 +137,46 @@ class ColumnMapping:
     `signal_name_filter` is a list of prefixes used to identify checksum rows.
       Set to None to accept all rows that have a DataID value.
     """
-    col_signal_name: int = 1         # Column for signal name (e.g. "Checksum_ACC1")
-    col_message_id: int = 3          # Column for CAN ID (e.g. "0x143")
-    col_dataid_hi: int = 12          # Column for DataID high byte
-    col_dataid_lo: int = 13          # Column for DataID low byte
+    col_signal_name: int | str = 1   # Column index or header name for signal name
+    col_message_id: int | str = 3    # Column index or header name for CAN ID
+    col_dataid_hi: int | str = 12    # Column index or header name for DataID high byte
+    col_dataid_lo: int | str = 13    # Column index or header name for DataID low byte
     dataid_format: str = "hi_lo_two_cols"
     data_row_start: int = 3          # 1-based row where data begins
     message_id_base: int = 16        # Radix for message ID parsing (16 = hex, 10 = decimal)
     signal_name_filter: list[str] | None = None
+    use_header_names: bool = False   # If True, col_* fields are header names, not indices
     # Default filter: common checksum signal prefixes
     _DEFAULT_FILTER = ("checksum", "crc", "check_sum", "e2e_crc")
 
     def __post_init__(self):
         if self.signal_name_filter is None:
             self.signal_name_filter = list(self._DEFAULT_FILTER)
+
+    def resolve_columns(self, header_row: list) -> "ColumnMapping":
+        """Convert header names to column indices. Returns self if already index-based."""
+        if not self.use_header_names:
+            return self
+
+        def _find(name: int | str) -> int:
+            if isinstance(name, int):
+                return name
+            for i, cell in enumerate(header_row):
+                if cell is not None and str(cell).strip().lower() == name.lower():
+                    return i
+            return -1
+
+        return ColumnMapping(
+            col_signal_name=_find(self.col_signal_name),
+            col_message_id=_find(self.col_message_id),
+            col_dataid_hi=_find(self.col_dataid_hi),
+            col_dataid_lo=_find(self.col_dataid_lo),
+            dataid_format=self.dataid_format,
+            data_row_start=self.data_row_start,
+            message_id_base=self.message_id_base,
+            signal_name_filter=self.signal_name_filter,
+            use_header_names=False,
+        )
 
 
 # Built-in presets for known OEM formats
@@ -273,6 +299,11 @@ def parse_dataid_xlsx(xlsx_path: str,
 
     ws = wb[sheet_name]
     dataid_map = DataIDMap(sheet_name=sheet_name)
+
+    # Resolve name-based column mapping to indices
+    if mapping.use_header_names and mapping.data_row_start > 1:
+        header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
+        mapping = mapping.resolve_columns(header_row)
 
     for row in ws.iter_rows(min_row=mapping.data_row_start, values_only=True):
         if not row:

@@ -343,17 +343,26 @@ def run_cmd(config_path, verbose):
                 n_match = len(set(pm.all_frame_ids()) & ch_ids.get(ch, set()))
                 click.echo(f"  CH{ch} -> {name} ({n_match}/{len(pm.all_frame_ids())} IDs, {n_ids} trace IDs)")
 
-    # Load DataID: use first DBC name for sheet auto-match
-    dbc_name = Path(list(protection_map.dbc_paths)[0]).name if protection_map.dbc_paths else ""
-    dataid_map = cfg.load_dataid(dbc_name=dbc_name)
-    if verbose and dataid_map:
-        click.echo(f"DataID: {len(dataid_map)} entries (sheet: {dataid_map.sheet_name})")
+    # Load DataID per-channel: each channel's DBC auto-matches its own sheet
+    if cfg.dataid_xlsx and isinstance(protection_map, ChannelProtectionMap):
+        for ch, pm in sorted(ch_dbc.items()):
+            ch_dbc_name = Path(pm.dbc_paths[0]).name if pm.dbc_paths else ""
+            ch_dataid = cfg.load_dataid(dbc_name=ch_dbc_name)
+            if ch_dataid and len(ch_dataid) > 0:
+                pm.apply_dataid_map(ch_dataid)
+                if verbose:
+                    click.echo(f"  CH{ch} DataID: {len(ch_dataid)} entries (sheet: {ch_dataid.sheet_name})")
+    elif cfg.dataid_xlsx:
+        dbc_name = Path(list(protection_map.dbc_paths)[0]).name if protection_map.dbc_paths else ""
+        dataid_map = cfg.load_dataid(dbc_name=dbc_name)
+        if dataid_map:
+            protection_map.apply_dataid_map(dataid_map)
+        if verbose and dataid_map:
+            click.echo(f"DataID: {len(dataid_map)} entries (sheet: {dataid_map.sheet_name})")
+
     if crc_params:
         protection_map.apply_crc_params(crc_params)
     protection_map.apply_crc_range(crc_range)
-
-    if dataid_map:
-        protection_map.apply_dataid_map(dataid_map)
 
     if cfg.rc_max_valid is not None:
         protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
