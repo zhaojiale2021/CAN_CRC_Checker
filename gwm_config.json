@@ -11,7 +11,8 @@
   },
   "dataid": {
     "xlsx": "dbc/长城J6M_E2E 算法之data id _V2.5.xlsx",
-    "mapping": "greatwall_j6m"
+    "mapping": "greatwall_j6m",
+    "json": "dbc/dataid.json"
   },
   "filter": {
     "frame_ids": null,
@@ -19,7 +20,7 @@
   },
   "output": {
     "format": "html",
-    "file": "report_alldbc.html",
+    "file": "report.html",
     "only_failures": false
   },
   "rc": {
