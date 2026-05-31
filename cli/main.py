@@ -344,14 +344,27 @@ def run_cmd(config_path, verbose):
                 click.echo(f"  CH{ch} -> {name} ({n_match}/{len(pm.all_frame_ids())} IDs, {n_ids} trace IDs)")
 
     # Load DataID per-channel: each channel's DBC auto-matches its own sheet
+    ch0_dataid_map = None  # Saved for fallback to CH1/CH2
     if cfg.dataid_xlsx and isinstance(protection_map, ChannelProtectionMap):
         for ch, pm in sorted(ch_dbc.items()):
             ch_dbc_name = Path(pm.dbc_paths[0]).name if pm.dbc_paths else ""
             ch_dataid = cfg.load_dataid(dbc_name=ch_dbc_name)
             if ch_dataid and len(ch_dataid) > 0:
                 pm.apply_dataid_map(ch_dataid)
+                if ch == 0:
+                    ch0_dataid_map = ch_dataid
                 if verbose:
                     click.echo(f"  CH{ch} DataID: {len(ch_dataid)} entries (sheet: {ch_dataid.sheet_name})")
+        # Fallback: CH1/CH2 borrow CH0's DataID for messages without their own
+        if ch0_dataid_map:
+            fallback_total = 0
+            for ch, pm in sorted(ch_dbc.items()):
+                if ch == 0:
+                    continue
+                n = pm.apply_dataid_map_fallback(ch0_dataid_map)
+                fallback_total += n
+            if fallback_total > 0 and verbose:
+                click.echo(f"  DataID fallback from CH0: {fallback_total} entries")
     elif cfg.dataid_xlsx:
         dbc_name = Path(list(protection_map.dbc_paths)[0]).name if protection_map.dbc_paths else ""
         dataid_map = cfg.load_dataid(dbc_name=dbc_name)

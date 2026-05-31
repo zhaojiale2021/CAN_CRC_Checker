@@ -53,8 +53,12 @@ class DBCProtectionMap:
         """Backward-compat setter: sets dbc_paths to a single-element list."""
         self.dbc_paths = [value] if value else []
 
-    def get_protections(self, frame_id: int) -> list[MessageProtection]:
-        """Get all protection groups for a given CAN ID."""
+    def get_protections(self, frame_id: int, channel: int = 0) -> list[MessageProtection]:
+        """Get all protection groups for a given CAN ID.
+
+        The channel parameter is accepted for API compatibility with
+        ChannelProtectionMap but ignored (single-DBC mode applies to all channels).
+        """
         return self.messages.get(frame_id, [])
 
     def all_frame_ids(self) -> list[int]:
@@ -82,6 +86,23 @@ class DBCProtectionMap:
         for prot_list in self.messages.values():
             for prot in prot_list:
                 if prot.checksum_signal:
+                    dataid = dataid_map.get(prot.frame_id, prot.checksum_signal.name)
+                    if dataid is not None:
+                        prot.dataid = dataid
+                        applied += 1
+        return applied
+
+    def apply_dataid_map_fallback(self, dataid_map) -> int:
+        """Apply DataID only to protection groups that currently have dataid=None.
+
+        Used for multi-channel fallback: CH1/CH2 borrow DataID from CH0
+        for messages that couldn't find their own DataID but share the same
+        (frame_id, checksum_signal_name) as CH0.
+        """
+        applied = 0
+        for prot_list in self.messages.values():
+            for prot in prot_list:
+                if prot.checksum_signal and prot.dataid is None:
                     dataid = dataid_map.get(prot.frame_id, prot.checksum_signal.name)
                     if dataid is not None:
                         prot.dataid = dataid
@@ -197,6 +218,15 @@ class ChannelProtectionMap:
             pm.apply_dataid_map(dataid_map)
         if self._fallback:
             self._fallback.apply_dataid_map(dataid_map)
+
+    def apply_dataid_map_fallback(self, dataid_map) -> int:
+        """Apply DataID as fallback to all channel maps (only where dataid=None)."""
+        applied = 0
+        for pm in self._maps.values():
+            applied += pm.apply_dataid_map_fallback(dataid_map)
+        if self._fallback:
+            applied += self._fallback.apply_dataid_map_fallback(dataid_map)
+        return applied
 
     def apply_rc_config(self, max_valid=None):
         for pm in self._maps.values():

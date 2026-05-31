@@ -133,7 +133,8 @@ class VerifyEngine:
                 continue
 
             frame_count += 1
-            protections = self.protection_map.get_protections(frame.arbitration_id)
+            protections = self.protection_map.get_protections(
+                frame.arbitration_id, channel=frame.channel)
             if not protections:
                 continue
 
