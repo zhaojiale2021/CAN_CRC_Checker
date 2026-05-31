@@ -19,6 +19,3 @@ dist/
 *.spec
 *.zip
 
-# Test data (proprietary)
-test_data/
-test_dbc/
