@@ -3,13 +3,12 @@ REM ============================================================
 REM  CAN CRC Checker — Package for customer distribution
 REM  Usage: package.bat <customer>   (e.g. package.bat gwm)
 REM ============================================================
-setlocal enabledelayedexpansion
 
 set CUSTOMER=%~1
 if "%CUSTOMER%"=="" (
     echo Usage: package.bat ^<customer^>
     echo   e.g. package.bat gwm
-    echo.
+    echo/
     echo Available customers:
     for /d %%D in (customers\*) do echo   - %%~nxD
     exit /b 1
@@ -21,9 +20,9 @@ if not exist "%CUST_DIR%" (
     exit /b 1
 )
 
-echo.
+echo/
 echo === Packaging for: %CUSTOMER% ===
-echo.
+echo/
 
 REM Check / build exe
 if not exist "dist\crc-check.exe" (
@@ -37,25 +36,31 @@ if not exist "dist\crc-check.exe" (
 
 REM Create output dir
 set OUT_DIR=release\%CUSTOMER%
-if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%"
-mkdir "%OUT_DIR%"
+if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%" 2>nul
+mkdir "%OUT_DIR%" 2>nul
 
 REM Copy exe
-echo Copying crc-check.exe...
-copy /y dist\crc-check.exe "%OUT_DIR%\" >nul
+echo [1/3] Copying exe...
+copy /y dist\crc-check.exe "%OUT_DIR%\" >nul 2>&1
 
-REM Copy customer files
-echo Copying %CUSTOMER% files...
-xcopy /e /i /q "%CUST_DIR%\*" "%OUT_DIR%\" >nul
+REM Copy customer files (excluding trace, report)
+echo [2/3] Copying config and scripts...
+for %%F in (config.json run.bat run.sh README.md) do (
+    if exist "%CUST_DIR%\%%F" copy /y "%CUST_DIR%\%%F" "%OUT_DIR%\" >nul 2>&1
+)
 
-REM Remove trace and report from package (keep dbc)
-if exist "%OUT_DIR%\trace" rmdir /s /q "%OUT_DIR%\trace"
-if exist "%OUT_DIR%\report.html" del "%OUT_DIR%\report.html"
-mkdir "%OUT_DIR%\trace"
+REM Copy dbc directory
+if exist "%CUST_DIR%\dbc" (
+    echo [3/3] Copying dbc...
+    mkdir "%OUT_DIR%\dbc" 2>nul
+    xcopy /e /i /q /y "%CUST_DIR%\dbc\*" "%OUT_DIR%\dbc\" >nul 2>&1
+)
 
-echo.
+REM Create empty trace dir
+mkdir "%OUT_DIR%\trace" 2>nul
+
+echo/
 echo === Package ready: %OUT_DIR% ===
 dir /b "%OUT_DIR%"
-echo.
+echo/
 echo To distribute, zip the %OUT_DIR% folder.
-endlocal
