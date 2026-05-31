@@ -1,0 +1,26 @@
+{
+  "dbc": "dbc",
+  "traces": ["trace"],
+  "crc": {
+    "preset": "CRC8/SAE-J1850-ZERO"
+  },
+  "range": {
+    "mode": "exclude_crc"
+  },
+  "dataid": {
+    "xlsx": "dbc/长城J6M_E2E 算法之data id _V2.5.xlsx",
+    "mapping": "greatwall_j6m"
+  },
+  "filter": {
+    "frame_ids": null,
+    "max_frames": 200
+  },
+  "output": {
+    "format": "html",
+    "file": "report.html",
+    "only_failures": false
+  },
+  "rc": {
+    "max_valid": 14
+  }
+}

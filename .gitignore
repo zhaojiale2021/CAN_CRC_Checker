@@ -16,6 +16,10 @@ report*.json
 # Build artifacts
 build/
 dist/
+release/
 *.spec
 *.zip
+
+# Customer exe (built, not committed)
+customers/*/crc-check.exe
 
