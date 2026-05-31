@@ -244,19 +244,18 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
         "data_id_lo", "data id (low byte)", "data_id (low byte)",
         "low byte of data id", "lowbyte",
     ]
-    DID_PATTERNS = [
-        "data id", "dataid", "data_id", "data identifier",
+    DID_COMBINED = [
+        "data_id_both", "dataid_both", "data_id",
+        "data id (hex)", "data id (dec)",
     ]
 
     def _match(cell, patterns: list[str]) -> bool:
         if cell is None:
             return False
-        s = str(cell).strip().lower().replace(" ", "").replace("_", "")
-        # Direct match
+        s = str(cell).strip().lower().replace(" ", "").replace("_", "").replace("\n", "")
         for p in patterns:
-            if s == p.replace(" ", "").replace("_", ""):
-                return True
-            if p.replace(" ", "") in s:
+            ps = p.replace(" ", "").replace("_", "")
+            if s == ps or ps in s:
                 return True
         return False
 
@@ -275,15 +274,14 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
             sig_col = i
         elif _match(s, ID_PATTERNS):
             id_col = i
+        elif _match(s, DID_COMBINED):
+            # Combined DataID column: Hi in this col, Lo in next
+            hi_col = i
+            lo_col = i + 1
         elif _match(s, HI_PATTERNS):
             hi_col = i
         elif _match(s, LO_PATTERNS):
             lo_col = i
-        elif _match(s, DID_PATTERNS):
-            if hi_col == mapping.col_dataid_hi:
-                hi_col = i
-            if lo_col == mapping.col_dataid_lo:
-                lo_col = i
 
     return ColumnMapping(
         col_signal_name=sig_col,
@@ -450,6 +448,12 @@ def match_sheet_to_dbc(dbc_name: str, sheet_names: list[str]) -> str | None:
     """
     import re
 
+    def _weight(tok: str) -> float:
+        # Alphabetic tokens are stronger signals than pure numbers
+        if tok.isdigit():
+            return 0.4
+        return 1.0
+
     def _tokenize(name: str) -> tuple[set[str], str]:
         # Remove extension
         cleaned = re.sub(r'\.(dbc|xlsx)$', '', name, flags=re.IGNORECASE).lower()
@@ -464,18 +468,24 @@ def match_sheet_to_dbc(dbc_name: str, sheet_names: list[str]) -> str | None:
     if not dbc_tokens:
         return None
 
-    best, best_score = None, 0
+    best, best_score = None, -1.0
     for sname in sheet_names:
         sheet_tokens, sheet_clean = _tokenize(sname)
-        # Exact token matches
-        score = len(dbc_tokens & sheet_tokens)
-        # Substring bonus: sheet token contained in dbc name or vice versa
+        # Exact token matches (primary)
+        exact_set = dbc_tokens & sheet_tokens
+        exact = sum(_weight(t) for t in exact_set)
+        bonus = 0.0
+        # Substring bonus: only for tokens >= 4 chars, not exact matches,
+        # and not substrings of any token on the other side.
         for st in sheet_tokens:
-            if len(st) >= 3 and st not in dbc_tokens and st in dbc_clean:
-                score += 0.5
+            if len(st) >= 4 and st not in exact_set and st in dbc_clean:
+                if not any(st in dt for dt in dbc_tokens if len(dt) > len(st)):
+                    bonus += 0.3 * _weight(st)
         for dt in dbc_tokens:
-            if len(dt) >= 3 and dt not in sheet_tokens and dt in sheet_clean:
-                score += 0.5
+            if len(dt) >= 4 and dt not in exact_set and dt in sheet_clean:
+                if not any(dt in st for st in sheet_tokens if len(st) > len(dt)):
+                    bonus += 0.3 * _weight(dt)
+        score = exact + bonus
         if score > best_score:
             best, best_score = sname, score
 
