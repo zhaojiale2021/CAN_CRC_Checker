@@ -10,6 +10,7 @@ class TestDataIDMapSerialization:
     """Test JSON round-trip serialization."""
 
     def test_to_json_and_from_json_roundtrip(self):
+        """Full roundtrip: to_json → from_json preserves all entries."""
         dm = DataIDMap(sheet_name="TestSheet")
         dm.add(0x143, "Checksum_ACC1", 0x0054)
         dm.add(0x143, "Checksum_ACC2", 0x0055)
@@ -20,7 +21,7 @@ class TestDataIDMapSerialization:
             dm.to_json(tmp_path, source="test.xlsx", mapping="greatwall_j6m",
                        sheets=["TestSheet"])
 
-            with open(tmp_path, "r") as f:
+            with open(tmp_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
             assert raw["format"] == "dataid_map_v1"
             assert raw["source"] == "test.xlsx"
@@ -43,7 +44,7 @@ class TestDataIDMapSerialization:
         """Backward compat: integer frame_id/dataid still parse correctly."""
         tmp_path = os.path.join(tempfile.gettempdir(), "test_dataid_intcompat.json")
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump({
                     "format": "dataid_map_v1",
                     "entries": [
@@ -58,9 +59,10 @@ class TestDataIDMapSerialization:
                 os.unlink(tmp_path)
 
     def test_from_json_empty(self):
+        """Empty entries list → empty DataIDMap."""
         tmp_path = os.path.join(tempfile.gettempdir(), "test_dataid_empty.json")
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump({"format": "dataid_map_v1", "entries": []}, f)
             dm = DataIDMap.from_json(tmp_path)
             assert len(dm) == 0
@@ -69,9 +71,10 @@ class TestDataIDMapSerialization:
                 os.unlink(tmp_path)
 
     def test_from_json_bad_format(self):
+        """Unknown format version raises ValueError."""
         tmp_path = os.path.join(tempfile.gettempdir(), "test_dataid_bad_fmt.json")
         try:
-            with open(tmp_path, "w") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump({"format": "unknown_v2", "entries": []}, f)
             with pytest.raises(ValueError, match="Unsupported.*format"):
                 DataIDMap.from_json(tmp_path)
@@ -80,13 +83,14 @@ class TestDataIDMapSerialization:
                 os.unlink(tmp_path)
 
     def test_to_json_no_sheets_defaults_to_sheet_name(self):
+        """No sheets arg → sheet_name used as default."""
         dm = DataIDMap(sheet_name="MySheet")
         dm.add(0x100, "Checksum_X", 0x0010)
 
         tmp_path = os.path.join(tempfile.gettempdir(), "test_dataid_nosheets.json")
         try:
             dm.to_json(tmp_path)
-            with open(tmp_path, "r") as f:
+            with open(tmp_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
             assert raw["sheets"] == ["MySheet"]
         finally:
@@ -98,6 +102,7 @@ class TestDataIDMapUpdate:
     """Test merging of DataIDMap instances."""
 
     def test_update_adds_new_and_overwrites_duplicates(self):
+        """Update adds new entries, overwrites duplicates; existing kept."""
         dm1 = DataIDMap()
         dm1.add(0x100, "Checksum_X", 0x0010)
         dm1.add(0x200, "Checksum_Y", 0x0020)
@@ -114,6 +119,7 @@ class TestDataIDMapUpdate:
         assert dm1.get(0x300, "Checksum_Z") == 0x0030  # new
 
     def test_update_empty_other(self):
+        """Merging empty DataIDMap is a no-op."""
         dm1 = DataIDMap()
         dm1.add(0x100, "Checksum_X", 0x0010)
         dm2 = DataIDMap()

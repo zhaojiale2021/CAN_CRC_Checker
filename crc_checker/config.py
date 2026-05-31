@@ -31,11 +31,20 @@ Example config (all fields optional except dbc and traces):
 from __future__ import annotations
 
 import json
-import os
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import openpyxl
+
 from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.crc.presets import get_preset
+from crc_checker.dataid.parser import (
+    DataIDMap,
+    match_sheet_to_dbc,
+    parse_dataid_xlsx,
+    parse_dataid_xlsx_multi,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +52,7 @@ from crc_checker.crc.models import CRCParams, CRCRange
 # ---------------------------------------------------------------------------
 
 @dataclass
+# pylint: disable=too-many-instance-attributes
 class RunConfig:
     """All parameters for a CRC verification run.
 
@@ -95,11 +105,13 @@ class RunConfig:
 
     def get_dbc_paths(self) -> list[str]:
         """Get the flat list of DBC file paths (after directory expansion)."""
+        # pylint: disable=import-outside-toplevel
         from crc_checker.dbc.parser import DBCParser
         paths = []
         if self.dbc:
             paths.append(self.dbc)
         paths.extend(self.dbcs)
+        # pylint: disable=protected-access
         return DBCParser._collect_dbc_files(paths) if paths else []
 
     _TRACE_EXTENSIONS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
@@ -134,35 +146,36 @@ class RunConfig:
         3. dataid_xlsx only → slow path (backward compat)
         4. Neither → None
         """
-        from crc_checker.dataid.parser import (
-            DataIDMap, parse_dataid_xlsx, parse_dataid_xlsx_multi,
-            match_sheet_to_dbc,
-        )
-        import logging
         log = logging.getLogger("crc_checker")
 
         # Fast path: JSON exists
         if self.dataid_json and Path(self.dataid_json).exists():
-            log.debug(f"Loading DataID from JSON: {self.dataid_json}")
+            log.debug("Loading DataID from JSON: %s", self.dataid_json)
             return DataIDMap.from_json(self.dataid_json)
 
         # Resolve sheets: auto-match to DBC name if no explicit sheet specified
-        sheets = [s.strip() for s in self.dataid_sheet.split(",") if s.strip()] if self.dataid_sheet else None
+        if self.dataid_sheet:
+            sheets = [
+                s.strip() for s in self.dataid_sheet.split(",") if s.strip()
+            ]
+        else:
+            sheets = None
         if not sheets and dbc_name and self.dataid_xlsx:
-            import openpyxl
             wb = openpyxl.load_workbook(self.dataid_xlsx, data_only=True)
             all_sheets = list(wb.sheetnames)
             wb.close()
             matched = match_sheet_to_dbc(dbc_name, all_sheets)
             if matched:
                 sheets = [matched]
-                log.info(f"Auto-matched sheet '{matched}' for DBC '{dbc_name}'")
+                log.info(
+                    "Auto-matched sheet '%s' for DBC '%s'", matched, dbc_name
+                )
 
         mapping = self.dataid_mapping or None
 
         # Auto-generate: JSON specified but missing, xlsx available
         if self.dataid_json and self.dataid_xlsx:
-            log.info(f"Generating DataID JSON: {self.dataid_json}")
+            log.info("Generating DataID JSON: %s", self.dataid_json)
             dm = parse_dataid_xlsx_multi(self.dataid_xlsx, sheets, mapping=mapping)
             if len(dm) > 0:
                 dm.to_json(
@@ -171,41 +184,49 @@ class RunConfig:
                     mapping=self.dataid_mapping,
                     sheets=sheets,
                 )
-                log.info(f"DataID JSON saved: {self.dataid_json} ({len(dm)} entries)")
+                log.info(
+                    "DataID JSON saved: %s (%d entries)",
+                    self.dataid_json, len(dm),
+                )
             return dm
 
         # Slow path: xlsx only (backward compat, with auto-match)
         if self.dataid_xlsx:
             if not sheets and dbc_name:
-                import openpyxl
                 wb = openpyxl.load_workbook(self.dataid_xlsx, data_only=True)
                 all_sheets = list(wb.sheetnames)
                 wb.close()
                 matched = match_sheet_to_dbc(dbc_name, all_sheets)
                 if matched:
                     sheets = [matched]
-                    log.info(f"Auto-matched sheet '{matched}' for DBC '{dbc_name}'")
+                    log.info(
+                        "Auto-matched sheet '%s' for DBC '%s'", matched, dbc_name
+                    )
             if sheets and len(sheets) > 1:
-                return parse_dataid_xlsx_multi(self.dataid_xlsx, sheets, mapping=mapping)
-            return parse_dataid_xlsx(self.dataid_xlsx, sheets[0] if sheets else None, mapping=mapping)
+                return parse_dataid_xlsx_multi(
+                    self.dataid_xlsx, sheets, mapping=mapping,
+                )
+            sheet_name = sheets[0] if sheets else None
+            return parse_dataid_xlsx(
+                self.dataid_xlsx, sheet_name, mapping=mapping,
+            )
 
         return None
 
     def build_crc_params(self) -> CRCParams | None:
         """Build CRCParams from config."""
-        from crc_checker.crc.presets import get_preset
 
         if self.crc_custom:
             d = self.crc_custom
-            def _h(v, field):
+            def _h(v):
                 if isinstance(v, str):
                     return int(v, 16)
                 return v
             return CRCParams(
                 width=d["width"],
-                polynomial=_h(d["poly"], "poly"),
-                initial_value=_h(d.get("init", "0x00"), "init"),
-                final_xor=_h(d.get("xor", "0x00"), "xor"),
+                polynomial=_h(d["poly"]),
+                initial_value=_h(d.get("init", "0x00")),
+                final_xor=_h(d.get("xor", "0x00")),
                 reflect_in=d.get("reflect_in", False),
                 reflect_out=d.get("reflect_out", False),
                 name=d.get("name", "custom"),
@@ -296,6 +317,7 @@ CONFIG_SCHEMA_DOC = """
 # Loader
 # ---------------------------------------------------------------------------
 
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def load_config(config_path: str) -> RunConfig:
     """Load and validate a JSON configuration file.
 

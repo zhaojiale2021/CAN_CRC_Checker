@@ -39,8 +39,7 @@ def extract_signal_bits(data: bytes, start_bit: int, length: int,
     """
     if byte_order == "big_endian":
         return _extract_motorola(data, start_bit, length)
-    else:
-        return _extract_intel(data, start_bit, length)
+    return _extract_intel(data, start_bit, length)
 
 
 def zero_signal_bits(data: bytearray, start_bit: int, length: int,

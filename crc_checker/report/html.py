@@ -1,5 +1,9 @@
 """HTML report generator — segment hex view with inline CRC/RC highlighting."""
 
+from collections import defaultdict
+from datetime import datetime
+
+from crc_checker.bit_utils import _canmatrix_to_physical_msb
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
 
 CSS = """
@@ -95,7 +99,6 @@ CSS = """
 
 def _bit_to_byte_pos(start_bit: int, bit_index: int, byte_order: str) -> tuple[int, int]:
     """Convert signal start_bit + bit_index to (byte_offset, bit_in_byte)."""
-    from crc_checker.bit_utils import _canmatrix_to_physical_msb
     if byte_order == "big_endian":
         physical_msb = _canmatrix_to_physical_msb(start_bit)
         phys_bit = physical_msb - bit_index
@@ -104,6 +107,7 @@ def _bit_to_byte_pos(start_bit: int, bit_index: int, byte_order: str) -> tuple[i
     return phys_bit // 8, phys_bit % 8
 
 
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
                       frame_name: str = "", channel: int = 0,
                       dbc_source: str = "") -> str:
@@ -123,7 +127,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         if not v.start_bit or not v.length:
             continue
         for bit_i in range(v.length):
-            byte_idx, bit_in_byte = _bit_to_byte_pos(v.start_bit, bit_i, v.byte_order)
+            byte_idx, _ = _bit_to_byte_pos(v.start_bit, bit_i, v.byte_order)
             if 0 <= byte_idx < dlc:
                 if byte_idx not in byte_styles:
                     byte_styles[byte_idx] = {}
@@ -171,7 +175,10 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             crc_status = styles.get("crc")
             rc_status = styles.get("rc")
             if crc_status and rc_status:
-                css_class = f"has-crc rc-{rc_status}" if crc_status == "pass" else f"has-crc crc-fail"
+                if crc_status == "pass":
+                    css_class = f"has-crc rc-{rc_status}"
+                else:
+                    css_class = "has-crc crc-fail"
             elif crc_status:
                 css_class = f"crc-{crc_status}"
             elif rc_status:
@@ -183,9 +190,14 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
                 for v in verdicts:
                     sig_start_byte, _ = _bit_to_byte_pos(v.start_bit, 0, v.byte_order)
                     sig_end_byte, _ = _bit_to_byte_pos(v.start_bit, v.length - 1, v.byte_order)
-                    if min(sig_start_byte, sig_end_byte) <= byte_idx <= max(sig_start_byte, sig_end_byte):
+                    byte_min = min(sig_start_byte, sig_end_byte)
+                    byte_max = max(sig_start_byte, sig_end_byte)
+                    if byte_min <= byte_idx <= byte_max:
                         status = "OK" if v.is_pass else "ERR"
-                        parts.append(f"{v.signal_name}: exp=0x{v.expected_value:X} act=0x{v.actual_value:X} [{status}]")
+                        parts.append(
+                            f"{v.signal_name}: exp=0x{v.expected_value:X} "
+                            f"act=0x{v.actual_value:X} [{status}]"
+                        )
                 tooltip = " | ".join(parts)
 
             tooltip_html = f'<span class="tooltip">{tooltip}</span>' if tooltip else ""
@@ -193,7 +205,10 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
 
         offset = f"0x{seg_start:04X}"
         did = seg_dataid.get(seg_idx)
-        label = f'Seg{seg_idx} <span class="did">0x{did:04X}</span>' if did is not None else f"Seg{seg_idx}"
+        if did is not None:
+            label = f'Seg{seg_idx} <span class="did">0x{did:04X}</span>'
+        else:
+            label = f"Seg{seg_idx}"
         hex_rows.append(
             f'<div class="hex-row">'
             f'<span class="segment-label">{label}</span>'
@@ -229,7 +244,10 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     ch_tag = f'<span class="channel-tag channel-{channel % 4}">CH{channel}</span>'
 
     # DBC source tag
-    dbc_tag = f'<span class="dbc-tag" title="{dbc_source}">{dbc_source}</span>' if dbc_source else ""
+    if dbc_source:
+        dbc_tag = f'<span class="dbc-tag" title="{dbc_source}">{dbc_source}</span>'
+    else:
+        dbc_tag = ""
 
     collapsed = ""
     name_html = f'<span class="name">({frame_name})</span>' if frame_name else ""
@@ -257,6 +275,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     </div>"""
 
 
+# pylint: disable=too-many-locals
 def write_html(report: VerifyReport, file_path: str, only_failures: bool = False) -> None:
     """Write verification results to a self-contained HTML file with hex-dump view.
 
@@ -266,18 +285,15 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     - Full payload hex dump with CRC/RC highlighting
     - Hover tooltips, collapsible sections, filter buttons
     """
-    from datetime import datetime
 
     verdicts = report.failed if only_failures else report.verdicts
 
-    from collections import defaultdict
     grouped: dict[tuple[float, int], list[VerifyVerdict]] = defaultdict(list)
     for v in verdicts:
         grouped[(v.timestamp, v.frame_id)].append(v)
 
-    # Collect unique channels and DBC sources
+    # Collect unique channels
     channels: set[int] = set()
-    dbc_sources: dict[int, str] = {}  # frame_id -> dbc_source from first protection
 
     # Build frame HTML sections
     frame_sections = []
@@ -290,7 +306,10 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 
         fname = report.get_frame_name(fid)
         dbc_src = report.get_frame_dbc_source(fid)
-        frame_sections.append(_build_frame_html(f_verdicts, fdata, fname, channel=ch, dbc_source=dbc_src))
+        section_html = _build_frame_html(
+            f_verdicts, fdata, fname, channel=ch, dbc_source=dbc_src
+        )
+        frame_sections.append(section_html)
 
     # Compute separate CRC and RC stats
     crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")

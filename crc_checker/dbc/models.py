@@ -16,7 +16,7 @@ class SignalInfo:
 
 
 @dataclass
-class MessageProtection:
+class MessageProtection:  # pylint: disable=too-many-instance-attributes
     """Protection information for one CAN message.
 
     A message may have multiple protection groups (e.g., ACC1, ACC2).
@@ -28,11 +28,11 @@ class MessageProtection:
     pair_suffix: str = ""                                      # e.g. "ACC1"
     checksum_signal: SignalInfo | None = None
     rolling_counter_signal: SignalInfo | None = None
-    crc_params: CRCParams | None = None                        # Algorithm to use (set by user/config)
-    crc_range: CRCRange | None = None                          # Data range for CRC (set by user/config)
-    dataid: int | None = None                                  # 16-bit DataID (from AUTOSAR E2E config)
-    frame_protection_count: int = 1                            # How many protection groups in this frame
-    rc_max_valid: int | None = None                            # Max valid RC value before wrap (None = auto from bit length)
+    crc_params: CRCParams | None = None                        # Algorithm (set by user/config)
+    crc_range: CRCRange | None = None                          # Data range (set by user/config)
+    dataid: int | None = None                                  # 16-bit DataID from AUTOSAR E2E
+    frame_protection_count: int = 1                            # How many protection groups
+    rc_max_valid: int | None = None                            # Max RC before wrap
     dbc_source: str = ""                                       # Source DBC file name
 
 
@@ -53,7 +53,7 @@ class DBCProtectionMap:
         """Backward-compat setter: sets dbc_paths to a single-element list."""
         self.dbc_paths = [value] if value else []
 
-    def get_protections(self, frame_id: int, channel: int = 0) -> list[MessageProtection]:
+    def get_protections(self, frame_id: int, channel: int = 0) -> list[MessageProtection]:  # pylint: disable=unused-argument
         """Get all protection groups for a given CAN ID.
 
         The channel parameter is accepted for API compatibility with
@@ -185,6 +185,7 @@ class ChannelProtectionMap:
 
     @property
     def dbc_path(self) -> str:
+        """Backward-compat: joined display string of all DBC paths."""
         return ", ".join(self.dbc_paths)
 
     @property
@@ -202,18 +203,21 @@ class ChannelProtectionMap:
         return result
 
     def apply_crc_params(self, params):
+        """Apply CRC parameters to all channel maps."""
         for pm in self._maps.values():
             pm.apply_crc_params(params)
         if self._fallback:
             self._fallback.apply_crc_params(params)
 
     def apply_crc_range(self, crc_range):
+        """Apply CRC range to all channel maps."""
         for pm in self._maps.values():
             pm.apply_crc_range(crc_range)
         if self._fallback:
             self._fallback.apply_crc_range(crc_range)
 
     def apply_dataid_map(self, dataid_map):
+        """Apply DataID map to all channel maps."""
         for pm in self._maps.values():
             pm.apply_dataid_map(dataid_map)
         if self._fallback:
@@ -229,6 +233,7 @@ class ChannelProtectionMap:
         return applied
 
     def apply_rc_config(self, max_valid=None):
+        """Apply RC config to all channel maps."""
         for pm in self._maps.values():
             pm.apply_rc_config(max_valid)
         if self._fallback:

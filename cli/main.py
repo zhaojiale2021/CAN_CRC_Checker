@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import sys
 from pathlib import Path
 import click
 
@@ -44,6 +42,7 @@ def _parse_crc_range(mode: str, start: int | None, end: int | None) -> CRCRange:
     )
 
 
+# pylint: disable=too-many-locals
 def _print_table(report, only_failures: bool = False):
     """Print results as a formatted table to terminal."""
     verdicts = report.failed if only_failures else report.verdicts
@@ -64,7 +63,11 @@ def _print_table(report, only_failures: bool = False):
     click.echo("-" * len(header))
 
     for v in verdicts:
-        status = click.style("PASS", fg="green") if v.is_pass else click.style("FAIL", fg="red", bold=True)
+        status = (
+            click.style("PASS", fg="green")
+            if v.is_pass
+            else click.style("FAIL", fg="red", bold=True)
+        )
         exp_str = f"0x{v.expected_value:0{(v.expected_value.bit_length() + 7) // 8 * 2}X}"
         act_str = f"0x{v.actual_value:0{(v.actual_value.bit_length() + 7) // 8 * 2}X}"
 
@@ -95,7 +98,6 @@ def _print_table(report, only_failures: bool = False):
 @click.group()
 def cli():
     """CAN CRC Checker — DBC-aware CAN bus CRC/Rolling Counter verification tool."""
-    pass
 
 
 @cli.command()
@@ -110,14 +112,19 @@ def cli():
               help="CRC data range mode")
 @click.option("--range-start", type=int, default=None, help="Custom range start byte (0-indexed)")
 @click.option("--range-end", type=int, default=None, help="Custom range end byte")
-@click.option("--checksum-pattern", default=None, help="Override regex for checksum signal matching")
-@click.option("--rc-pattern", default=None, help="Override regex for rolling counter signal matching")
+@click.option("--checksum-pattern", default=None,
+              help="Override regex for checksum signal matching")
+@click.option("--rc-pattern", default=None,
+              help="Override regex for rolling counter signal matching")
 @click.option("--dataid-xlsx", default=None, type=click.Path(exists=True),
               help="Excel file with DataID mappings for E2E CRC calculation")
-@click.option("--dataid-sheet", default=None, help="Sheet name in the DataID Excel (default: auto-detect)")
+@click.option("--dataid-sheet", default=None,
+              help="Sheet name in the DataID Excel (default: auto-detect)")
 @click.option("--dataid-mapping", default=None,
-              help="Column mapping: builtin name (greatwall_j6m, generic_abc, simple_8bit) or JSON string")
-@click.option("--frame-ids", default=None, help="Comma-separated CAN IDs to filter (e.g. 0x323,0x299)")
+              help="Column mapping: builtin name "
+                   "(greatwall_j6m, generic_abc, simple_8bit) or JSON string")
+@click.option("--frame-ids", default=None,
+              help="Comma-separated CAN IDs to filter (e.g. 0x323,0x299)")
 @click.option("--output", "output_fmt", default="table",
               type=click.Choice(["table", "html"]),
               help="Output format")
@@ -125,6 +132,9 @@ def cli():
 @click.option("--only-failures", is_flag=True, help="Only show/write failed verdicts")
 @click.option("--max-frames", type=int, default=None, help="Maximum frames to process")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# pylint: disable=import-outside-toplevel
 def verify(dbc_paths, trace_files, algo, custom_crc,
            range_mode, range_start, range_end,
            checksum_pattern, rc_pattern,
@@ -208,12 +218,12 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         click.echo(f"Found protection signals in {len(protection_map.all_frame_ids())} CAN IDs")
 
     # Expand trace directories
-    _TRACE_EXTS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
+    _trace_extensions = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
     expanded_traces: list[str] = []
     for t in trace_files:
         tp = Path(t)
         if tp.is_dir():
-            files = sorted(f for f in tp.iterdir() if f.suffix.lower() in _TRACE_EXTS)
+            files = sorted(f for f in tp.iterdir() if f.suffix.lower() in _trace_extensions)
             if not files:
                 raise click.BadParameter(f"No trace files found in directory: {t}")
             expanded_traces.extend(str(f) for f in files)
@@ -255,15 +265,19 @@ def list_presets_cmd():
     click.echo()
     for name in list_presets():
         p = get_preset(name)
-        click.echo(f"  {name:20s} width={p.width} poly=0x{p.polynomial:0{(p.width+3)//4}X} "
-                   f"init=0x{p.initial_value:0{(p.width+3)//4}X} xor=0x{p.final_xor:0{(p.width+3)//4}X} "
-                   f"ref_in={int(p.reflect_in)} ref_out={int(p.reflect_out)}")
+        click.echo(
+            f"  {name:20s} width={p.width} poly=0x{p.polynomial:0{(p.width+3)//4}X} "
+            f"init=0x{p.initial_value:0{(p.width+3)//4}X} "
+            f"xor=0x{p.final_xor:0{(p.width+3)//4}X} "
+            f"ref_in={int(p.reflect_in)} ref_out={int(p.reflect_out)}"
+        )
 
 
 @cli.command("run")
 @click.option("--config", "-c", "config_path", required=True,
               type=click.Path(exists=True), help="Path to JSON config file")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements,import-outside-toplevel
 def run_cmd(config_path, verbose):
     """Run verification from a JSON config file.
 
@@ -283,7 +297,7 @@ def run_cmd(config_path, verbose):
         if cfg.crc_preset:
             click.echo(f"CRC:    {cfg.crc_preset}")
         elif cfg.crc_custom:
-            click.echo(f"CRC:    custom")
+            click.echo("CRC:    custom")
         if cfg.dataid_json and Path(cfg.dataid_json).exists():
             click.echo(f"DataID JSON: {cfg.dataid_json} (fast path)")
         elif cfg.dataid_xlsx:
@@ -341,7 +355,11 @@ def run_cmd(config_path, verbose):
                 name = Path(pm.dbc_paths[0]).name
                 n_ids = len(ch_ids.get(ch, set()))
                 n_match = len(set(pm.all_frame_ids()) & ch_ids.get(ch, set()))
-                click.echo(f"  CH{ch} -> {name} ({n_match}/{len(pm.all_frame_ids())} IDs, {n_ids} trace IDs)")
+                click.echo(
+                    f"  CH{ch} -> {name} "
+                    f"({n_match}/{len(pm.all_frame_ids())} IDs, "
+                    f"{n_ids} trace IDs)"
+                )
 
     # Load DataID per-channel: each channel's DBC auto-matches its own sheet
     ch0_dataid_map = None  # Saved for fallback to CH1/CH2
@@ -354,7 +372,10 @@ def run_cmd(config_path, verbose):
                 if ch == 0:
                     ch0_dataid_map = ch_dataid
                 if verbose:
-                    click.echo(f"  CH{ch} DataID: {len(ch_dataid)} entries (sheet: {ch_dataid.sheet_name})")
+                    click.echo(
+                        f"  CH{ch} DataID: {len(ch_dataid)} entries "
+                        f"(sheet: {ch_dataid.sheet_name})"
+                    )
         # Fallback: CH1/CH2 borrow CH0's DataID for messages without their own
         if ch0_dataid_map:
             fallback_total = 0
@@ -401,14 +422,6 @@ def run_cmd(config_path, verbose):
 
         if cfg.output_format == "table":
             _print_table(report, cfg.only_failures)
-        elif cfg.output_format == "csv":
-            write_csv(report, cfg.output_file or None, cfg.only_failures)
-            if cfg.output_file:
-                click.echo(f"CSV: {cfg.output_file}")
-        elif cfg.output_format == "json":
-            write_json(report, cfg.output_file or None, cfg.only_failures)
-            if cfg.output_file:
-                click.echo(f"JSON: {cfg.output_file}")
         elif cfg.output_format == "html":
             path = cfg.output_file or "crc_report.html"
             write_html(report, path, cfg.only_failures)
@@ -425,6 +438,7 @@ def run_cmd(config_path, verbose):
 @click.option("--output", "-o", required=True, type=click.Path(),
               help="Output JSON file path")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+# pylint: disable=import-outside-toplevel
 def preprocess_dataid(xlsx, sheets, mapping, output, verbose):
     """Preprocess DataID Excel into standardized JSON for fast reload.
 
@@ -434,7 +448,8 @@ def preprocess_dataid(xlsx, sheets, mapping, output, verbose):
 
     \b
     Example:
-      crc-check preprocess-dataid --xlsx dataid.xlsx --sheet "Sheet1" --sheet "Sheet2" -o dataid.json
+      crc-check preprocess-dataid --xlsx dataid.xlsx \
+          --sheet "Sheet1" --sheet "Sheet2" -o dataid.json
     """
     from crc_checker.dataid import parse_dataid_xlsx_multi
 
@@ -460,6 +475,7 @@ def preprocess_dataid(xlsx, sheets, mapping, output, verbose):
 
 @cli.command("gen-config")
 @click.argument("output_path", type=click.Path(), default="crc_config.json")
+# pylint: disable=import-outside-toplevel
 def gen_config_cmd(output_path):
     """Generate an example JSON config file."""
     from crc_checker.config import generate_example_config

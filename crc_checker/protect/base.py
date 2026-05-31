@@ -21,22 +21,23 @@ class ProtectionAlgorithm(ABC):
     @abstractmethod
     def algorithm_type(self) -> str:
         """Unique algorithm type identifier: 'crc', 'rolling_counter', 'e2e_profile5', etc."""
-        ...
+        raise NotImplementedError
 
     @abstractmethod
-    def verify(self, frame: CanFrame, protection: MessageProtection) -> VerifyVerdict | list[VerifyVerdict] | None:
+    def verify(self, frame: CanFrame,
+               protection: MessageProtection) -> (VerifyVerdict | list[VerifyVerdict] | None):
         """Verify one protection group on a single CAN frame.
 
         Args:
             frame: The CAN data frame.
-            protection: The protection group definition (signal positions, algorithm params).
+            protection: The protection group definition (signal positions,
+                       algorithm params).
 
         Returns:
             A single VerifyVerdict, a list of verdicts, or None if the algorithm
             cannot be applied (e.g., missing signal definitions).
         """
-        ...
+        raise NotImplementedError
 
     def reset(self):
         """Reset any stateful tracking (e.g., rolling counter state). Called between runs."""
-        pass

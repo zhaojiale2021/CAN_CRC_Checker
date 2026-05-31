@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import logging
+import re
 
 logger = logging.getLogger("crc_checker")
 
@@ -111,7 +112,7 @@ class DataIDMap:
             Number of entries overwritten.
         """
         overwritten = 0
-        for key, value in other._map.items():
+        for key, value in other._map.items():  # pylint: disable=protected-access
             if key in self._map:
                 overwritten += 1
             self._map[key] = value
@@ -123,7 +124,7 @@ class DataIDMap:
 # ---------------------------------------------------------------------------
 
 @dataclass
-class ColumnMapping:
+class ColumnMapping:  # pylint: disable=too-many-instance-attributes
     """Defines the Excel column layout for DataID extraction.
 
     Each field is a 0-based column index. Set to -1 to skip that field.
@@ -226,25 +227,25 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
         return mapping.resolve_columns(header_row)
 
     # Try to auto-locate columns by common header name patterns
-    SIG_PATTERNS = [
+    sig_patterns = [
         "checksum signal name", "signalname", "signal name",
         "signals", "checksumsignal", "e2e checksum",
     ]
-    ID_PATTERNS = [
+    id_patterns = [
         "message id", "messageid", "msg id", "can id", "canid",
         "pdu id", "pduid", "arbitration id",
     ]
-    HI_PATTERNS = [
+    hi_patterns = [
         "dataid_hi", "data id hi", "dataid high",
         "data_id_hi", "data id (high byte)", "data_id (high byte)",
         "high byte of data id", "highbyte",
     ]
-    LO_PATTERNS = [
+    lo_patterns = [
         "dataid_lo", "data id lo", "dataid low",
         "data_id_lo", "data id (low byte)", "data_id (low byte)",
         "low byte of data id", "lowbyte",
     ]
-    DID_COMBINED = [
+    did_combined = [
         "data_id_both", "dataid_both", "data_id",
         "data id (hex)", "data id (dec)",
     ]
@@ -270,17 +271,17 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
         s = str(cell).strip()
         if not s:
             continue
-        if _match(s, SIG_PATTERNS):
+        if _match(s, sig_patterns):
             sig_col = i
-        elif _match(s, ID_PATTERNS):
+        elif _match(s, id_patterns):
             id_col = i
-        elif _match(s, DID_COMBINED):
+        elif _match(s, did_combined):
             # Combined DataID column: Hi in this col, Lo in next
             hi_col = i
             lo_col = i + 1
-        elif _match(s, HI_PATTERNS):
+        elif _match(s, hi_patterns):
             hi_col = i
-        elif _match(s, LO_PATTERNS):
+        elif _match(s, lo_patterns):
             lo_col = i
 
     return ColumnMapping(
@@ -331,9 +332,10 @@ def _parse_dataid_value(hi_val, lo_val, fmt: str) -> int | None:
     return None
 
 
-def parse_dataid_xlsx(xlsx_path: str,
-                      sheet_name: str | None = None,
-                      mapping: ColumnMapping | str | None = None) -> DataIDMap:
+def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+        xlsx_path: str,
+        sheet_name: str | None = None,
+        mapping: ColumnMapping | str | None = None) -> DataIDMap:
     """Parse a DataID Excel file and return a DataIDMap.
 
     Args:
@@ -346,8 +348,7 @@ def parse_dataid_xlsx(xlsx_path: str,
     Returns:
         DataIDMap with all parsed entries.
     """
-    import json
-    import openpyxl
+    import openpyxl  # pylint: disable=import-outside-toplevel
 
     # Resolve mapping
     if mapping is None:
@@ -366,7 +367,7 @@ def parse_dataid_xlsx(xlsx_path: str,
                     f"Unknown mapping '{mapping}'. "
                     f"Available builtins: {list(BUILTIN_MAPPINGS.keys())}. "
                     f"Or pass a JSON string with ColumnMapping fields. Error: {e}"
-                )
+                ) from e
 
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
 
@@ -383,7 +384,8 @@ def parse_dataid_xlsx(xlsx_path: str,
     # Auto-detect columns from header row (row 1 or data_row_start - 1)
     header_row_num = 1 if mapping.data_row_start > 1 else None
     if header_row_num:
-        header_row = list(ws.iter_rows(min_row=header_row_num, max_row=header_row_num, values_only=True))
+        header_row = list(ws.iter_rows(
+            min_row=header_row_num, max_row=header_row_num, values_only=True))
         if header_row:
             mapping = _auto_detect_columns(mapping, header_row[0])
 
@@ -440,13 +442,12 @@ def parse_dataid_xlsx(xlsx_path: str,
     return dataid_map
 
 
-def match_sheet_to_dbc(dbc_name: str, sheet_names: list[str]) -> str | None:
+def match_sheet_to_dbc(dbc_name: str, sheet_names: list[str]) -> str | None:  # pylint: disable=too-many-locals
     """Find the sheet name that best matches a DBC filename.
 
     Uses token matching + substring bonus.
     Returns the best-matching sheet, or None if no match.
     """
-    import re
 
     def _weight(tok: str) -> float:
         # Alphabetic tokens are stronger signals than pure numbers
@@ -505,7 +506,7 @@ def parse_dataid_xlsx_multi(xlsx_path: str,
     Returns:
         Merged DataIDMap with entries from all sheets.
     """
-    import openpyxl
+    import openpyxl  # pylint: disable=import-outside-toplevel
 
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     all_sheets = sheet_names if sheet_names else list(wb.sheetnames)
@@ -526,7 +527,8 @@ def parse_dataid_xlsx_multi(xlsx_path: str,
                 overwritten = combined.update(dm)
                 if overwritten > 0:
                     logger.warning(
-                        f"DataID sheet '{sname}': {overwritten} duplicate(s) overwritten"
+                        "DataID sheet '%s': %s duplicate(s) overwritten",
+                        sname, overwritten,
                     )
         except ValueError:
             continue  # skip sheets that don't match

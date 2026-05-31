@@ -105,9 +105,9 @@ class CRCEngine:
                 crc = ((crc << 8) ^ self._table[idx]) & self._mask
         return crc
 
-    def compute_for_frame(self, frame: CanFrame, crc_range: CRCRange,
+    def compute_for_frame(self, frame: CanFrame, crc_range: CRCRange,  # pylint: disable=too-many-arguments,too-many-positional-arguments
                           checksum_start_bit: int, checksum_length: int,
-                          byte_order: str = "little_endian") -> int:
+                          byte_order: str = "little_endian") -> int:  # pylint: disable=unused-argument
         """Compute CRC for a CAN frame.
 
         The CRC byte itself is excluded from the input data (not zeroed).
@@ -139,13 +139,13 @@ class CRCEngine:
 
         return self.compute(compute_bytes)
 
-    def _extract_range(self, data: bytes, crc_range: CRCRange, full_length: int,
+    def _extract_range(self, data: bytes, crc_range: CRCRange, full_length: int,  # pylint: disable=too-many-arguments,too-many-positional-arguments
                        crc_byte_start: int = 0, crc_byte_end: int = 1) -> bytes:
         """Extract bytes for CRC, excluding the CRC field bytes."""
         if crc_range.mode in ("full_payload", "exclude_crc"):
             # Exclude CRC byte(s) from full payload
             return data[:crc_byte_start] + data[crc_byte_end:]
-        elif crc_range.mode == "custom_range":
+        if crc_range.mode == "custom_range":
             end = crc_range.end_byte if crc_range.end_byte >= 0 else full_length
             payload = data[crc_range.start_byte:end]
             # Exclude CRC byte(s) relative to the range
@@ -154,8 +154,11 @@ class CRCEngine:
             if 0 <= rel_start < len(payload):
                 return payload[:rel_start] + payload[rel_end:]
             return payload
-        elif crc_range.mode == "segment":
-            end = crc_range.end_byte if crc_range.end_byte >= 0 else crc_range.start_byte + crc_range.segment_size
+        if crc_range.mode == "segment":
+            if crc_range.end_byte >= 0:
+                end = crc_range.end_byte
+            else:
+                end = crc_range.start_byte + crc_range.segment_size
             payload = data[crc_range.start_byte:end]
             # Exclude CRC byte (first byte of segment) from input
             return payload[1:]  # skip CRC byte, use rest of segment

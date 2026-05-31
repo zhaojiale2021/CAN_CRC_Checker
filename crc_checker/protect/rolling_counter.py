@@ -21,8 +21,10 @@ class RollingCounterVerifier(ProtectionAlgorithm):
     algorithm_type = "rolling_counter"
 
     def __init__(self):
-        self._state: dict[tuple[int, int, str], int] = {}   # (frame_id, channel, signal_name) -> prev_value
-        self._first_seen: dict[tuple[int, int, str], bool] = {}  # track first occurrence
+        # (frame_id, channel, signal_name) -> prev_value
+        self._state: dict[tuple[int, int, str], int] = {}
+        # track first occurrence
+        self._first_seen: dict[tuple[int, int, str], bool] = {}
 
     def reset(self):
         """Clear all accumulated RC state."""
@@ -85,10 +87,10 @@ class RollingCounterVerifier(ProtectionAlgorithm):
                       f"(previous was {prev_value}, expected {expected_value})")
         elif actual_value > max_valid:
             is_pass = False
-            detail = (f"INVALID: value {actual_value} exceeds max valid {max_valid}")
+            detail = f"INVALID: value {actual_value} exceeds max valid {max_valid}"
         else:
             is_pass = False
-            gap = (actual_value - prev_value - 1) % (max_valid + 1)
+            gap = (actual_value - prev_value - 1) % (max_valid + 1)  # pylint: disable=superfluous-parens
             detail = (f"SKIP: counter jumped from {prev_value} to {actual_value} "
                       f"(gap of {gap + 1}, expected {expected_value})")
 

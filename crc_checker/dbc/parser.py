@@ -47,8 +47,7 @@ class DBCParser:
         Returns:
             DBCProtectionMap with all identified protection groups.
         """
-        from pathlib import Path as _Path
-        dbc_name = _Path(dbc_path).name
+        dbc_name = Path(dbc_path).name
 
         # Load DBC with canmatrix (loadp returns dict of name->CanMatrix)
         loaded = canmatrix.formats.loadp(dbc_path)
@@ -95,7 +94,8 @@ class DBCParser:
             added = combined.merge(other)
             if added >= 0:
                 logger.debug(
-                    f"DBC merge: added {added} protection group(s) from {dbc_file}"
+                    "DBC merge: added %d protection group(s) from %s",
+                    added, dbc_file
                 )
         return combined
 
@@ -111,7 +111,8 @@ def parse_dbc(dbc_path: str, patterns: dict[str, str] | None = None) -> DBCProte
     return parser.parse(dbc_path)
 
 
-def parse_all_dbc(paths: list[str], patterns: dict[str, str] | None = None) -> list[DBCProtectionMap]:
+def parse_all_dbc(paths: list[str],
+                  patterns: dict[str, str] | None = None) -> list[DBCProtectionMap]:
     """Parse multiple DBC files/directories, returning individual maps (no merge).
 
     Args:
@@ -119,7 +120,7 @@ def parse_all_dbc(paths: list[str], patterns: dict[str, str] | None = None) -> l
         patterns: Optional signal name regex overrides.
     """
     parser = DBCParser(patterns)
-    files = parser._collect_dbc_files(paths)
+    files = parser._collect_dbc_files(paths)  # pylint: disable=protected-access
     return [parser.parse(f) for f in files]
 
 
@@ -171,8 +172,8 @@ def sample_trace_channels(trace_path: str, max_frames: int = 500) -> dict[int, s
     Returns:
         Dict of channel -> set of unique arbitration_ids.
     """
-    import can
-    from collections import defaultdict
+    import can  # pylint: disable=import-outside-toplevel
+    from collections import defaultdict  # pylint: disable=import-outside-toplevel
     ch_ids: dict[int, set[int]] = defaultdict(set)
     reader = can.LogReader(trace_path)
     count = 0
@@ -190,7 +191,7 @@ def sample_trace_channels(trace_path: str, max_frames: int = 500) -> dict[int, s
 
 def sample_trace_ids(trace_path: str, max_frames: int = 500) -> set[int]:
     """Sample the first N frames of a trace to collect unique CAN IDs."""
-    import can
+    import can  # pylint: disable=import-outside-toplevel
     ids: set[int] = set()
     reader = can.LogReader(trace_path)
     count = 0

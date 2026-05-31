@@ -35,7 +35,9 @@ class TraceReader:
             Skips error frames and remote frames.
         """
         if self._reader is None:
-            raise RuntimeError("TraceReader must be used as a context manager or opened with open()")
+            raise RuntimeError(
+                "TraceReader must be used as a context manager or opened with open()"
+            )
 
         for msg in self._reader:
             # Skip error frames and remote frames

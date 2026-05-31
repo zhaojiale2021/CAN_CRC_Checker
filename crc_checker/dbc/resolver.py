@@ -48,7 +48,7 @@ class SignalResolver:
             return signal_name.rsplit("_", 1)[-1]
         return signal_name
 
-    def build_protection_map(self, frames: list[dict]) -> DBCProtectionMap:
+    def build_protection_map(self, frames: list[dict]) -> DBCProtectionMap:  # pylint: disable=too-many-locals
         """Build a DBCProtectionMap from parsed DBC frame/signal data.
 
         Args:

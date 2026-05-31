@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class VerifyVerdict:
+class VerifyVerdict:  # pylint: disable=too-many-instance-attributes
     """Verification result for a single protection algorithm on a single frame."""
     frame_id: int
     timestamp: float
@@ -30,7 +30,7 @@ class VerifyVerdict:
 
 
 @dataclass
-class VerifyReport:
+class VerifyReport:  # pylint: disable=too-many-instance-attributes
     """Aggregated verification report for a complete trace run."""
     verdicts: list[VerifyVerdict] = field(default_factory=list)
     dbc_path: str = ""                              # backward compat: display string
@@ -51,9 +51,11 @@ class VerifyReport:
             self._frame_channels[(timestamp, frame_id)] = channel
 
     def get_frame_data(self, timestamp: float, frame_id: int) -> bytes | None:
+        """Get raw frame data by (timestamp, frame_id) key."""
         return self._frame_data.get((timestamp, frame_id))
 
     def get_frame_channel(self, timestamp: float, frame_id: int) -> int:
+        """Get channel number for a frame (default 0)."""
         return self._frame_channels.get((timestamp, frame_id), 0)
 
     def set_frame_dbc_source(self, frame_id: int, dbc_source: str):
@@ -61,6 +63,7 @@ class VerifyReport:
         self._frame_dbc_sources[frame_id] = dbc_source
 
     def get_frame_dbc_source(self, frame_id: int) -> str:
+        """Get source DBC filename for a frame."""
         return self._frame_dbc_sources.get(frame_id, "")
 
     def set_frame_name(self, frame_id: int, name: str):
@@ -68,26 +71,32 @@ class VerifyReport:
         self._frame_names[frame_id] = name
 
     def get_frame_name(self, frame_id: int) -> str:
+        """Get human-readable frame name from DBC."""
         return self._frame_names.get(frame_id, "")
 
     @property
     def passed(self) -> list[VerifyVerdict]:
+        """Verdicts that passed verification."""
         return [v for v in self.verdicts if v.is_pass]
 
     @property
     def failed(self) -> list[VerifyVerdict]:
+        """Verdicts that failed verification."""
         return [v for v in self.verdicts if not v.is_pass]
 
     @property
     def pass_count(self) -> int:
+        """Number of passed verdicts."""
         return len(self.passed)
 
     @property
     def fail_count(self) -> int:
+        """Number of failed verdicts."""
         return len(self.failed)
 
     @property
     def pass_rate(self) -> float:
+        """Pass rate as a float (0.0 - 1.0)."""
         if not self.verdicts:
             return 1.0
         return self.pass_count / len(self.verdicts)

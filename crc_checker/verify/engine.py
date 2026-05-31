@@ -3,9 +3,10 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from crc_checker.trace.reader import TraceReader
-from crc_checker.dbc.models import DBCProtectionMap, MessageProtection
+from crc_checker.dbc.models import DBCProtectionMap
 from crc_checker.crc.models import CRCParams, CRCRange
-from crc_checker.verify.models import VerifyVerdict, VerifyReport
+from crc_checker.verify.models import VerifyReport
+from crc_checker.protect.rolling_counter import RollingCounterVerifier
 
 if TYPE_CHECKING:
     from crc_checker.protect.base import ProtectionAlgorithm
@@ -28,7 +29,7 @@ class VerifyEngine:
     def create_default(cls,
                        protection_map: DBCProtectionMap,
                        crc_params: CRCParams | None = None,
-                       crc_range: CRCRange | None = None) -> "VerifyEngine":
+                       crc_range: CRCRange | None = None) -> "VerifyEngine":  # pylint: disable=unused-argument
         """Factory: create engine with default CRC + RC verifiers.
 
         Args:
@@ -42,16 +43,15 @@ class VerifyEngine:
         algorithms: list = []
 
         if crc_params:
-            from crc_checker.protect.checksum import CRCVerifier
+            from crc_checker.protect.checksum import CRCVerifier  # pylint: disable=import-outside-toplevel
             # Pass None to use auto-detect; explicit ranges are applied via protection_map
             algorithms.append(CRCVerifier(crc_params, None))
 
-        from crc_checker.protect.rolling_counter import RollingCounterVerifier
         algorithms.append(RollingCounterVerifier())
 
         return cls(protection_map, algorithms)
 
-    def run(self, reader: TraceReader,
+    def run(self, reader: TraceReader,  # pylint: disable=too-many-branches
             frame_ids: list[int] | None = None,
             max_frames: int | None = None,
             progress_callback=None) -> VerifyReport:
@@ -77,11 +77,11 @@ class VerifyEngine:
                 if prots[0].dbc_source:
                     report.set_frame_dbc_source(fid, prots[0].dbc_source)
 
-        target_ids = set(frame_ids) if frame_ids else None
+        target_ids = set(frame_ids) if frame_ids else set()
         frame_count = 0
 
         for frame in reader.frames():
-            # Filter by CAN ID
+            # Filter by CAN ID (empty set = no filter)
             if target_ids and frame.arbitration_id not in target_ids:
                 continue
 
@@ -125,7 +125,7 @@ class VerifyEngine:
 
         Useful for TUI/progress display while processing large files.
         """
-        target_ids = set(frame_ids) if frame_ids else None
+        target_ids = set(frame_ids) if frame_ids else set()
         frame_count = 0
 
         for frame in reader.frames():

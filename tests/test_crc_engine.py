@@ -43,7 +43,11 @@ class TestCRCEngine:
         params = get_preset("CRC32/ETHERNET")
         engine = CRCEngine(params)
         result = engine.compute(b"123456789")
-        assert result == 0xCBF43926, f"CRC32/ETHERNET('123456789') expected 0xCBF43926, got 0x{result:08X}"
+        expected = 0xCBF43926
+        assert result == expected, (
+            f"CRC32/ETHERNET('123456789') expected 0x{expected:08X}, "
+            f"got 0x{result:08X}"
+        )
 
     def test_xor8_simple(self):
         """XOR8: simple XOR sum of all bytes."""
@@ -54,6 +58,7 @@ class TestCRCEngine:
         assert result == 0x00, f"XOR8([1,2,3]) expected 0x00, got 0x{result:02X}"
 
     def test_xor8_another(self):
+        """XOR8: another vector — 0xA5 ^ 0x5A ^ 0xFF = 0x00."""
         params = get_preset("XOR8")
         engine = CRCEngine(params)
         result = engine.compute(b"\xA5\x5A\xFF")
@@ -88,6 +93,8 @@ class TestCRCPresets:
     """Verify all presets have reasonable parameters."""
 
     def test_all_presets_valid(self):
+        """All built-in presets produce valid CRC results."""
+        # pylint: disable=import-outside-toplevel
         from crc_checker.crc.presets import PRESETS
         for name, params in PRESETS.items():
             assert 0 < params.width <= 64, f"{name}: invalid width"
@@ -97,10 +104,12 @@ class TestCRCPresets:
             assert 0 <= result < (1 << params.width), f"{name}: result out of range"
 
     def test_get_preset_case_insensitive(self):
+        """Preset lookup is case-insensitive and normalizes separators."""
         assert get_preset("crc8/autosar").name == "CRC8/AUTOSAR"
         assert get_preset("CRC8_AUTOSAR").name == "CRC8/AUTOSAR"
         assert get_preset("crc8-autosar").name == "CRC8/AUTOSAR"
 
     def test_get_preset_unknown_raises(self):
+        """Unknown preset name raises KeyError."""
         with pytest.raises(KeyError):
             get_preset("CRC99/UNKNOWN")
