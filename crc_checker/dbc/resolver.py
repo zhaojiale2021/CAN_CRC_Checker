@@ -61,7 +61,7 @@ class SignalResolver:
         Returns:
             DBCProtectionMap with all identified protection groups.
         """
-        prot_map = DBCProtectionMap(dbc_path="")
+        prot_map = DBCProtectionMap()
 
         for frame in frames:
             frame_id = frame["frame_id"]

@@ -33,19 +33,35 @@ class VerifyVerdict:
 class VerifyReport:
     """Aggregated verification report for a complete trace run."""
     verdicts: list[VerifyVerdict] = field(default_factory=list)
-    dbc_path: str = ""
+    dbc_path: str = ""                              # backward compat: display string
+    dbc_paths: list[str] = field(default_factory=list)  # all DBC source files
     trace_path: str = ""
     total_frames: int = 0
     total_verdicts: int = 0
     _frame_data: dict = field(default_factory=dict)  # (timestamp, frame_id) -> bytes
     _frame_names: dict = field(default_factory=dict)  # frame_id -> frame_name
+    _frame_channels: dict = field(default_factory=dict)  # (timestamp, frame_id) -> channel
+    _frame_dbc_sources: dict = field(default_factory=dict)  # frame_id -> dbc_source
 
-    def add_frame_data(self, timestamp: float, frame_id: int, data: bytes):
-        """Store raw frame data for hex-dump display."""
+    def add_frame_data(self, timestamp: float, frame_id: int, data: bytes,
+                       channel: int = 0):
+        """Store raw frame data and channel for hex-dump display."""
         self._frame_data[(timestamp, frame_id)] = data
+        if channel:
+            self._frame_channels[(timestamp, frame_id)] = channel
 
     def get_frame_data(self, timestamp: float, frame_id: int) -> bytes | None:
         return self._frame_data.get((timestamp, frame_id))
+
+    def get_frame_channel(self, timestamp: float, frame_id: int) -> int:
+        return self._frame_channels.get((timestamp, frame_id), 0)
+
+    def set_frame_dbc_source(self, frame_id: int, dbc_source: str):
+        """Store which DBC file a frame's protection group came from."""
+        self._frame_dbc_sources[frame_id] = dbc_source
+
+    def get_frame_dbc_source(self, frame_id: int) -> str:
+        return self._frame_dbc_sources.get(frame_id, "")
 
     def set_frame_name(self, frame_id: int, name: str):
         """Store frame name from DBC."""

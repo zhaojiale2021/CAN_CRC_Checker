@@ -13,6 +13,10 @@ mappings can be passed via CLI (`--dataid-columns` JSON) or programmatically.
 
 from __future__ import annotations
 from dataclasses import dataclass
+import json
+import logging
+
+logger = logging.getLogger("crc_checker")
 
 
 class DataIDMap:
@@ -35,6 +39,83 @@ class DataIDMap:
 
     def __contains__(self, key: tuple[int, str]) -> bool:
         return key in self._map
+
+    def to_json(self, file_path: str, source: str = "", mapping: str = "",
+                sheets: list[str] | None = None) -> None:
+        """Serialize DataIDMap to a standardized JSON file.
+
+        Args:
+            file_path: Output JSON file path.
+            source: Original Excel file path (for traceability).
+            mapping: Column mapping name used.
+            sheets: Sheet names that were parsed.
+        """
+        data = {
+            "format": "dataid_map_v1",
+            "source": source,
+            "mapping": mapping,
+            "sheets": sheets or ([self.sheet_name] if self.sheet_name else []),
+            "entries": [
+                {"frame_id": f"0x{fid:03X}", "signal_name": sig, "dataid": f"0x{did:04X}"}
+                for (fid, sig), did in sorted(self._map.items())
+            ],
+        }
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    @classmethod
+    def from_json(cls, file_path: str) -> "DataIDMap":
+        """Load a DataIDMap from a standardized JSON file.
+
+        Args:
+            file_path: Path to the JSON file.
+
+        Returns:
+            DataIDMap with all entries loaded.
+
+        Raises:
+            ValueError: If the format version is unsupported.
+        """
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        fmt = data.get("format", "")
+        if fmt != "dataid_map_v1":
+            raise ValueError(
+                f"Unsupported DataID JSON format: '{fmt}'. Expected 'dataid_map_v1'."
+            )
+
+        sheets = data.get("sheets", [])
+        sheet_name = sheets[0] if sheets else ""
+        result = cls(sheet_name=sheet_name)
+        for entry in data.get("entries", []):
+            fid = entry["frame_id"]
+            did = entry["dataid"]
+            if isinstance(fid, str):
+                fid = int(fid, 16)
+            if isinstance(did, str):
+                did = int(did, 16)
+            result.add(
+                frame_id=fid,
+                signal_name=entry["signal_name"],
+                dataid=did,
+            )
+        return result
+
+    def update(self, other: "DataIDMap") -> int:
+        """Merge another DataIDMap into this one.
+
+        Duplicate keys are overwritten by the other (last-wins).
+
+        Returns:
+            Number of entries overwritten.
+        """
+        overwritten = 0
+        for key, value in other._map.items():
+            if key in self._map:
+                overwritten += 1
+            self._map[key] = value
+        return overwritten
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +325,90 @@ def parse_dataid_xlsx(xlsx_path: str,
 
     wb.close()
     return dataid_map
+
+
+def match_sheet_to_dbc(dbc_name: str, sheet_names: list[str]) -> str | None:
+    """Find the sheet name that best matches a DBC filename.
+
+    Uses token matching + substring bonus.
+    Returns the best-matching sheet, or None if no match.
+    """
+    import re
+
+    def _tokenize(name: str) -> tuple[set[str], str]:
+        # Remove extension
+        cleaned = re.sub(r'\.(dbc|xlsx)$', '', name, flags=re.IGNORECASE).lower()
+        tokens = set()
+        for part in re.split(r'[\s_\-\.]+', cleaned):
+            part = part.strip()
+            if part:
+                tokens.add(part)
+        return tokens, cleaned
+
+    dbc_tokens, dbc_clean = _tokenize(dbc_name)
+    if not dbc_tokens:
+        return None
+
+    best, best_score = None, 0
+    for sname in sheet_names:
+        sheet_tokens, sheet_clean = _tokenize(sname)
+        # Exact token matches
+        score = len(dbc_tokens & sheet_tokens)
+        # Substring bonus: sheet token contained in dbc name or vice versa
+        for st in sheet_tokens:
+            if len(st) >= 3 and st not in dbc_tokens and st in dbc_clean:
+                score += 0.5
+        for dt in dbc_tokens:
+            if len(dt) >= 3 and dt not in sheet_tokens and dt in sheet_clean:
+                score += 0.5
+        if score > best_score:
+            best, best_score = sname, score
+
+    return best
+
+
+def parse_dataid_xlsx_multi(xlsx_path: str,
+                             sheet_names: list[str] | None = None,
+                             mapping: ColumnMapping | str | None = None) -> DataIDMap:
+    """Parse multiple sheets from a DataID Excel file and merge into one DataIDMap.
+
+    Args:
+        xlsx_path: Path to the .xlsx file.
+        sheet_names: Sheet names to parse. If None, parse all sheets.
+        mapping: ColumnMapping, builtin name, or JSON string.
+
+    Returns:
+        Merged DataIDMap with entries from all sheets.
+    """
+    import openpyxl
+
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    all_sheets = sheet_names if sheet_names else list(wb.sheetnames)
+    wb.close()
+
+    combined: DataIDMap | None = None
+    parsed_sheets: list[str] = []
+
+    for sname in all_sheets:
+        try:
+            dm = parse_dataid_xlsx(xlsx_path, sname, mapping=mapping)
+            if len(dm) == 0:
+                continue
+            parsed_sheets.append(sname)
+            if combined is None:
+                combined = dm
+            else:
+                overwritten = combined.update(dm)
+                if overwritten > 0:
+                    logger.warning(
+                        f"DataID sheet '{sname}': {overwritten} duplicate(s) overwritten"
+                    )
+        except ValueError:
+            continue  # skip sheets that don't match
+
+    if combined is not None:
+        combined.sheet_name = ", ".join(parsed_sheets)
+    return combined or DataIDMap()
 
 
 # Backward-compatible alias

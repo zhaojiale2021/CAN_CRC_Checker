@@ -26,7 +26,8 @@ CSS = """
                   gap: 16px; }
   .frame-header .id { font-weight: bold; font-size: 15px; font-family: 'SF Mono',
                       'Consolas', monospace; min-width: 80px; }
-  .frame-header .name { color: #8899aa; font-size: 12px; margin-left: 2px; }
+  .frame-header .name { font-weight: bold; font-size: 15px; color: #e0e0e0;
+                     font-family: 'SF Mono', 'Consolas', monospace; margin-left: 2px; }
   .frame-header .ts { color: #8899aa; font-size: 12px; font-family: 'SF Mono',
                       'Consolas', monospace; }
   .frame-header .stats { margin-left: auto; font-size: 12px; display: flex; gap: 8px; }
@@ -36,6 +37,17 @@ CSS = """
   .frame-section.collapsed .frame-body { display: none; }
   .frame-section.collapsed .arrow { transform: rotate(-90deg); }
   .frame-body { padding: 12px 16px; }
+
+  .channel-tag { display: inline-block; padding: 1px 8px; border-radius: 3px;
+                 font-size: 11px; font-weight: bold; font-family: 'SF Mono', 'Consolas', monospace; }
+  .channel-0 { background: #1a3a5c; color: #4a8ac9; }
+  .channel-1 { background: #1a4a3a; color: #4ac98a; }
+  .channel-2 { background: #4a3a1a; color: #c99a4a; }
+  .channel-3 { background: #3a1a4a; color: #9a4ac9; }
+  .dbc-tag { display: inline-block; padding: 1px 6px; border-radius: 3px;
+             font-size: 10px; color: #667788; background: #1a1a2e;
+             font-family: 'SF Mono', 'Consolas', monospace;
+             max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .hex-grid { display: flex; flex-direction: column; gap: 2px;
               font-family: 'SF Mono', 'Consolas', 'Courier New', monospace; }
@@ -71,21 +83,18 @@ CSS = """
   .verdict-table .pass td { color: #2ecc71; }
   .verdict-table .fail td { color: #e74c3c; }
 
-  .filter-bar { margin-bottom: 12px; display: flex; gap: 8px; }
+  .filter-bar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .filter-bar button { padding: 6px 14px; border: 1px solid #0f3460;
                        background: #16213e; color: #e0e0e0; border-radius: 4px;
                        cursor: pointer; font-size: 12px; }
   .filter-bar button.active { background: #0f3460; border-color: #e94560; }
   .filter-bar button:hover { background: #0f3460; }
+  .filter-bar .sep { color: #334455; margin: 0 4px; font-size: 12px; }
 """
 
 
 def _bit_to_byte_pos(start_bit: int, bit_index: int, byte_order: str) -> tuple[int, int]:
-    """Convert signal start_bit + bit_index to (byte_offset, bit_in_byte).
-
-    For Intel: byte = start_bit//8 + bit_index//8, bit = (start_bit + bit_index) % 8
-    For Motorola: MSB at start_bit (physical), bits go downward.
-    """
+    """Convert signal start_bit + bit_index to (byte_offset, bit_in_byte)."""
     from crc_checker.bit_utils import _canmatrix_to_physical_msb
     if byte_order == "big_endian":
         physical_msb = _canmatrix_to_physical_msb(start_bit)
@@ -96,7 +105,8 @@ def _bit_to_byte_pos(start_bit: int, bit_index: int, byte_order: str) -> tuple[i
 
 
 def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
-                      frame_name: str = "") -> str:
+                      frame_name: str = "", channel: int = 0,
+                      dbc_source: str = "") -> str:
     """Build HTML for one frame: hex dump with highlights + verdict table."""
     if not verdicts:
         return ""
@@ -106,7 +116,6 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     dlc = len(frame_data)
 
     # Collect signal positions for highlighting
-    # byte -> { 'crc': (pass/fail, signal_name), 'rc': (pass/fail, signal_name) }
     byte_styles: dict[int, dict] = {}
     signals_info: list[dict] = []
 
@@ -120,7 +129,6 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
                     byte_styles[byte_idx] = {}
                 key = "crc" if v.algorithm == "crc" else "rc"
                 status = "pass" if v.is_pass else "fail"
-                # Only override if current is worse
                 existing = byte_styles[byte_idx].get(key)
                 if existing is None or (existing == "pass" and status == "fail"):
                     byte_styles[byte_idx][key] = status
@@ -134,37 +142,31 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             "detail": v.detail,
         })
 
-    # Determine segment size: 8 for CAN FD (dlc > 8), else dlc
     seg_size = 8 if dlc > 8 else dlc
     num_segments = (dlc + seg_size - 1) // seg_size
 
-    # Map segment index -> DataID (from CRC verdicts)
     seg_dataid: dict[int, int] = {}
     for v in verdicts:
         if v.dataid is not None and v.start_bit:
             seg_idx = v.start_bit // (seg_size * 8)
             seg_dataid[seg_idx] = v.dataid
 
-    # Count stats
     crc_ok = sum(1 for v in verdicts if v.algorithm == "crc" and v.is_pass)
     crc_err = sum(1 for v in verdicts if v.algorithm == "crc" and not v.is_pass)
     rc_ok = sum(1 for v in verdicts if v.algorithm != "crc" and v.is_pass)
     rc_err = sum(1 for v in verdicts if v.algorithm != "crc" and not v.is_pass)
 
-    # Build hex rows per segment
     hex_rows = []
     for seg_idx in range(num_segments):
         seg_start = seg_idx * seg_size
         seg_end = min(seg_start + seg_size, dlc)
         seg_bytes = frame_data[seg_start:seg_end]
 
-        # Build hex bytes HTML
         bytes_html = ""
         for i, b in enumerate(seg_bytes):
             byte_idx = seg_start + i
             styles = byte_styles.get(byte_idx, {})
             css_class = ""
-            tooltip = ""
 
             crc_status = styles.get("crc")
             rc_status = styles.get("rc")
@@ -175,11 +177,10 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             elif rc_status:
                 css_class = f"rc-{rc_status}"
 
+            tooltip = ""
             if crc_status or rc_status:
                 parts = []
                 for v in verdicts:
-                    v_byte_start = v.start_bit // 8 if v.byte_order != "big_endian" else None
-                    # Simple matching: if this byte is in signal range
                     sig_start_byte, _ = _bit_to_byte_pos(v.start_bit, 0, v.byte_order)
                     sig_end_byte, _ = _bit_to_byte_pos(v.start_bit, v.length - 1, v.byte_order)
                     if min(sig_start_byte, sig_end_byte) <= byte_idx <= max(sig_start_byte, sig_end_byte):
@@ -192,10 +193,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
 
         offset = f"0x{seg_start:04X}"
         did = seg_dataid.get(seg_idx)
-        if did is not None:
-            label = f'Seg{seg_idx} <span class="did">0x{did:04X}</span>'
-        else:
-            label = f"Seg{seg_idx}"
+        label = f'Seg{seg_idx} <span class="did">0x{did:04X}</span>' if did is not None else f"Seg{seg_idx}"
         hex_rows.append(
             f'<div class="hex-row">'
             f'<span class="segment-label">{label}</span>'
@@ -204,7 +202,6 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             f'</div>'
         )
 
-    # Verdict table
     verdict_rows = ""
     for s in signals_info:
         row_class = "pass" if s["pass"] else "fail"
@@ -228,15 +225,23 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         stats_html += f'<span class="ok">RC:{rc_ok}</span>' if rc_ok > 0 else ""
         stats_html += f'<span class="err">RC:{rc_err}</span>' if rc_err > 0 else ""
 
-    collapsed = "" if crc_err + rc_err > 0 else " collapsed"
+    # Channel tag
+    ch_tag = f'<span class="channel-tag channel-{channel % 4}">CH{channel}</span>' if channel else ""
+
+    # DBC source tag
+    dbc_tag = f'<span class="dbc-tag" title="{dbc_source}">{dbc_source}</span>' if dbc_source else ""
+
+    collapsed = ""
     name_html = f'<span class="name">({frame_name})</span>' if frame_name else ""
 
     return f"""
-    <div class="frame-section{collapsed}">
+    <div class="frame-section{collapsed}" data-channel="{channel}">
       <div class="frame-header" onclick="this.parentElement.classList.toggle('collapsed')">
         <span class="arrow">&#9660;</span>
+        {ch_tag}
         <span class="id">0x{frame_id:03X}</span>
         {name_html}
+        {dbc_tag}
         <span class="ts">@{ts:.6f}s</span>
         <span class="stats">{stats_html}</span>
       </div>
@@ -255,22 +260,24 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
 def write_html(report: VerifyReport, file_path: str, only_failures: bool = False) -> None:
     """Write verification results to a self-contained HTML file with hex-dump view.
 
-    Each CAN frame is displayed with:
-    - Full payload hex dump organized by 8-byte segments
-    - CRC bytes highlighted with green (pass) / red (fail) border
-    - RC nibbles highlighted with green / red underline
-    - Hover tooltips showing expected vs actual values
-    - Collapsible sections (errors expanded by default)
+    Features:
+    - Channel display and per-channel filtering
+    - DBC source tag for each frame
+    - Full payload hex dump with CRC/RC highlighting
+    - Hover tooltips, collapsible sections, filter buttons
     """
     from datetime import datetime
 
     verdicts = report.failed if only_failures else report.verdicts
 
-    # Group verdicts by (timestamp, frame_id)
     from collections import defaultdict
     grouped: dict[tuple[float, int], list[VerifyVerdict]] = defaultdict(list)
     for v in verdicts:
         grouped[(v.timestamp, v.frame_id)].append(v)
+
+    # Collect unique channels and DBC sources
+    channels: set[int] = set()
+    dbc_sources: dict[int, str] = {}  # frame_id -> dbc_source from first protection
 
     # Build frame HTML sections
     frame_sections = []
@@ -278,8 +285,12 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
         fdata = report.get_frame_data(ts, fid)
         if fdata is None:
             continue
+        ch = report.get_frame_channel(ts, fid)
+        channels.add(ch)
+
         fname = report.get_frame_name(fid)
-        frame_sections.append(_build_frame_html(f_verdicts, fdata, fname))
+        dbc_src = report.get_frame_dbc_source(fid)
+        frame_sections.append(_build_frame_html(f_verdicts, fdata, fname, channel=ch, dbc_source=dbc_src))
 
     # Compute separate CRC and RC stats
     crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
@@ -288,6 +299,15 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     rc_pass = sum(1 for v in report.verdicts if v.algorithm != "crc" and v.is_pass)
     crc_rate = crc_pass / crc_total if crc_total > 0 else 1.0
     rc_rate = rc_pass / rc_total if rc_total > 0 else 1.0
+
+    dbc_display = ", ".join(report.dbc_paths) if report.dbc_paths else report.dbc_path
+
+    # Build channel filter buttons
+    ch_buttons = ""
+    if len(channels) > 1:
+        ch_buttons = '<span class="sep">|</span>'
+        for ch in sorted(channels):
+            ch_buttons += f'<button onclick="showChannel({ch})">CH{ch}</button>'
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -303,8 +323,9 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 <div class="container">
 <h1>CAN CRC Check Report</h1>
 <div class="info-bar">
-  DBC: {report.dbc_path}<br>
+  DBC: {dbc_display}<br>
   Trace: {report.trace_path}<br>
+  Channels: {len(channels)}<br>
   Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 </div>
 <div class="summary-cards">
@@ -319,6 +340,8 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 <div class="filter-bar">
   <button class="active" onclick="showAll()">All frames</button>
   <button onclick="showErrors()">Errors only</button>
+  {ch_buttons}
+  <span class="sep">|</span>
   <button onclick="expandAll()">Expand all</button>
   <button onclick="collapseAll()">Collapse all</button>
 </div>
@@ -329,13 +352,19 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 <script>
 function showAll() {{
   document.querySelectorAll('.frame-section').forEach(el => el.style.display = '');
-  updateBtns(0);
+  updateBtns('all');
 }}
 function showErrors() {{
   document.querySelectorAll('.frame-section').forEach(el => {{
     el.style.display = el.querySelector('.fail') ? '' : 'none';
   }});
-  updateBtns(1);
+  updateBtns('errors');
+}}
+function showChannel(ch) {{
+  document.querySelectorAll('.frame-section').forEach(el => {{
+    el.style.display = el.dataset.channel == ch ? '' : 'none';
+  }});
+  updateBtns('ch'+ch);
 }}
 function expandAll() {{
   document.querySelectorAll('.frame-section').forEach(el => el.classList.remove('collapsed'));
@@ -343,8 +372,8 @@ function expandAll() {{
 function collapseAll() {{
   document.querySelectorAll('.frame-section').forEach(el => el.classList.add('collapsed'));
 }}
-function updateBtns(idx) {{
-  document.querySelectorAll('.filter-bar button').forEach((b,i) => b.classList.toggle('active', i===idx));
+function updateBtns(activeId) {{
+  document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
 }}
 </script>
 </body>

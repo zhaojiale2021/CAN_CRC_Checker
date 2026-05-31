@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from pathlib import Path
 import click
 
 from crc_checker.crc.models import CRCParams, CRCRange
@@ -98,7 +99,8 @@ def cli():
 
 
 @cli.command()
-@click.option("--dbc", required=True, type=click.Path(exists=True), help="Path to DBC file")
+@click.option("--dbc", "dbc_paths", multiple=True,
+              type=click.Path(exists=True), help="Path to DBC file(s) or directory (repeatable)")
 @click.option("--trace", "trace_files", required=True, multiple=True,
               type=click.Path(exists=True), help="Path to trace file(s) (BLF, ASC, MF4, ...)")
 @click.option("--algo", default=None, help="CRC preset name (e.g. CRC8/AUTOSAR)")
@@ -123,13 +125,16 @@ def cli():
 @click.option("--only-failures", is_flag=True, help="Only show/write failed verdicts")
 @click.option("--max-frames", type=int, default=None, help="Maximum frames to process")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def verify(dbc, trace_files, algo, custom_crc,
+def verify(dbc_paths, trace_files, algo, custom_crc,
            range_mode, range_start, range_end,
            checksum_pattern, rc_pattern,
            dataid_xlsx, dataid_sheet, dataid_mapping,
            frame_ids, output_fmt, output_file,
            only_failures, max_frames, verbose):
     """Verify CRC and Rolling Counter in CAN trace files."""
+
+    if not dbc_paths:
+        raise click.UsageError("At least one --dbc path is required.")
 
     # Parse CRC params
     if not algo and not custom_crc:
@@ -159,10 +164,28 @@ def verify(dbc, trace_files, algo, custom_crc,
         if rc_pattern:
             patterns["rolling_counter"] = rc_pattern
 
-    # Parse DBC
-    if verbose:
-        click.echo(f"Parsing DBC: {dbc}")
-    protection_map = parse_dbc(dbc, patterns)
+    # Parse DBC: if multiple, auto-select best match from trace sample
+    from crc_checker.dbc.parser import parse_all_dbc, select_best_dbc, sample_trace_ids
+    all_dbc = list(dbc_paths)
+    if len(all_dbc) == 1 and Path(all_dbc[0]).is_file() and all_dbc[0].endswith('.dbc'):
+        # Single DBC file — direct parse
+        protection_map = parse_dbc(all_dbc[0], patterns)
+        if verbose:
+            click.echo(f"Parsing DBC: {all_dbc[0]}")
+    else:
+        # Multiple or directory — parse all, select by trace match
+        dbc_maps = parse_all_dbc(all_dbc, patterns)
+        if len(dbc_maps) == 1:
+            protection_map = dbc_maps[0]
+        else:
+            sample_ids = sample_trace_ids(trace_files[0], max_frames=500)
+            best_map, best_matched, best_total = select_best_dbc(dbc_maps, sample_ids)
+            if best_map is None:
+                raise click.UsageError("No DBC matches any frame IDs in trace.")
+            protection_map = best_map
+            if verbose:
+                click.echo(f"Auto-selected: {Path(best_map.dbc_paths[0]).name} "
+                           f"({best_matched}/{best_total} IDs matched)")
 
     if crc_params:
         protection_map.apply_crc_params(crc_params)
@@ -184,8 +207,21 @@ def verify(dbc, trace_files, algo, custom_crc,
     if verbose:
         click.echo(f"Found protection signals in {len(protection_map.all_frame_ids())} CAN IDs")
 
+    # Expand trace directories
+    _TRACE_EXTS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
+    expanded_traces: list[str] = []
+    for t in trace_files:
+        tp = Path(t)
+        if tp.is_dir():
+            files = sorted(f for f in tp.iterdir() if f.suffix.lower() in _TRACE_EXTS)
+            if not files:
+                raise click.BadParameter(f"No trace files found in directory: {t}")
+            expanded_traces.extend(str(f) for f in files)
+        else:
+            expanded_traces.append(str(tp))
+
     # Process each trace file — create engine ONCE per file
-    for trace_path in trace_files:
+    for trace_path in expanded_traces:
         if verbose:
             click.echo(f"Processing trace: {trace_path}")
 
@@ -200,6 +236,8 @@ def verify(dbc, trace_files, algo, custom_crc,
 
         with TraceReader(trace_path) as reader:
             report = engine.run(reader, frame_ids=id_filter, max_frames=max_frames)
+
+        report.dbc_paths = protection_map.dbc_paths
 
         # Output
         if output_fmt == "table":
@@ -239,13 +277,17 @@ def run_cmd(config_path, verbose):
     if verbose:
         click.echo(f"Config: {config_path}")
         click.echo(f"DBC:    {cfg.dbc}")
+        if cfg.dbcs:
+            click.echo(f"DBCs:   {', '.join(cfg.dbcs)}")
         click.echo(f"Traces: {len(cfg.traces)} file(s)")
         if cfg.crc_preset:
             click.echo(f"CRC:    {cfg.crc_preset}")
         elif cfg.crc_custom:
             click.echo(f"CRC:    custom")
-        if cfg.dataid_xlsx:
-            click.echo(f"DataID: {cfg.dataid_xlsx}")
+        if cfg.dataid_json and Path(cfg.dataid_json).exists():
+            click.echo(f"DataID JSON: {cfg.dataid_json} (fast path)")
+        elif cfg.dataid_xlsx:
+            click.echo(f"DataID xlsx: {cfg.dataid_xlsx}")
 
     crc_params = cfg.build_crc_params()
     crc_range = cfg.build_crc_range()
@@ -261,14 +303,41 @@ def run_cmd(config_path, verbose):
         if cfg.rc_pattern:
             patterns["rolling_counter"] = cfg.rc_pattern
 
-    dataid_map = None
-    if cfg.dataid_xlsx and os.path.exists(cfg.dataid_xlsx):
-        from crc_checker.dataid import parse_dataid_xlsx
-        dataid_map = parse_dataid_xlsx(cfg.dataid_xlsx,
-                                       cfg.dataid_sheet or None,
-                                       mapping=cfg.dataid_mapping or None)
+    # Collect DBC paths
+    dbc_paths = cfg.get_dbc_paths()
+    if not dbc_paths:
+        raise click.UsageError("No DBC files found. Check 'dbc' or 'dbcs' in config.")
+    if verbose:
+        click.echo(f"DBC files: {len(dbc_paths)} file(s)")
+        for p in dbc_paths:
+            click.echo(f"  {p}")
 
-    protection_map = parse_dbc(cfg.dbc, patterns)
+    # Parse all DBCs individually (no merge)
+    from crc_checker.dbc.parser import parse_all_dbc, select_best_dbc, sample_trace_ids
+    dbc_maps = parse_all_dbc(dbc_paths, patterns)
+
+    # If single DBC, use it directly
+    if len(dbc_maps) == 1:
+        protection_map = dbc_maps[0]
+        if verbose:
+            click.echo(f"Using DBC: {dbc_maps[0].dbc_paths[0]}")
+    else:
+        # Scan first trace for matching frame IDs, select best DBC
+        trace_paths = cfg.get_trace_paths()
+        sample_ids = sample_trace_ids(trace_paths[0], max_frames=500)
+        best_map, best_matched, best_total = select_best_dbc(dbc_maps, sample_ids)
+        if best_map is None:
+            raise click.UsageError("No DBC matches any frame IDs in trace.")
+        protection_map = best_map
+        if verbose:
+            click.echo(f"Auto-selected: {Path(best_map.dbc_paths[0]).name} "
+                       f"({best_matched}/{best_total} IDs matched)")
+
+    # Load DataID: auto-match sheet to selected DBC name
+    dbc_name = Path(protection_map.dbc_paths[0]).name if protection_map.dbc_paths else ""
+    dataid_map = cfg.load_dataid(dbc_name=dbc_name)
+    if verbose and dataid_map:
+        click.echo(f"DataID: {len(dataid_map)} entries (sheet: {dataid_map.sheet_name})")
     if crc_params:
         protection_map.apply_crc_params(crc_params)
     protection_map.apply_crc_range(crc_range)
@@ -279,7 +348,13 @@ def run_cmd(config_path, verbose):
     if cfg.rc_max_valid is not None:
         protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
 
-    for trace_path in cfg.traces:
+    trace_paths = cfg.get_trace_paths()
+    if verbose:
+        click.echo(f"Trace files: {len(trace_paths)} file(s)")
+        for p in trace_paths:
+            click.echo(f"  {p}")
+
+    for trace_path in trace_paths:
         from crc_checker.protect.checksum import CRCVerifier
         from crc_checker.protect.rolling_counter import RollingCounterVerifier
         algorithms = []
@@ -289,6 +364,8 @@ def run_cmd(config_path, verbose):
         engine = VerifyEngine(protection_map, algorithms)
         with TraceReader(trace_path) as reader:
             report = engine.run(reader, frame_ids=cfg.frame_ids, max_frames=cfg.max_frames)
+
+        report.dbc_paths = protection_map.dbc_paths
 
         if cfg.output_format == "table":
             _print_table(report, cfg.only_failures)
@@ -304,6 +381,49 @@ def run_cmd(config_path, verbose):
             path = cfg.output_file or "crc_report.html"
             write_html(report, path, cfg.only_failures)
             click.echo(f"HTML: {path}")
+
+
+@cli.command("preprocess-dataid")
+@click.option("--xlsx", required=True, type=click.Path(exists=True),
+              help="Path to DataID Excel file")
+@click.option("--sheet", "sheets", multiple=True, default=None,
+              help="Sheet name(s) to parse (repeatable; default: all sheets)")
+@click.option("--mapping", default="greatwall_j6m",
+              help="Column mapping: builtin name or JSON string")
+@click.option("--output", "-o", required=True, type=click.Path(),
+              help="Output JSON file path")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def preprocess_dataid(xlsx, sheets, mapping, output, verbose):
+    """Preprocess DataID Excel into standardized JSON for fast reload.
+
+    Parse one or more sheets from a DataID Excel file and export a
+    unified JSON that subsequent 'crc-check run' can load directly,
+    skipping the slow openpyxl step.
+
+    \b
+    Example:
+      crc-check preprocess-dataid --xlsx dataid.xlsx --sheet "Sheet1" --sheet "Sheet2" -o dataid.json
+    """
+    from crc_checker.dataid import parse_dataid_xlsx_multi
+
+    sheet_list = list(sheets) if sheets else None
+
+    if verbose:
+        click.echo(f"Parsing: {xlsx}")
+        click.echo(f"Mapping: {mapping}")
+        if sheet_list:
+            click.echo(f"Sheets: {', '.join(sheet_list)}")
+        else:
+            click.echo("Sheets: all")
+
+    dm = parse_dataid_xlsx_multi(xlsx, sheet_list, mapping=mapping)
+
+    if len(dm) == 0:
+        click.echo("Warning: No DataID entries found.", err=True)
+
+    parsed_sheets = sheet_list or ["<auto>"]
+    dm.to_json(output, source=xlsx, mapping=mapping, sheets=parsed_sheets)
+    click.echo(f"DataID JSON written to {output} ({len(dm)} entries)")
 
 
 @cli.command("gen-config")

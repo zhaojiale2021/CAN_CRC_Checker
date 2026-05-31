@@ -48,7 +48,8 @@ class RunConfig:
 
     Can be constructed from a JSON file via `load_config()`.
     """
-    dbc: str = ""                               # Path to DBC file (required)
+    dbc: str = ""                               # Path to DBC file or directory (required)
+    dbcs: list[str] = field(default_factory=list)  # Explicit list of DBC paths (files or dirs)
     traces: list[str] = field(default_factory=list)  # Trace file paths (required)
     crc_preset: str = ""                        # Preset name, e.g. "CRC8/AUTOSAR"
     crc_custom: dict | None = None              # Custom CRC params dict
@@ -56,8 +57,9 @@ class RunConfig:
     range_start: int = 0
     range_end: int = -1
     dataid_xlsx: str = ""                       # DataID Excel path
-    dataid_sheet: str = ""                      # Sheet name ("" = auto)
+    dataid_sheet: str = ""                      # Sheet name(s), comma-separated ("" = auto)
     dataid_mapping: str = ""                    # Column mapping name/JSON
+    dataid_json: str = ""                       # Preprocessed DataID JSON path (fast load)
     frame_ids: list[int] | None = None          # CAN ID filter
     max_frames: int | None = None               # Frame limit
     checksum_pattern: str | None = None         # Regex override
@@ -84,9 +86,110 @@ class RunConfig:
             return str(resolved) if resolved.exists() else str(resolved)
 
         self.dbc = _resolve(self.dbc) if self.dbc else self.dbc
+        self.dbcs = [_resolve(p) for p in self.dbcs]
         self.traces = [_resolve(t) for t in self.traces]
         if self.dataid_xlsx:
             self.dataid_xlsx = _resolve(self.dataid_xlsx)
+        if self.dataid_json:
+            self.dataid_json = _resolve(self.dataid_json)
+
+    def get_dbc_paths(self) -> list[str]:
+        """Get the flat list of DBC file paths (after directory expansion)."""
+        from crc_checker.dbc.parser import DBCParser
+        paths = []
+        if self.dbc:
+            paths.append(self.dbc)
+        paths.extend(self.dbcs)
+        return DBCParser._collect_dbc_files(paths) if paths else []
+
+    _TRACE_EXTENSIONS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
+
+    def get_trace_paths(self) -> list[str]:
+        """Get the flat list of trace file paths (after directory expansion)."""
+        result: list[str] = []
+        for p in self.traces:
+            path = Path(p)
+            if path.is_dir():
+                files = sorted(
+                    f for f in path.iterdir()
+                    if f.suffix.lower() in self._TRACE_EXTENSIONS
+                )
+                if not files:
+                    raise FileNotFoundError(f"No trace files found in directory: {p}")
+                result.extend(str(f) for f in files)
+            elif path.is_file():
+                result.append(str(path))
+            else:
+                raise FileNotFoundError(f"Trace path not found: {p}")
+        return result
+
+    def load_dataid(self, dbc_name: str = ""):
+        """Load DataID map using smart auto-generate logic.
+
+        If dbc_name is provided, auto-match the best sheet to the DBC name.
+
+        Priority:
+        1. dataid_json exists → fast load from JSON
+        2. dataid_json specified but missing + dataid_xlsx present → parse xlsx, save JSON
+        3. dataid_xlsx only → slow path (backward compat)
+        4. Neither → None
+        """
+        from crc_checker.dataid.parser import (
+            DataIDMap, parse_dataid_xlsx, parse_dataid_xlsx_multi,
+            match_sheet_to_dbc,
+        )
+        import logging
+        log = logging.getLogger("crc_checker")
+
+        # Fast path: JSON exists
+        if self.dataid_json and Path(self.dataid_json).exists():
+            log.debug(f"Loading DataID from JSON: {self.dataid_json}")
+            return DataIDMap.from_json(self.dataid_json)
+
+        # Resolve sheets: auto-match to DBC name if no explicit sheet specified
+        sheets = [s.strip() for s in self.dataid_sheet.split(",") if s.strip()] if self.dataid_sheet else None
+        if not sheets and dbc_name and self.dataid_xlsx:
+            import openpyxl
+            wb = openpyxl.load_workbook(self.dataid_xlsx, data_only=True)
+            all_sheets = list(wb.sheetnames)
+            wb.close()
+            matched = match_sheet_to_dbc(dbc_name, all_sheets)
+            if matched:
+                sheets = [matched]
+                log.info(f"Auto-matched sheet '{matched}' for DBC '{dbc_name}'")
+
+        mapping = self.dataid_mapping or None
+
+        # Auto-generate: JSON specified but missing, xlsx available
+        if self.dataid_json and self.dataid_xlsx:
+            log.info(f"Generating DataID JSON: {self.dataid_json}")
+            dm = parse_dataid_xlsx_multi(self.dataid_xlsx, sheets, mapping=mapping)
+            if len(dm) > 0:
+                dm.to_json(
+                    self.dataid_json,
+                    source=self.dataid_xlsx,
+                    mapping=self.dataid_mapping,
+                    sheets=sheets,
+                )
+                log.info(f"DataID JSON saved: {self.dataid_json} ({len(dm)} entries)")
+            return dm
+
+        # Slow path: xlsx only (backward compat, with auto-match)
+        if self.dataid_xlsx:
+            if not sheets and dbc_name:
+                import openpyxl
+                wb = openpyxl.load_workbook(self.dataid_xlsx, data_only=True)
+                all_sheets = list(wb.sheetnames)
+                wb.close()
+                matched = match_sheet_to_dbc(dbc_name, all_sheets)
+                if matched:
+                    sheets = [matched]
+                    log.info(f"Auto-matched sheet '{matched}' for DBC '{dbc_name}'")
+            if sheets and len(sheets) > 1:
+                return parse_dataid_xlsx_multi(self.dataid_xlsx, sheets, mapping=mapping)
+            return parse_dataid_xlsx(self.dataid_xlsx, sheets[0] if sheets else None, mapping=mapping)
+
+        return None
 
     def build_crc_params(self) -> CRCParams | None:
         """Build CRCParams from config."""
@@ -218,13 +321,19 @@ def load_config(config_path: str) -> RunConfig:
 
     # Required
     cfg.dbc = data.get("dbc", "")
+    # NEW: dbcs array
+    dbcs_raw = data.get("dbcs", [])
+    if isinstance(dbcs_raw, str):
+        dbcs_raw = [dbcs_raw]
+    cfg.dbcs = dbcs_raw
+
     traces_raw = data.get("traces", [])
     if isinstance(traces_raw, str):
         traces_raw = [traces_raw]
     cfg.traces = traces_raw
 
-    if not cfg.dbc:
-        raise ValueError("Config must specify 'dbc' path.")
+    if not cfg.dbc and not cfg.dbcs:
+        raise ValueError("Config must specify 'dbc' or 'dbcs' path.")
     if not cfg.traces:
         raise ValueError("Config must specify at least one 'traces' entry.")
 
@@ -245,8 +354,13 @@ def load_config(config_path: str) -> RunConfig:
     did = data.get("dataid", {})
     if did:
         cfg.dataid_xlsx = did.get("xlsx", "")
-        cfg.dataid_sheet = did.get("sheet", "")
+        sheet_raw = did.get("sheet", "")
+        if isinstance(sheet_raw, list):
+            cfg.dataid_sheet = ",".join(sheet_raw)
+        else:
+            cfg.dataid_sheet = sheet_raw
         cfg.dataid_mapping = did.get("mapping", "")
+        cfg.dataid_json = did.get("json", "")
 
     # Filter
     flt = data.get("filter", {})
@@ -287,7 +401,8 @@ def generate_example_config(output_path: str):
     """Write an annotated example config file."""
     example = {
         "_comment": "CAN CRC Checker configuration file. Remove _comment fields before use.",
-        "dbc": "test_dbc/network.dbc",
+        "dbc": "dbc/",
+        "dbcs": [],
         "traces": ["test_data/trace.blf"],
         "crc": {
             "_comment": "Use 'preset' for built-in, or 'custom' for custom algorithm.",
@@ -300,10 +415,11 @@ def generate_example_config(output_path: str):
             "end_byte": -1
         },
         "dataid": {
-            "_comment": "Optional E2E DataID Excel. Remove entire section if not needed.",
+            "_comment": "Optional E2E DataID. Use 'json' for fast preprocessed format.",
             "xlsx": "test_dbc/dataid.xlsx",
-            "sheet": "DBC_V2.5 ADAS1",
-            "mapping": "greatwall_j6m"
+            "sheet": ["DBC_V2.5 ADAS1", "DBC_V2.5 ADAS2"],
+            "mapping": "greatwall_j6m",
+            "json": "test_dbc/dataid.json"
         },
         "filter": {
             "_comment": "Optional. Omit or set to null for no limit.",

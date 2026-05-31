@@ -74,3 +74,66 @@ class TestSignalResolver:
         assert not resolver.is_checksum_signal("Checksum_ACC1")
         assert resolver.is_rolling_counter_signal("MY_RC_Engine")
         assert not resolver.is_rolling_counter_signal("RollingCounter_ACC1")
+
+
+class TestDBCProtectionMapMerge:
+    """Test DBCProtectionMap merge and backward compat."""
+
+    def test_merge_adds_new_suffixes(self):
+        """Same frame_id with different suffix: appended. Same suffix: skipped."""
+        from crc_checker.dbc.models import DBCProtectionMap
+
+        map1 = DBCProtectionMap(dbc_paths=["a.dbc"])
+        map1.messages[0x100] = [
+            MessageProtection(frame_id=0x100, frame_name="FrameA", dlc=8, pair_suffix="X")
+        ]
+
+        map2 = DBCProtectionMap(dbc_paths=["b.dbc"])
+        map2.messages[0x100] = [
+            MessageProtection(frame_id=0x100, frame_name="FrameA_Dup", dlc=8, pair_suffix="X"),  # duplicate suffix, skipped
+            MessageProtection(frame_id=0x100, frame_name="FrameA_New", dlc=8, pair_suffix="Y"),  # new suffix, added
+        ]
+        map2.messages[0x200] = [
+            MessageProtection(frame_id=0x200, frame_name="FrameB", dlc=8, pair_suffix="Z")
+        ]
+
+        added = map1.merge(map2)
+        assert added == 2  # Y + Z added, X skipped
+        assert 0x100 in map1.messages
+        assert len(map1.messages[0x100]) == 2  # X + Y
+        assert 0x200 in map1.messages
+        assert map1.messages[0x100][0].frame_name == "FrameA"  # first DBC's definition wins
+        assert map1.dbc_paths == ["a.dbc", "b.dbc"]
+
+    def test_dbc_path_property(self):
+        """dbc_path returns joined string of all paths."""
+        from crc_checker.dbc.models import DBCProtectionMap
+
+        map1 = DBCProtectionMap(dbc_paths=["a.dbc", "b.dbc"])
+        assert map1.dbc_path == "a.dbc, b.dbc"
+
+        map2 = DBCProtectionMap(dbc_paths=[])
+        assert map2.dbc_path == ""
+
+    def test_dbc_path_setter(self):
+        """Backward compat setter stores single path."""
+        from crc_checker.dbc.models import DBCProtectionMap
+
+        map1 = DBCProtectionMap()
+        map1.dbc_path = "single.dbc"
+        assert map1.dbc_paths == ["single.dbc"]
+        assert map1.dbc_path == "single.dbc"
+
+    def test_merge_empty_other(self):
+        """Merging an empty map changes nothing."""
+        from crc_checker.dbc.models import DBCProtectionMap
+
+        map1 = DBCProtectionMap(dbc_paths=["a.dbc"])
+        map1.messages[0x100] = [
+            MessageProtection(frame_id=0x100, frame_name="FrameA", dlc=8, pair_suffix="X")
+        ]
+        map2 = DBCProtectionMap(dbc_paths=["empty.dbc"])
+
+        added = map1.merge(map2)
+        assert added == 0
+        assert len(map1.messages) == 1

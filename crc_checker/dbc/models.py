@@ -33,14 +33,25 @@ class MessageProtection:
     dataid: int | None = None                                  # 16-bit DataID (from AUTOSAR E2E config)
     frame_protection_count: int = 1                            # How many protection groups in this frame
     rc_max_valid: int | None = None                            # Max valid RC value before wrap (None = auto from bit length)
+    dbc_source: str = ""                                       # Source DBC file name
 
 
 @dataclass
 class DBCProtectionMap:
     """Complete map of all protection signals across all messages."""
-    dbc_path: str
+    dbc_paths: list[str] = field(default_factory=list)
     messages: dict[int, list[MessageProtection]] = field(default_factory=dict)
     # key = frame_id, value = list of protection groups within that message
+
+    @property
+    def dbc_path(self) -> str:
+        """Backward-compat: joined display string of all DBC paths."""
+        return ", ".join(self.dbc_paths)
+
+    @dbc_path.setter
+    def dbc_path(self, value: str):
+        """Backward-compat setter: sets dbc_paths to a single-element list."""
+        self.dbc_paths = [value] if value else []
 
     def get_protections(self, frame_id: int) -> list[MessageProtection]:
         """Get all protection groups for a given CAN ID."""
@@ -83,3 +94,27 @@ class DBCProtectionMap:
             for prot_list in self.messages.values():
                 for prot in prot_list:
                     prot.rc_max_valid = max_valid
+
+    def merge(self, other: "DBCProtectionMap") -> int:
+        """Merge another DBCProtectionMap into this one.
+
+        Within each frame_id, protection groups are merged by pair_suffix:
+        existing suffixes are kept (first-wins), new suffixes are appended.
+
+        Returns:
+            Number of new protection groups added.
+        """
+        added = 0
+        for frame_id, prot_list in other.messages.items():
+            if frame_id in self.messages:
+                existing_suffixes = {p.pair_suffix for p in self.messages[frame_id]}
+                for prot in prot_list:
+                    if prot.pair_suffix and prot.pair_suffix not in existing_suffixes:
+                        self.messages[frame_id].append(prot)
+                        existing_suffixes.add(prot.pair_suffix)
+                        added += 1
+            else:
+                self.messages[frame_id] = list(prot_list)
+                added += len(prot_list)
+        self.dbc_paths.extend(other.dbc_paths)
+        return added

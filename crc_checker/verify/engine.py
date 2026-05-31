@@ -70,10 +70,12 @@ class VerifyEngine:
             dbc_path=self.protection_map.dbc_path,
             trace_path=reader.file_path,
         )
-        # Pre-populate frame names from protection map
+        # Pre-populate frame names and DBC sources from protection map
         for fid, prots in self.protection_map.messages.items():
             if prots:
                 report.set_frame_name(fid, prots[0].frame_name)
+                if prots[0].dbc_source:
+                    report.set_frame_dbc_source(fid, prots[0].dbc_source)
 
         target_ids = set(frame_ids) if frame_ids else None
         frame_count = 0
@@ -86,8 +88,9 @@ class VerifyEngine:
             frame_count += 1
             report.total_frames += 1
 
-            # Store frame data for hex-dump display
-            report.add_frame_data(frame.timestamp, frame.arbitration_id, frame.data)
+            # Store frame data for hex-dump display (include channel)
+            report.add_frame_data(frame.timestamp, frame.arbitration_id, frame.data,
+                                  channel=frame.channel)
 
             # Find protection groups for this frame
             protections = self.protection_map.get_protections(frame.arbitration_id)
