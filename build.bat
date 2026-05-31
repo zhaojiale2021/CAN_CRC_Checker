@@ -31,7 +31,7 @@ pyinstaller --onefile --name crc-check ^
 
 echo.
 if exist dist\crc-check.exe (
-    for %%A in (dist\crc-check.exe) do echo Done: dist\crc-check.exe (%%~zA bytes)
+    echo Done: dist\crc-check.exe
 ) else (
     echo Build failed!
 )

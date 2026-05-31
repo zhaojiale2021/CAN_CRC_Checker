@@ -140,11 +140,10 @@ Key options:
 - `--range-start N`, `--range-end N`
 - `--checksum-pattern REGEX`, `--rc-pattern REGEX`
 - `--frame-ids ID1,ID2,...`
-- `--output FORMAT` — table | html | csv | json
+- `--output FORMAT` — table | html
 - `--output-file PATH`
 - `--only-failures`
 - `--max-frames N`
-- `--tui` — launch Textual TUI
 - `--verbose`
 
 ## TUI (Textual)
@@ -157,9 +156,6 @@ Keyboard navigation: arrow keys, Enter for detail, F=filter, E=export.
 
 - **table**: Terminal output (default), grouped by frame_id
 - **HTML**: Self-contained, summary cards + collapsible grouped tables
-- **CSV**: Flat row-per-verdict
-- **JSON**: Full structured output
-
 ## Non-Goals (v1)
 
 - Full E2E Profile 5/11 verification (MAC + Freshness validation) — plugin interface reserved
