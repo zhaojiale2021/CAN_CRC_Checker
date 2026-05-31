@@ -118,3 +118,88 @@ class DBCProtectionMap:
                 added += len(prot_list)
         self.dbc_paths.extend(other.dbc_paths)
         return added
+
+
+class ChannelProtectionMap:
+    """Wraps per-channel DBC protection maps for multi-channel trace verification.
+
+    Each channel has its own DBC; frames are looked up by (channel, frame_id).
+    """
+
+    def __init__(self):
+        self._maps: dict[int, DBCProtectionMap] = {}
+        self._fallback: DBCProtectionMap | None = None
+
+    def set_channel(self, channel: int, pm: DBCProtectionMap):
+        """Assign a DBC protection map to a specific channel."""
+        self._maps[channel] = pm
+
+    def set_fallback(self, pm: DBCProtectionMap):
+        """Set fallback DBC for channels without an explicit mapping."""
+        self._fallback = pm
+
+    def get_protections(self, frame_id: int, channel: int = 0) -> list[MessageProtection]:
+        """Get protection groups for a frame, using channel-specific DBC."""
+        pm = self._maps.get(channel, self._fallback)
+        if pm is None:
+            return []
+        return pm.get_protections(frame_id)
+
+    @property
+    def dbc_paths(self) -> list[str]:
+        """All DBC paths across all channels."""
+        seen = set()
+        paths = []
+        for pm in self._maps.values():
+            for p in pm.dbc_paths:
+                if p not in seen:
+                    paths.append(p)
+                    seen.add(p)
+        if self._fallback:
+            for p in self._fallback.dbc_paths:
+                if p not in seen:
+                    paths.append(p)
+                    seen.add(p)
+        return paths
+
+    @property
+    def dbc_path(self) -> str:
+        return ", ".join(self.dbc_paths)
+
+    @property
+    def messages(self) -> dict[int, list[MessageProtection]]:
+        """Flattened view for backward compat (engine pre-population)."""
+        result: dict[int, list[MessageProtection]] = {}
+        for pm in self._maps.values():
+            for fid, prots in pm.messages.items():
+                if fid not in result:
+                    result[fid] = prots
+        if self._fallback:
+            for fid, prots in self._fallback.messages.items():
+                if fid not in result:
+                    result[fid] = prots
+        return result
+
+    def apply_crc_params(self, params):
+        for pm in self._maps.values():
+            pm.apply_crc_params(params)
+        if self._fallback:
+            self._fallback.apply_crc_params(params)
+
+    def apply_crc_range(self, crc_range):
+        for pm in self._maps.values():
+            pm.apply_crc_range(crc_range)
+        if self._fallback:
+            self._fallback.apply_crc_range(crc_range)
+
+    def apply_dataid_map(self, dataid_map):
+        for pm in self._maps.values():
+            pm.apply_dataid_map(dataid_map)
+        if self._fallback:
+            self._fallback.apply_dataid_map(dataid_map)
+
+    def apply_rc_config(self, max_valid=None):
+        for pm in self._maps.values():
+            pm.apply_rc_config(max_valid)
+        if self._fallback:
+            self._fallback.apply_rc_config(max_valid)

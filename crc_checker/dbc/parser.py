@@ -144,6 +144,50 @@ def select_best_dbc(dbc_maps: list[DBCProtectionMap],
     return best, best_matched, best_total
 
 
+def select_best_dbc_per_channel(
+    dbc_maps: list[DBCProtectionMap],
+    channel_ids: dict[int, set[int]],
+) -> dict[int, DBCProtectionMap]:
+    """Select the best DBC for each channel independently.
+
+    Args:
+        dbc_maps: List of individual DBC protection maps.
+        channel_ids: Dict of channel -> set of frame_ids seen in that channel.
+
+    Returns:
+        Dict of channel -> best DBCProtectionMap for that channel.
+    """
+    result: dict[int, DBCProtectionMap] = {}
+    for ch, ids in channel_ids.items():
+        best, _, _ = select_best_dbc(dbc_maps, ids)
+        if best is not None:
+            result[ch] = best
+    return result
+
+
+def sample_trace_channels(trace_path: str, max_frames: int = 500) -> dict[int, set[int]]:
+    """Sample trace to collect unique CAN IDs per channel.
+
+    Returns:
+        Dict of channel -> set of unique arbitration_ids.
+    """
+    import can
+    from collections import defaultdict
+    ch_ids: dict[int, set[int]] = defaultdict(set)
+    reader = can.LogReader(trace_path)
+    count = 0
+    try:
+        for msg in reader:
+            if not msg.is_error_frame and not msg.is_remote_frame:
+                ch_ids[msg.channel].add(msg.arbitration_id)
+            count += 1
+            if count >= max_frames:
+                break
+    finally:
+        reader.stop()
+    return dict(ch_ids)
+
+
 def sample_trace_ids(trace_path: str, max_frames: int = 500) -> set[int]:
     """Sample the first N frames of a trace to collect unique CAN IDs."""
     import can

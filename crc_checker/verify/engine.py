@@ -92,8 +92,9 @@ class VerifyEngine:
             report.add_frame_data(frame.timestamp, frame.arbitration_id, frame.data,
                                   channel=frame.channel)
 
-            # Find protection groups for this frame
-            protections = self.protection_map.get_protections(frame.arbitration_id)
+            # Find protection groups for this frame (channel-aware)
+            protections = self.protection_map.get_protections(
+                frame.arbitration_id, channel=frame.channel)
             if not protections:
                 continue
 

@@ -313,7 +313,10 @@ def run_cmd(config_path, verbose):
             click.echo(f"  {p}")
 
     # Parse all DBCs individually (no merge)
-    from crc_checker.dbc.parser import parse_all_dbc, select_best_dbc, sample_trace_ids
+    from crc_checker.dbc.parser import (
+        parse_all_dbc, select_best_dbc_per_channel, sample_trace_channels,
+    )
+    from crc_checker.dbc.models import ChannelProtectionMap
     dbc_maps = parse_all_dbc(dbc_paths, patterns)
 
     # If single DBC, use it directly
@@ -322,19 +325,26 @@ def run_cmd(config_path, verbose):
         if verbose:
             click.echo(f"Using DBC: {dbc_maps[0].dbc_paths[0]}")
     else:
-        # Scan first trace for matching frame IDs, select best DBC
+        # Per-channel DBC selection
         trace_paths = cfg.get_trace_paths()
-        sample_ids = sample_trace_ids(trace_paths[0], max_frames=500)
-        best_map, best_matched, best_total = select_best_dbc(dbc_maps, sample_ids)
-        if best_map is None:
-            raise click.UsageError("No DBC matches any frame IDs in trace.")
-        protection_map = best_map
-        if verbose:
-            click.echo(f"Auto-selected: {Path(best_map.dbc_paths[0]).name} "
-                       f"({best_matched}/{best_total} IDs matched)")
+        ch_ids = sample_trace_channels(trace_paths[0], max_frames=1000)
+        ch_dbc = select_best_dbc_per_channel(dbc_maps, ch_ids)
+        if not ch_dbc:
+            raise click.UsageError("No DBC matches any trace channel.")
 
-    # Load DataID: auto-match sheet to selected DBC name
-    dbc_name = Path(protection_map.dbc_paths[0]).name if protection_map.dbc_paths else ""
+        channel_map = ChannelProtectionMap()
+        for ch, pm in ch_dbc.items():
+            channel_map.set_channel(ch, pm)
+        protection_map = channel_map
+        if verbose:
+            for ch, pm in sorted(ch_dbc.items()):
+                name = Path(pm.dbc_paths[0]).name
+                n_ids = len(ch_ids.get(ch, set()))
+                n_match = len(set(pm.all_frame_ids()) & ch_ids.get(ch, set()))
+                click.echo(f"  CH{ch} -> {name} ({n_match}/{len(pm.all_frame_ids())} IDs, {n_ids} trace IDs)")
+
+    # Load DataID: use first DBC name for sheet auto-match
+    dbc_name = Path(list(protection_map.dbc_paths)[0]).name if protection_map.dbc_paths else ""
     dataid_map = cfg.load_dataid(dbc_name=dbc_name)
     if verbose and dataid_map:
         click.echo(f"DataID: {len(dataid_map)} entries (sheet: {dataid_map.sheet_name})")
