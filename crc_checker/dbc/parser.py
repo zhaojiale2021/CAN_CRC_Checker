@@ -15,8 +15,11 @@ logger = logging.getLogger("crc_checker")
 class DBCParser:
     """Parses DBC files and extracts protection signal information."""
 
-    def __init__(self, patterns: dict[str, str] | None = None):
-        self.resolver = SignalResolver(patterns)
+    def __init__(self, patterns: dict[str, str] | None = None,
+                 use_suffix: bool | None = None):
+        self._explicit_patterns = patterns
+        self._explicit_suffix = use_suffix
+        self.resolver = SignalResolver(patterns, use_suffix=bool(use_suffix))
 
     @staticmethod
     def _collect_dbc_files(paths: list[str]) -> list[str]:
@@ -71,7 +74,15 @@ class DBCParser:
                 "signals": signals,
             })
 
-        prot_map = self.resolver.build_protection_map(frames)
+        # Auto-detect suffix-based naming (GAC-style) if not explicitly set
+        use_suffix = self._explicit_suffix
+        if use_suffix is None and not self._explicit_patterns:
+            use_suffix = SignalResolver.detect_naming_convention(frames)
+
+        # Rebuild resolver with correct suffix setting
+        resolver = SignalResolver(self._explicit_patterns, use_suffix=bool(use_suffix))
+
+        prot_map = resolver.build_protection_map(frames)
         prot_map.dbc_paths = [dbc_path]
         # Tag each protection group with its source DBC
         for prot_list in prot_map.messages.values():

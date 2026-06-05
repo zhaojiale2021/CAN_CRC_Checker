@@ -25,11 +25,16 @@ class CRCRange:
     end_byte: int = -1           # -1 means end of payload
     segment_size: int = 8        # bytes per segment (for "segment" mode)
     exclude_signals: list = field(default_factory=list)
-    dataid: int | None = None    # 16-bit DataID prepended to data before CRC (AUTOSAR E2E)
+    dataid: int | None = None    # 16-bit DataID value from AUTOSAR E2E config
+    dataid_position: str = "prepend"  # "prepend" (before payload) | "append" (after payload)
+    dataid_byte_order: str = "lo_hi"  # "lo_hi" (low byte first) | "hi_lo" (high byte first)
+    crc_byte_swap: bool = False  # True = byte-swap computed CRC before comparison (Profile 5)
 
     @classmethod
     def for_segment(cls, checksum_start_bit: int, segment_size: int = 8,
-                    dataid: int | None = None) -> "CRCRange":
+                    dataid: int | None = None,
+                    dataid_position: str = "prepend",
+                    dataid_byte_order: str = "lo_hi") -> "CRCRange":
         """Create a CRCRange that covers the segment containing the checksum signal.
 
         The segment is an aligned block of `segment_size` bytes. The checksum
@@ -39,6 +44,8 @@ class CRCRange:
             checksum_start_bit: canmatrix start_bit of the checksum signal.
             segment_size: bytes per segment (default 8 for CAN FD multiplexing).
             dataid: optional DataID for AUTOSAR E2E.
+            dataid_position: "prepend" (GWM) or "append" (E2E Profile 5/1).
+            dataid_byte_order: "lo_hi" or "hi_lo".
         """
         seg_start_byte = (checksum_start_bit // (segment_size * 8)) * segment_size
         return cls(
@@ -47,4 +54,6 @@ class CRCRange:
             end_byte=seg_start_byte + segment_size,
             segment_size=segment_size,
             dataid=dataid,
+            dataid_position=dataid_position,
+            dataid_byte_order=dataid_byte_order,
         )

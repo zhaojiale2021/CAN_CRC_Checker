@@ -396,6 +396,8 @@ def run_cmd(config_path, verbose):
 
     if crc_params:
         protection_map.apply_crc_params(crc_params)
+        # Apply profile-based CRC overrides (Profile 1 → CRC8/SAE-J1850-ZERO)
+        protection_map.apply_profile_crc_params(crc_params)
     protection_map.apply_crc_range(crc_range)
 
     if cfg.rc_max_valid is not None:

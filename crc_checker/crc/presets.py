@@ -33,6 +33,11 @@ PRESETS: dict[str, CRCParams] = {
         final_xor=0x0000, reflect_in=True, reflect_out=True,
         name="CRC16/MODBUS",
     ),
+    "CRC16/CCITT": CRCParams(
+        width=16, polynomial=0x1021, initial_value=0xFFFF,
+        final_xor=0x0000, reflect_in=False, reflect_out=False,
+        name="CRC16/CCITT (E2E Profile 5)",
+    ),
     "CRC32/AUTOSAR": CRCParams(
         width=32, polynomial=0xF4ACFB13, initial_value=0xFFFFFFFF,
         final_xor=0xFFFFFFFF, reflect_in=True, reflect_out=True,

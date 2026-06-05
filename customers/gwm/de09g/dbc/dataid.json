@@ -1,6 +1,6 @@
 {
   "format": "dataid_map_v1",
-  "source": ".\\dbc\\长城J6M_E2E 算法之data id _V2.5.xlsx",
+  "source": ".\\dbc\\长城J6B_E2E DataId_20260601.xlsx",
   "mapping": "greatwall_j6m",
   "sheets": [
     "<auto>"
@@ -8,48 +8,13 @@
   "entries": [
     {
       "frame_id": "0x060",
-      "signal_name": "Checksum_HCU_HP1",
-      "dataid": "0x0082"
-    },
-    {
-      "frame_id": "0x060",
       "signal_name": "Checksum_HCU_HP10",
       "dataid": "0x0083"
     },
     {
       "frame_id": "0x060",
-      "signal_name": "Checksum_HCU_HP11",
-      "dataid": "0x0084"
-    },
-    {
-      "frame_id": "0x060",
-      "signal_name": "Checksum_HCU_HP8",
-      "dataid": "0x00C7"
-    },
-    {
-      "frame_id": "0x060",
       "signal_name": "Checksum_HCU_PT1",
       "dataid": "0x0081"
-    },
-    {
-      "frame_id": "0x060",
-      "signal_name": "Checksum_HCU_PT11",
-      "dataid": "0x00D1"
-    },
-    {
-      "frame_id": "0x060",
-      "signal_name": "Checksum_HCU_PT14",
-      "dataid": "0x056A"
-    },
-    {
-      "frame_id": "0x079",
-      "signal_name": "Checksum_ECM1",
-      "dataid": "0x001B"
-    },
-    {
-      "frame_id": "0x079",
-      "signal_name": "Checksum_ECM4",
-      "dataid": "0x0018"
     },
     {
       "frame_id": "0x0A1",
@@ -58,28 +23,8 @@
     },
     {
       "frame_id": "0x0B5",
-      "signal_name": "Checksum_VCU1",
-      "dataid": "0x00BD"
-    },
-    {
-      "frame_id": "0x0B5",
       "signal_name": "Checksum_VCU15",
       "dataid": "0x00DA"
-    },
-    {
-      "frame_id": "0x0B5",
-      "signal_name": "Checksum_VCU18",
-      "dataid": "0x0501"
-    },
-    {
-      "frame_id": "0x0B5",
-      "signal_name": "Checksum_VCU19",
-      "dataid": "0x0502"
-    },
-    {
-      "frame_id": "0x0B5",
-      "signal_name": "Checksum_VCU4",
-      "dataid": "0x00BE"
     },
     {
       "frame_id": "0x0B5",
@@ -87,29 +32,14 @@
       "dataid": "0x00BF"
     },
     {
-      "frame_id": "0x0B5",
-      "signal_name": "Checksum_VCU8",
-      "dataid": "0x05CA"
-    },
-    {
       "frame_id": "0x0BD",
       "signal_name": "Checksum_ESP12",
       "dataid": "0x009B"
     },
     {
-      "frame_id": "0x103",
-      "signal_name": "Checksum_ECM2",
-      "dataid": "0x001E"
-    },
-    {
-      "frame_id": "0x103",
-      "signal_name": "Checksum_ECM9",
-      "dataid": "0x001C"
-    },
-    {
-      "frame_id": "0x103",
-      "signal_name": "Checksum_ESP4",
-      "dataid": "0x0091"
+      "frame_id": "0x0FF",
+      "signal_name": "Checksum_Body_Hei",
+      "dataid": "0x05E2"
     },
     {
       "frame_id": "0x11B",
@@ -125,26 +55,6 @@
       "frame_id": "0x11B",
       "signal_name": "Checksum_VCU26",
       "dataid": "0x053B"
-    },
-    {
-      "frame_id": "0x120",
-      "signal_name": "Checksum_ABS1_Backup",
-      "dataid": "0x00EF"
-    },
-    {
-      "frame_id": "0x120",
-      "signal_name": "Checksum_ABS2_Backup",
-      "dataid": "0x00F2"
-    },
-    {
-      "frame_id": "0x120",
-      "signal_name": "Checksum_ABS3_Backup",
-      "dataid": "0x00F0"
-    },
-    {
-      "frame_id": "0x120",
-      "signal_name": "Checksum_IBooster_FD2_5",
-      "dataid": "0x00F1"
     },
     {
       "frame_id": "0x12B",
@@ -188,11 +98,6 @@
     },
     {
       "frame_id": "0x137",
-      "signal_name": "Checksum_ESP4",
-      "dataid": "0x002D"
-    },
-    {
-      "frame_id": "0x137",
       "signal_name": "Checksum_ESP7",
       "dataid": "0x002E"
     },
@@ -210,21 +115,6 @@
       "frame_id": "0x13B",
       "signal_name": "Checksum_EPB1",
       "dataid": "0x002A"
-    },
-    {
-      "frame_id": "0x13B",
-      "signal_name": "Checksum_ESP13",
-      "dataid": "0x009D"
-    },
-    {
-      "frame_id": "0x13B",
-      "signal_name": "Checksum_ESP8",
-      "dataid": "0x002F"
-    },
-    {
-      "frame_id": "0x13B",
-      "signal_name": "Checksum_ESP9",
-      "dataid": "0x05DA"
     },
     {
       "frame_id": "0x140",
@@ -253,18 +143,8 @@
     },
     {
       "frame_id": "0x143",
-      "signal_name": "Checksum_ACC14",
-      "dataid": "0x05F5"
-    },
-    {
-      "frame_id": "0x143",
       "signal_name": "Checksum_ACC2",
       "dataid": "0x0055"
-    },
-    {
-      "frame_id": "0x146",
-      "signal_name": "Checksum_VDC1",
-      "dataid": "0x00FD"
     },
     {
       "frame_id": "0x147",
@@ -298,11 +178,6 @@
     },
     {
       "frame_id": "0x15B",
-      "signal_name": "Checksum_APA7",
-      "dataid": "0x05D2"
-    },
-    {
-      "frame_id": "0x15B",
       "signal_name": "Checksum_APS1",
       "dataid": "0x003E"
     },
@@ -327,6 +202,26 @@
       "dataid": "0x050D"
     },
     {
+      "frame_id": "0x15E",
+      "signal_name": "Checksum_CR_R_1",
+      "dataid": "0x00DE"
+    },
+    {
+      "frame_id": "0x15E",
+      "signal_name": "Checksum_CR_R_2",
+      "dataid": "0x00DF"
+    },
+    {
+      "frame_id": "0x15E",
+      "signal_name": "Checksum_CR_R_3",
+      "dataid": "0x00E0"
+    },
+    {
+      "frame_id": "0x15E",
+      "signal_name": "Checksum_CR_R_4",
+      "dataid": "0x00E1"
+    },
+    {
       "frame_id": "0x164",
       "signal_name": "Checksum_EPS_FD2_1",
       "dataid": "0x05E3"
@@ -340,11 +235,6 @@
       "frame_id": "0x164",
       "signal_name": "Checksum_EPS_FD2_3",
       "dataid": "0x05E5"
-    },
-    {
-      "frame_id": "0x16F",
-      "signal_name": "Checksum_RSDS_R_2",
-      "dataid": "0x0049"
     },
     {
       "frame_id": "0x16F",
@@ -395,11 +285,6 @@
       "frame_id": "0x222",
       "signal_name": "Checksum_IFC_HCM9",
       "dataid": "0x00FB"
-    },
-    {
-      "frame_id": "0x227",
-      "signal_name": "Checksum_AEB5",
-      "dataid": "0x05DB"
     },
     {
       "frame_id": "0x22B",
@@ -525,6 +410,46 @@
       "frame_id": "0x38B",
       "signal_name": "Checksum_PTCC1_1",
       "dataid": "0x05F3"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum1",
+      "dataid": "0x0200"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum2",
+      "dataid": "0x0201"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum3",
+      "dataid": "0x0202"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum4",
+      "dataid": "0x0203"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum5",
+      "dataid": "0x0204"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum6",
+      "dataid": "0x0205"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum7",
+      "dataid": "0x0206"
+    },
+    {
+      "frame_id": "0x430",
+      "signal_name": "Checksum8",
+      "dataid": "0x0207"
     },
     {
       "frame_id": "0x431",

@@ -124,7 +124,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     signals_info: list[dict] = []
 
     for v in verdicts:
-        if not v.start_bit or not v.length:
+        if v.start_bit is None or not v.length:
             continue
         for bit_i in range(v.length):
             byte_idx, _ = _bit_to_byte_pos(v.start_bit, bit_i, v.byte_order)
@@ -151,7 +151,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
 
     seg_dataid: dict[int, int] = {}
     for v in verdicts:
-        if v.dataid is not None and v.start_bit:
+        if v.dataid is not None and v.start_bit is not None:
             seg_idx = v.start_bit // (seg_size * 8)
             seg_dataid[seg_idx] = v.dataid
 

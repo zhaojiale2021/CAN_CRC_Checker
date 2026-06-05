@@ -41,17 +41,28 @@ class CRCVerifier(ProtectionAlgorithm):
             # - CAN FD (DLC > 8) with DataID → segment mode (8-byte blocks)
             # - Standard CAN or no DataID → exclude CRC field (full payload)
             if protection.dataid is not None and frame.dlc > 8:
-                crc_range = CRCRange.for_segment(cs_signal.start_bit, dataid=protection.dataid)
+                crc_range = CRCRange.for_segment(
+                    cs_signal.start_bit, dataid=protection.dataid)
             else:
                 crc_range = CRCRange(mode="exclude_crc")
         elif crc_range.mode == "exclude_crc" and protection.dataid is not None and frame.dlc > 8:
             # Override: if explicit range is default exclude_crc but we have DataID + CAN FD,
             # use segment mode instead (the explicit default shouldn't override smarter behavior)
-            crc_range = CRCRange.for_segment(cs_signal.start_bit, dataid=protection.dataid)
+            crc_range = CRCRange.for_segment(
+                cs_signal.start_bit, dataid=protection.dataid,
+                dataid_position=crc_range.dataid_position,
+                dataid_byte_order=crc_range.dataid_byte_order)
 
         # Inject DataID into CRC range if available on this protection group
         if protection.dataid is not None and crc_range.dataid is None:
             crc_range = replace(crc_range, dataid=protection.dataid)
+
+        # Propagate DataID position/byte_order from protection-level range
+        if protection.dataid is not None and protection.crc_range:
+            if crc_range.dataid_position == "prepend" and protection.crc_range.dataid_position == "append":
+                crc_range = replace(crc_range, dataid_position="append")
+            if crc_range.dataid_byte_order == "lo_hi" and protection.crc_range.dataid_byte_order == "hi_lo":
+                crc_range = replace(crc_range, dataid_byte_order="hi_lo")
 
         # Rebuild engine if params differ from initialized
         engine = self.engine if params == self.params else CRCEngine(params)
@@ -65,6 +76,11 @@ class CRCVerifier(ProtectionAlgorithm):
         expected_value = engine.compute_for_frame(
             frame, crc_range, cs_signal.start_bit, cs_signal.length, cs_signal.byte_order
         )
+
+        # Apply byte-swap for comparison if configured (Profile 5: CRC computed LE,
+        # but DBC defines signal as BE; OEM byte-swaps before transmission)
+        if crc_range.crc_byte_swap and cs_signal.length > 8:
+            expected_value = ((expected_value & 0xFF) << 8) | ((expected_value >> 8) & 0xFF)
 
         is_pass = expected_value == actual_value
         detail = ""

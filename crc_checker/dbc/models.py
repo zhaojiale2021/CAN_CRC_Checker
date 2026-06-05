@@ -31,6 +31,7 @@ class MessageProtection:  # pylint: disable=too-many-instance-attributes
     crc_params: CRCParams | None = None                        # Algorithm (set by user/config)
     crc_range: CRCRange | None = None                          # Data range (set by user/config)
     dataid: int | None = None                                  # 16-bit DataID from AUTOSAR E2E
+    crc_profile: str = ""                                      # Profile hint from DataID (e.g. "Profile 1A")
     frame_protection_count: int = 1                            # How many protection groups
     rc_max_valid: int | None = None                            # Max RC before wrap
     dbc_source: str = ""                                       # Source DBC file name
@@ -80,16 +81,61 @@ class DBCProtectionMap:
     def apply_dataid_map(self, dataid_map):
         """Apply DataID values from a DataIDMap to matching protection groups.
 
-        Matches by (frame_id, checksum_signal_name).
+        Match strategy (tried in order):
+        1. Exact match by (frame_id, checksum_signal_name) — default GWM style
+        2. Exact match by (frame_id, frame_name) — GAC style (Excel uses message names)
+        3. Match by (frame_id, pair_suffix) — fallback for suffix-based naming
+        4. Fuzzy match: if frame_name contains the DataID signal name, or vice versa
+
+        Also stores profile info (e.g. "Profile 1A") from DataID entries.
         """
+        # Pre-build a reverse index: frame_id → list of (signal_name, dataid, profile)
+        rev_index: dict[int, list[tuple[str, int, str]]] = {}
+        for (fid, sig), did in dataid_map._map.items():
+            if fid not in rev_index:
+                rev_index[fid] = []
+            profile = dataid_map._profiles.get((fid, sig), "")
+            rev_index[fid].append((sig, did, profile))
+
+        def _try_lookup(fid, key):
+            """Try exact lookup in DataIDMap."""
+            did = dataid_map.get(fid, key)
+            if did is not None:
+                return did, dataid_map.get_profile(fid, key) or ""
+            return None, ""
+
         applied = 0
         for prot_list in self.messages.values():
             for prot in prot_list:
-                if prot.checksum_signal:
-                    dataid = dataid_map.get(prot.frame_id, prot.checksum_signal.name)
-                    if dataid is not None:
-                        prot.dataid = dataid
-                        applied += 1
+                if not prot.checksum_signal:
+                    continue
+                dataid = None
+                profile = ""
+
+                # Strategy 1: exact checksum signal name match
+                dataid, profile = _try_lookup(prot.frame_id, prot.checksum_signal.name)
+
+                # Strategy 2: match by frame/message name
+                if dataid is None and prot.frame_name:
+                    dataid, profile = _try_lookup(prot.frame_id, prot.frame_name)
+
+                # Strategy 3: match by pair_suffix
+                if dataid is None and prot.pair_suffix:
+                    dataid, profile = _try_lookup(prot.frame_id, prot.pair_suffix)
+
+                # Strategy 4: fuzzy substring match in reverse index
+                if dataid is None and prot.frame_id in rev_index:
+                    fname = prot.frame_name.lower()
+                    for sig, did, prof in rev_index[prot.frame_id]:
+                        sig_lower = sig.lower()
+                        if sig_lower in fname or fname in sig_lower:
+                            dataid, profile = did, prof
+                            break
+
+                if dataid is not None:
+                    prot.dataid = dataid
+                    prot.crc_profile = profile
+                    applied += 1
         return applied
 
     def apply_dataid_map_fallback(self, dataid_map) -> int:
@@ -98,6 +144,8 @@ class DBCProtectionMap:
         Used for multi-channel fallback: CH1/CH2 borrow DataID from CH0
         for messages that couldn't find their own DataID but share the same
         (frame_id, checksum_signal_name) as CH0.
+
+        Also copies profile info for matched entries.
         """
         applied = 0
         for prot_list in self.messages.values():
@@ -106,8 +154,38 @@ class DBCProtectionMap:
                     dataid = dataid_map.get(prot.frame_id, prot.checksum_signal.name)
                     if dataid is not None:
                         prot.dataid = dataid
+                        prot.crc_profile = dataid_map.get_profile(
+                            prot.frame_id, prot.checksum_signal.name) or ""
                         applied += 1
         return applied
+
+    def apply_profile_crc_params(self, default_params, profile_overrides=None):
+        """Apply CRC params per protection group based on crc_profile.
+
+        Protection groups with crc_profile containing "Profile 1" get
+        CRC8/SAE-J1850-ZERO (init=0x00, xor=0x00). All others use the
+        default params.
+
+        Args:
+            default_params: CRCParams for the default profile (e.g. Profile 5).
+            profile_overrides: Optional dict mapping profile pattern → CRCParams.
+                               Defaults to {"Profile 1": CRC8/SAE-J1850-ZERO}.
+        """
+        from crc_checker.crc.presets import get_preset
+
+        if profile_overrides is None:
+            profile_overrides = {
+                "profile 1": get_preset("CRC8/SAE-J1850-ZERO"),
+            }
+
+        for prot_list in self.messages.values():
+            for prot in prot_list:
+                if prot.crc_profile and "profile 1" in prot.crc_profile.lower():
+                    # Profile 1 → CRC8/SAE-J1850-ZERO
+                    prot.crc_params = profile_overrides["profile 1"]
+                else:
+                    # Default → Profile 5 (CRC8/SAE-J1850)
+                    prot.crc_params = default_params
 
     def apply_rc_config(self, max_valid: int | None = None):
         """Apply RC range config to all protection groups."""
@@ -231,6 +309,13 @@ class ChannelProtectionMap:
         if self._fallback:
             applied += self._fallback.apply_dataid_map_fallback(dataid_map)
         return applied
+
+    def apply_profile_crc_params(self, default_params, profile_overrides=None):
+        """Apply profile-based CRC params to all channel maps."""
+        for pm in self._maps.values():
+            pm.apply_profile_crc_params(default_params, profile_overrides)
+        if self._fallback:
+            self._fallback.apply_profile_crc_params(default_params, profile_overrides)
 
     def apply_rc_config(self, max_valid=None):
         """Apply RC config to all channel maps."""

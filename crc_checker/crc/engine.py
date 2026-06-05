@@ -111,8 +111,16 @@ class CRCEngine:
         """Compute CRC for a CAN frame.
 
         The CRC byte itself is excluded from the input data (not zeroed).
-        If crc_range.dataid is set, the 16-bit DataID bytes are prepended
-        in little-endian order (low byte first) per AUTOSAR E2E convention.
+        If crc_range.dataid is set, the 16-bit DataID bytes are added
+        to the payload data per AUTOSAR E2E convention.
+
+        DataID positioning is controlled by crc_range.dataid_position:
+          - "prepend": DataID goes before payload (default, GWM-style)
+          - "append":  DataID goes after payload (AUTOSAR E2E Profile 5/1)
+
+        Byte order is controlled by crc_range.dataid_byte_order:
+          - "lo_hi": low byte first (default)
+          - "hi_lo": high byte first (E2E 反序)
 
         Args:
             frame: The CAN frame with payload data.
@@ -135,7 +143,14 @@ class CRCEngine:
         if crc_range.dataid is not None:
             dataid_lo = crc_range.dataid & 0xFF
             dataid_hi = (crc_range.dataid >> 8) & 0xFF
-            compute_bytes = bytes([dataid_lo, dataid_hi]) + compute_bytes
+            if crc_range.dataid_byte_order == "hi_lo":
+                dataid_bytes = bytes([dataid_hi, dataid_lo])
+            else:
+                dataid_bytes = bytes([dataid_lo, dataid_hi])
+            if crc_range.dataid_position == "append":
+                compute_bytes = compute_bytes + dataid_bytes
+            else:
+                compute_bytes = dataid_bytes + compute_bytes
 
         return self.compute(compute_bytes)
 

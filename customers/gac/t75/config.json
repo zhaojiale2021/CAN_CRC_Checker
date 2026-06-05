@@ -1,0 +1,37 @@
+{
+  "dbc": "dbc",
+  "traces": ["trace"],
+  "crc": {
+    "preset": "CRC16/CCITT",
+    "byte_swap": true
+  },
+  "range": {
+    "mode": "custom_range",
+    "start_byte": 0,
+    "end_byte": 56
+  },
+  "dataid": {
+    "xlsx": "dbc/EEA4.0 E2E DataID ConfigurationV1.9.xlsx",
+    "json": "dbc/dataid.json",
+    "sheet": "Data ID Config",
+    "mapping": "gac_eea4",
+    "position": "append",
+    "byte_order": "lo_hi"
+  },
+  "signals": {
+    "checksum_pattern": null,
+    "rc_pattern": null
+  },
+  "filter": {
+    "frame_ids": null,
+    "max_frames": 2000
+  },
+  "output": {
+    "format": "html",
+    "file": "report.html",
+    "only_failures": false
+  },
+  "rc": {
+    "max_valid": null
+  }
+}
