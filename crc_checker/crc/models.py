@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass(frozen=True)
 class CRCParams:
     """Complete CRC algorithm parameters."""
@@ -31,6 +32,7 @@ class CRCRange:
     crc_byte_swap: bool = False  # True = byte-swap computed CRC before comparison (Profile 5)
 
     @classmethod
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def for_segment(cls, checksum_start_bit: int, segment_size: int = 8,
                     dataid: int | None = None,
                     dataid_position: str = "prepend",

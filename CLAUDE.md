@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CAN bus CRC/Rolling Counter verification tool. Parses DBC files to auto-identify Checksum and RollingCounter signal positions, computes expected CRC values with configurable algorithms, and compares against actual values from trace files (BLF, ASC, MF4, TRC). See [docs/superpowers/specs/2026-05-30-crc-checker-design.md](docs/superpowers/specs/2026-05-30-crc-checker-design.md) for the full design spec.
+CAN bus CRC/Rolling Counter verification tool. Parses DBC files to auto-identify Checksum and RollingCounter signal positions, computes expected CRC values with configurable algorithms, and compares against actual values from trace files (BLF, ASC, MF4, TRC). Supports E2E Profile 5 (CRC16/CCITT) and Profile 1 (CRC8/SAE-J1850). See [docs/superpowers/specs/2026-05-30-crc-checker-design.md](docs/superpowers/specs/2026-05-30-crc-checker-design.md) for the full design spec.
 
 ## Commands
 
@@ -15,9 +15,6 @@ pip install -e .
 
 # Run tests (all)
 pytest
-
-# Run a single test file
-pytest tests/test_crc_engine.py
 
 # Run a single test
 pytest tests/test_crc_engine.py::TestCRCEngine::test_crc8_autosar_known_vector
@@ -33,54 +30,102 @@ crc-check presets                      # List available CRC presets
 crc-check inspect path/to/file.dbc     # Inspect DBC for protection signals
 crc-check gen-config example.json      # Generate example config
 crc-check run -c config.json           # Run from config file
-crc-check verify --dbc x.dbc --trace t.blf --algo CRC8/AUTOSAR  # Direct CLI
+crc-check preprocess-dataid --xlsx d.xlsx -o d.json   # Preprocess DataID
 
-# Build standalone .exe (Windows only)
-build.bat
+# Build + package
+build.bat                  # Build standalone exe
+package.bat                # Package all customers → release/*.zip
+package.bat gac/t75        # Package GAC T75 only
+./package.sh               # Linux: package all
+./package.sh chery/t1jfl3  # Linux: package Chery only
 ```
+
+## Customer Directory Structure
+
+```
+customers/
+├── gwm/
+│   ├── de09g/             # GWM J6B DE09G (CRC8/SAE-J1850-ZERO)
+│   │   ├── config.json, run.bat, run.sh
+│   │   ├── dbc/           # DBC files + DataID xlsx/json
+│   │   └── trace/         # BLF trace files
+│   └── b06-5/             # GWM J6M B06-5 (CRC8/SAE-J1850-ZERO)
+└── gac/
+    └── t75/               # GAC Trumpchi T75 (E2E Profile 5 + Profile 1A)
+        ├── config.json, run.bat, run.sh
+        ├── dbc/           # DBC files + DataID xlsx/json
+        └── trace/
+```
+
+To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `run.bat`, `run.sh`, `dbc/` and `trace/` directories.
 
 ## Architecture
 
 **Layer dependencies:** `crc/`, `dbc/`, `trace/`, `dataid/`, `bit_utils.py` are independent leaf modules. `protect/` depends on `crc/` + models. `verify/` assembles everything. `report/` consumes `verify/` models only.
 
-Each package's `__init__.py` re-exports its public API (key classes and functions). When importing across modules, prefer the package-level imports (e.g., `from crc_checker.crc import CRCParams, CRCConfig, CRCEngine`).
-
 ### Core modules
 
-- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. [`engine.py`](crc_checker/crc/engine.py) computes CRC8/16/32 with both reflected (right-shifting) and non-reflected (left-shifting) algorithms. [`presets.py`](crc_checker/crc/presets.py) holds 9 built-in automotive presets (AUTOSAR, SAE-J1850, H2F, MODBUS, ETHERNET, etc.). [`models.py`](crc_checker/crc/models.py) defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID for E2E).
+- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms. `presets.py` holds 10 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8. `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
 
-- **`crc_checker/dbc/`** — [`parser.py`](crc_checker/dbc/parser.py) wraps `canmatrix` to load DBC files. [`resolver.py`](crc_checker/dbc/resolver.py) uses regex pattern matching to identify Checksum/RC signal pairs by naming convention and pairs them by common suffix (e.g., `Checksum_ACC1` + `RollingCounter_ACC1` → pair_suffix="ACC1"). Default patterns match `Checksum_*`, `CRC_*`, `E2E_CRC_*` and `RollingCounter_*`, `RC_*`, `LiveCounter_*`. Custom patterns can override via `--checksum-pattern` / `--rc-pattern`.
+- **`crc_checker/dbc/`** — `parser.py` wraps `canmatrix` to load DBC files. `resolver.py` uses regex matching for Checksum/RC signal pairs. Supports both **prefix-based** naming (`Checksum_*`, `CRC_*`) and **suffix-based** naming (`*_CRC`, `*_Counter`) via auto-detection (`detect_naming_convention()`). `models.py` defines `DBCProtectionMap`, `ChannelProtectionMap` (per-channel DBC assignment), `MessageProtection` (with `crc_profile` for algorithm overrides).
 
-- **`crc_checker/trace/`** — [`reader.py`](crc_checker/trace/reader.py) wraps `python-can.LogReader` with iterator pattern for memory-safe reading of large files. Skips error frames and remote frames. `CanFrame` dataclass: timestamp, arbitration_id, dlc, data (bytes), is_fd, is_extended, channel.
+- **`crc_checker/trace/`** — `reader.py` wraps `python-can.LogReader` with iterator pattern. `CanFrame` dataclass: timestamp, arbitration_id, dlc, data (bytes), is_fd, is_extended, channel.
 
-- **`crc_checker/dataid/`** — Parses OEM-specific Excel files for DataID mappings (AUTOSAR E2E). [`parser.py`](crc_checker/dataid/parser.py) reads Excel with `ColumnMapping` config. [`presets.py`](crc_checker/dataid/presets.py) has built-in column mappings: `greatwall_j6m`, `generic_abc`, `simple_8bit`. [`models.py`](crc_checker/dataid/models.py) defines `ColumnMapping` and `DataIDEntry`. Custom mappings can be provided via JSON. DataID is prepended (low byte first) to payload before CRC computation.
+- **`crc_checker/dataid/`** — Parses OEM-specific Excel files for DataID mappings. `parser.py` reads Excel with `ColumnMapping` config. Built-in mappings: `greatwall_j6m` (GWM hi_lo_two_cols), `gac_eea4` (GAC single_16bit), `generic_abc`, `simple_8bit`. Falls back to zipfile-based parser when openpyxl fails. DataID JSON fast-path via `dataid.json` for subsequent runs. `DataIDMap` stores optional `crc_profile` per entry for algorithm overrides.
 
-- **`crc_checker/bit_utils.py`** — Extracts/zeros signal bits from CAN payload. Handles both Intel (little-endian, start_bit = LSB) and Motorola (big-endian, start_bit = MSB with canmatrix's inverted bit numbering). Critical: `_canmatrix_to_physical_msb()` converts canmatrix's internal bit numbering to physical positions for Motorola signals.
+- **`crc_checker/bit_utils.py`** — Extracts/zeros signal bits from CAN payload. Handles Intel (LE) and Motorola (BE) via `_extract_motorola()` / `_extract_intel()`. Motorola extraction handles multi-byte signals (>8 bits) with correct cross-byte boundary logic.
 
-- **`crc_checker/protect/`** — Plugin architecture via `ProtectionAlgorithm` ABC (algorithm_type + verify() + reset()). Two implementations: [`checksum.py`](crc_checker/protect/checksum.py) (CRCVerifier, stateless) and [`rolling_counter.py`](crc_checker/protect/rolling_counter.py) (stateful, tracks per-(frame_id, signal) across frames). RC detects: PASS, STALE (repeat), SKIP (gap>1), RESET (unexpected wrap to 0), INVALID (exceeds max_valid). [`models.py`](crc_checker/protect/models.py) defines the `ProtectionAlgorithm` ABC and `ProtectionGroup` dataclass.
+- **`crc_checker/protect/`** — Plugin architecture via `ProtectionAlgorithm` ABC in `base.py`. `checksum.py` (CRCVerifier, stateless, supports byte_swap for Profile 5 LE→BE conversion). `rolling_counter.py` (stateful, tracks per-(frame_id, signal)). RC detects: PASS, STALE (repeat), SKIP (gap>1), RESET (wrap), INVALID (>max_valid).
 
-- **`crc_checker/verify/`** — [`engine.py`](crc_checker/verify/engine.py) orchestrates verification: iterates trace frames, matches against `DBCProtectionMap`, runs each algorithm on each protection group, collects `VerifyVerdict`s into `VerifyReport`. Also provides `run_stream()` for streaming results. [`models.py`](crc_checker/verify/models.py) defines `VerifyVerdict` (per-frame verdict: PASS/FAIL/ERROR with metadata), `SegmentReport` (per-protection-group aggregated stats), and `VerifyReport` (top-level report with all segments).
+- **`crc_checker/verify/`** — `engine.py` orchestrates verification: iterates trace frames, matches against protection map, runs algorithms, collects `VerifyVerdict`s into `VerifyReport`. `models.py` defines `VerifyVerdict` and `VerifyReport`.
 
-- **`crc_checker/report/`** — [`html.py`](crc_checker/report/html.py) generates self-contained HTML with dark theme, summary cards, collapsible frame sections, per-segment hex-dump with inline CRC/RC byte highlighting, hover tooltips, and filter buttons (All/Errors/Expand/Collapse).
+- **`crc_checker/report/`** — `html.py` generates self-contained HTML with dark theme, CRC/RC byte highlighting (green/red borders), hover tooltips with expected/actual values, per-segment hex dump with DataID display, channel/DBC source tags, collapsible sections, and filter buttons.
 
 ### CLI
 
-Entry point: [`cli/main.py`](cli/main.py) — Click command group with `verify`, `run`, `gen-config`, `presets`, `inspect` subcommands. The `run` command uses JSON config via [`crc_checker/config.py`](crc_checker/config.py) (`RunConfig` dataclass + `load_config()` with path resolution relative to config file location). `RunConfig` fields: `dbc_path`, `trace_path`, `output_path`, `crc_algorithm`, `crc_range` (mode + start/end), `dataid_config`, `checksum_pattern`, `rc_pattern`, `rc_max_valid`.
+Entry point: `cli/main.py` — Click command group: `verify`, `run`, `gen-config`, `presets`, `inspect`, `preprocess-dataid`. The `run` command uses JSON config via `crc_checker/config.py`.
+
+### JSON Config Reference
+
+Key config sections (see `config.py` `CONFIG_SCHEMA_DOC` for full reference):
+
+| Section | Field | Description |
+|---------|-------|-------------|
+| `crc` | `preset` | CRC preset name (e.g. `CRC16/CCITT`, `CRC8/SAE-J1850-ZERO`) |
+| | `byte_swap` | Swap computed CRC bytes before compare (Profile 5: `true`) |
+| `range` | `mode` | `exclude_crc` / `full_payload` / `custom_range` |
+| | `start_byte`, `end_byte` | For `custom_range` (Profile 5 64B: `0, 56`) |
+| `dataid` | `xlsx` / `json` | Excel path / Preprocessed JSON (fast load) |
+| | `mapping` | `greatwall_j6m` / `gac_eea4` / custom JSON |
+| | `position` | `prepend` (GWM, Profile 1) / `append` (Profile 5) |
+| | `byte_order` | `lo_hi` (default) / `hi_lo` |
+| `signals` | `checksum_pattern` | Custom regex override (null = auto-detect) |
+| | `rc_pattern` | Custom regex override |
+| `rc` | `max_valid` | Max RC value before wrap (null = auto from bit length) |
+
+### E2E Profile Support
+
+| Profile | CRC Algorithm | DataID Position | CRC Width | Byte Swap | Example Config |
+|---------|--------------|-----------------|-----------|-----------|----------------|
+| **Profile 5** | CRC16/CCITT | append lo_hi | 16-bit | yes | `customers/gac/t75/` |
+| **Profile 1** | CRC8/SAE-J1850-ZERO | prepend lo_hi | 8-bit | no | `customers/gwm/` |
 
 ### Key data flow
 
 1. DBC parsed → `DBCProtectionMap` (dict of frame_id → list of `MessageProtection`)
-2. CRC params + range + DataID applied to protection map
-3. `TraceReader` yields `CanFrame` objects
-4. `VerifyEngine.run()` iterates frames, dispatches to `ProtectionAlgorithm.verify()` per protection group
-5. Each verifier extracts signal bits via `bit_utils.extract_signal_bits()`, computes expected value, compares
-6. Results collected in `VerifyReport` → rendered as table (terminal) or HTML
+2. DataID loaded (JSON fast-path or Excel) → applied to protection map via multi-strategy matching
+3. CRC params + range + profile overrides applied
+4. `TraceReader` yields `CanFrame` objects
+5. `VerifyEngine.run()` iterates frames, dispatches to `ProtectionAlgorithm.verify()` per group
+6. CRCVerifier extracts signal bits, computes expected value (with optional byte_swap), compares
+7. Results in `VerifyReport` → rendered as HTML
 
 ### Auto-detect behavior
 
-- **CRC range**: When no explicit range is set, defaults to `exclude_crc` (full payload minus CRC bytes). For CAN FD frames (DLC > 8) with DataID, auto-switches to 8-byte segment mode.
-- **RC max_valid**: When not set, defaults to `(1 << signal_length) - 1`. When set (e.g., 14 for 4-bit RC), values > max_valid are flagged as INVALID.
+- **Signal naming**: Auto-detects prefix-based (GWM: `Checksum_*`) vs suffix-based (GAC: `*_CRC`) conventions via `detect_naming_convention()`. Requires ≥3 suffix-only matches and zero prefix matches to enable suffix mode.
+- **CRC range**: Default `exclude_crc`. For CAN FD + DataID, auto-switches to segment mode. Profile 5 uses `custom_range` with end_byte=56 for 64B messages.
+- **RC max_valid**: Default `(1 << signal_length) - 1`. Profile 1 uses `max_valid=14` for 4-bit RC.
 
 ### Testing
 
-Tests use pytest with known CRC test vectors (CRC Catalogue "123456789" check string). `test_crc_engine.py` validates all presets against known values. `test_dbc_resolver.py` tests signal name matching, suffix extraction, pairing logic, and custom pattern overrides.
+27 tests in `tests/` — CRC engine known vectors, DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, and protection map merge logic.

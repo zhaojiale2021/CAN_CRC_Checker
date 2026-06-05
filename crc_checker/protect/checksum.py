@@ -59,10 +59,10 @@ class CRCVerifier(ProtectionAlgorithm):
 
         # Propagate DataID position/byte_order from protection-level range
         if protection.dataid is not None and protection.crc_range:
-            if crc_range.dataid_position == "prepend" and protection.crc_range.dataid_position == "append":
-                crc_range = replace(crc_range, dataid_position="append")
-            if crc_range.dataid_byte_order == "lo_hi" and protection.crc_range.dataid_byte_order == "hi_lo":
-                crc_range = replace(crc_range, dataid_byte_order="hi_lo")
+            for attr in ("dataid_position", "dataid_byte_order"):
+                p_val = getattr(protection.crc_range, attr)
+                if getattr(crc_range, attr) != p_val:
+                    crc_range = replace(crc_range, **{attr: p_val})
 
         # Rebuild engine if params differ from initialized
         engine = self.engine if params == self.params else CRCEngine(params)

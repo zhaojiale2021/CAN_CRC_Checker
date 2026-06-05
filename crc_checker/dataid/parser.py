@@ -1,7 +1,7 @@
 """DataID Excel parser — extracts DataID mappings for E2E protection groups.
 
 The Excel file maps (MessageID, ChecksumSignalName) → 16-bit DataID.
-DataID is prepended to payload data before CRC calculation as per AUTOSAR E2E spec.
+DataID is prepended to payload data before CRC calculation per AUTOSAR E2E spec.
 
 ## Extensibility for different Excel formats
 
@@ -10,6 +10,8 @@ Use `ColumnMapping` to configure column indices and data format without
 modifying this module. Built-in presets cover common formats; custom
 mappings can be passed via CLI (`--dataid-columns` JSON) or programmatically.
 """
+# pylint: disable=import-outside-toplevel
+# pylint: disable=consider-using-with
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -30,6 +32,7 @@ class DataIDMap:
         self.sheet_name = sheet_name
         self._map: dict[tuple[int, str], int] = {}  # (frame_id, signal_name) → dataid
         self._profiles: dict[tuple[int, str], str] = {}  # (frame_id, signal_name) → profile
+        self._frame_names: dict[tuple[int, str], str] = {}  # (frame_id, signal_name) → msg name
 
     def add(self, frame_id: int, signal_name: str, dataid: int, profile: str = ""):
         """Register a DataID for a specific checksum signal.
@@ -72,15 +75,19 @@ class DataIDMap:
         for (fid, sig), did in sorted(self._map.items()):
             entry = {
                 "frame_id": f"0x{fid:03X}",
-                "signal_name": sig,
                 "dataid": f"0x{did:04X}",
             }
+            if sig:
+                entry["signal_name"] = sig
             profile = self._profiles.get((fid, sig), "")
             if profile:
                 entry["profile"] = profile
+            frame_name = self._frame_names.get((fid, sig), "")
+            if frame_name:
+                entry["frame_name"] = frame_name
             entries.append(entry)
         data = {
-            "format": "dataid_map_v1",
+            "format": "dataid_map_v2",
             "source": source,
             "mapping": mapping,
             "sheets": sheets or ([self.sheet_name] if self.sheet_name else []),
@@ -92,6 +99,8 @@ class DataIDMap:
     @classmethod
     def from_json(cls, file_path: str) -> "DataIDMap":
         """Load a DataIDMap from a standardized JSON file.
+
+        Supports v1 and v2 formats.
 
         Args:
             file_path: Path to the JSON file.
@@ -106,9 +115,10 @@ class DataIDMap:
             data = json.load(f)
 
         fmt = data.get("format", "")
-        if fmt != "dataid_map_v1":
+        if fmt not in ("dataid_map_v1", "dataid_map_v2"):
             raise ValueError(
-                f"Unsupported DataID JSON format: '{fmt}'. Expected 'dataid_map_v1'."
+                f"Unsupported DataID JSON format: '{fmt}'. "
+                f"Expected 'dataid_map_v1' or 'dataid_map_v2'."
             )
 
         sheets = data.get("sheets", [])
@@ -123,10 +133,15 @@ class DataIDMap:
                 did = int(did, 16)
             result.add(
                 frame_id=fid,
-                signal_name=entry["signal_name"],
+                signal_name=entry.get("signal_name", ""),
                 dataid=did,
                 profile=entry.get("profile", ""),
             )
+            # Store frame_name if present (v2)
+            fname = entry.get("frame_name", "")
+            if fname:
+                key = (fid, entry.get("signal_name", ""))
+                result._frame_names[key] = fname
         return result
 
     def update(self, other: "DataIDMap") -> int:
@@ -142,10 +157,13 @@ class DataIDMap:
             if key in self._map:
                 overwritten += 1
             self._map[key] = value
-        # Merge profiles too
+        # Merge profiles and frame names
         for key, profile in other._profiles.items():  # pylint: disable=protected-access
             if profile:
                 self._profiles[key] = profile
+        for key, fname in other._frame_names.items():  # pylint: disable=protected-access
+            if fname:
+                self._frame_names[key] = fname
         return overwritten
 
 
@@ -262,9 +280,34 @@ BUILTIN_MAPPINGS: dict[str, ColumnMapping] = {
         message_id_base=16,
         signal_name_filter=[],  # Empty → accept all rows (GAC uses msg names, not CRC sig names)
     ),
+    # Chery T1JFL3 message-list format
+    # Each SIGNAL is a row; Message ID (col A) inherited from parent rows
+    # DataID extracted from Signal Description (col AD) via regex
+    # Columns: A=MsgID, L=SignalName, AD=SignalDescription
+    "chery_t1jfl3": ColumnMapping(
+        col_signal_name=11,      # Column L: Signal Name
+        col_message_id=0,        # Column A: Msg ID (present on first row only)
+        col_dataid_hi=29,        # Column AD: Signal Description (DataID extracted by regex)
+        col_dataid_lo=-1,        # unused
+        col_remark=29,           # Same column for profile extraction
+        dataid_format="description_regex",
+        data_row_start=1,
+        message_id_base=16,
+        signal_name_filter=[],   # Accept all rows; DataID regex handles filtering
+        use_header_names=False,
+    ),
 }
 
 
+def _col_ref_to_index(ref: str) -> int:
+    """Convert Excel column reference (e.g. 'A', 'AB') to 0-based index."""
+    idx = 0
+    for ch in ''.join(ch for ch in ref if ch.isalpha()).upper():
+        idx = idx * 26 + (ord(ch) - ord('A') + 1)
+    return idx - 1
+
+
+# pylint: disable=too-many-locals,too-many-branches
 def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapping:
     """Auto-detect column positions from header names.
 
@@ -406,6 +449,7 @@ def _parse_dataid_value(hi_val, lo_val, fmt: str) -> int | None:
     return None
 
 
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
                     mapping: ColumnMapping) -> DataIDMap:
     """Parse DataID Excel using raw zipfile+XML (no openpyxl).
@@ -417,8 +461,6 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
     import xml.etree.ElementTree as ET
 
     ns = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-    # Relationship namespace for workbook→sheet mapping
-    rel_ns = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
     with zipfile.ZipFile(xlsx_path) as z:
         # Parse shared strings
@@ -486,16 +528,10 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
                 max_col = 0
                 cell_values: dict[int, str | None] = {}
                 for c_el in row_el.findall('s:c', ns):
-                    ref = c_el.get('r', '')
-                    col_letter = ''.join(ch for ch in ref if ch.isalpha())
-                    col_idx = 0
-                    for ch in col_letter.upper():
-                        col_idx = col_idx * 26 + (ord(ch) - ord('A') + 1)
-                    col_idx -= 1
+                    col_idx = _col_ref_to_index(c_el.get('r', ''))
                     val = _resolve_cell(c_el)
                     cell_values[col_idx] = val
-                    if col_idx > max_col:
-                        max_col = col_idx
+                    max_col = max(max_col, col_idx)
                 header_row_data = [cell_values.get(i, '') for i in range(max_col + 1)]
                 mapping = _auto_detect_columns(mapping, header_row_data)
                 break  # header row found, stop scanning
@@ -509,16 +545,10 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
             max_col = 0
             cell_values: dict[int, str | None] = {}
             for c_el in row_el.findall('s:c', ns):
-                ref = c_el.get('r', '')
-                col_letter = ''.join(ch for ch in ref if ch.isalpha())
-                col_idx = 0
-                for ch in col_letter.upper():
-                    col_idx = col_idx * 26 + (ord(ch) - ord('A') + 1)
-                col_idx -= 1
+                col_idx = _col_ref_to_index(c_el.get('r', ''))
                 val = _resolve_cell(c_el)
                 cell_values[col_idx] = val
-                if col_idx > max_col:
-                    max_col = col_idx
+                max_col = max(max_col, col_idx)
 
             # Extract values using column mapping
             max_col_needed = max(
@@ -583,6 +613,77 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
         return dataid_map
 
 
+# pylint: disable=unused-argument
+def _parse_description_regex(ws, mapping, dataid_map, sheet_name, wb) -> DataIDMap:
+    """Parse Chery-style message-list Excel where DataID is in a description column.
+
+    Each signal is a row. Message ID and Message Name only appear on
+    the first signal row of each message; subsequent rows inherit them.
+    DataID is extracted from the description column (mapping.col_dataid_hi)
+    using regex: DataID:0xXXXX.
+    """
+    current_msg_id = None
+    current_msg_name = ""
+
+    for row in ws.iter_rows(min_row=mapping.data_row_start, values_only=True):
+        if not row:
+            continue
+
+        max_col = max(mapping.col_message_id, mapping.col_signal_name,
+                      mapping.col_dataid_hi)
+        if len(row) <= max_col:
+            continue
+
+        # Track current message ID and name (inherited from parent row)
+        msg_id_raw = row[mapping.col_message_id]
+        if msg_id_raw is not None:
+            msg_id_str = str(msg_id_raw).strip()
+            if msg_id_str.lower().startswith("0x"):
+                try:
+                    current_msg_id = int(msg_id_str, 16)
+                except ValueError:
+                    pass
+
+        # Column D (index 3) typically contains the message name in Chery format
+        if len(row) > 3 and row[3] is not None:
+            msg_name = str(row[3]).strip()
+            if msg_name:
+                current_msg_name = msg_name
+
+        if current_msg_id is None:
+            continue
+
+        signal_name = row[mapping.col_signal_name]
+        if not isinstance(signal_name, str) or not signal_name.strip():
+            continue
+
+        # Filter by signal name prefix
+        if mapping.signal_name_filter:
+            name_lower = signal_name.lower()
+            if not any(name_lower.startswith(pfx) for pfx in mapping.signal_name_filter):
+                continue
+
+        # Extract DataID from description column using regex
+        desc_col = mapping.col_dataid_hi
+        if len(row) > desc_col and row[desc_col] is not None:
+            desc = str(row[desc_col])
+            did_match = re.search(r'DataID:?\s*(0x[0-9A-Fa-f]+)', desc, re.IGNORECASE)
+            profile_match = re.search(r'(Profile\s*[0-9A-Za-z]+)', desc, re.IGNORECASE)
+
+            if did_match and 'No AS' not in desc.rsplit('DataID:', 1)[-1][:30]:
+                did_val = int(did_match.group(1), 16)
+                profile = profile_match.group(1).replace(' ', '') if profile_match else ''
+                dataid_map.add(current_msg_id, signal_name, did_val, profile)
+                # Store frame_name if available
+                if current_msg_name:
+                    key = (current_msg_id, signal_name)
+                    # pylint: disable=protected-access
+                    dataid_map._frame_names[key] = current_msg_name
+
+    wb.close()
+    return dataid_map
+
+
 def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         xlsx_path: str,
         sheet_name: str | None = None,
@@ -624,6 +725,7 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
         import zipfile
         import xml.etree.ElementTree as ET
         ns_s = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+        # pylint: disable=consider-using-with
         with zipfile.ZipFile(xlsx_path) as zf:
             wb_tree = ET.parse(zf.open('xl/workbook.xml'))
             sheets = wb_tree.findall('.//s:sheet', ns_s)
@@ -646,6 +748,10 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
 
     ws = wb[sheet_name]
     dataid_map = DataIDMap(sheet_name=sheet_name)
+
+    # ── description_regex format: Chery message-list layout ──
+    if mapping.dataid_format == "description_regex":
+        return _parse_description_regex(ws, mapping, dataid_map, sheet_name, wb)
 
     # Auto-detect columns from header row (row 1 by default)
     header_row_num = 1 if mapping.data_row_start > 1 else None
@@ -706,7 +812,7 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
             # Parse remark for profile info
             profile = ""
             remark_col = getattr(mapping, 'col_remark', -1)
-            if remark_col >= 0 and len(row) > remark_col:
+            if 0 <= remark_col < len(row):
                 remark_val = row[remark_col]
                 if remark_val and isinstance(remark_val, str):
                     remark_val = remark_val.strip()
@@ -797,11 +903,13 @@ def parse_dataid_xlsx_multi(xlsx_path: str,
     Returns:
         Merged DataIDMap with entries from all sheets.
     """
+    # pylint: disable=import-outside-toplevel
     import zipfile
     import xml.etree.ElementTree as ET
 
     # Get sheet names via raw zipfile (avoids openpyxl)
     ns_s = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+    # pylint: disable=consider-using-with
     with zipfile.ZipFile(xlsx_path) as zf:
         wb_tree = ET.parse(zf.open('xl/workbook.xml'))
         all_sheets = [s.get('name', '') for s in wb_tree.findall('.//s:sheet', ns_s)]

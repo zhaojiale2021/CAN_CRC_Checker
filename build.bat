@@ -32,6 +32,7 @@ pyinstaller --onefile --name crc-check ^
 echo.
 if exist dist\crc-check.exe (
     echo Done: dist\crc-check.exe
+    echo Copy to customer directory to use.
 ) else (
     echo Build failed!
 )

@@ -14,13 +14,19 @@ from crc_checker.verify.engine import VerifyEngine
 from crc_checker.report.html import write_html
 
 
+# ---------------------------------------------------------------------------
+# Shared helpers used by both ``verify`` and ``run`` commands
+# ---------------------------------------------------------------------------
+
+_TRACE_EXTENSIONS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
+
+
 def _parse_crc_params(algo: str | None, custom_crc: str | None) -> CRCParams | None:
     """Resolve CRC parameters from --algo or --custom-crc."""
     if custom_crc:
         data = json.loads(custom_crc)
-        width = data["width"]
         return CRCParams(
-            width=width,
+            width=data["width"],
             polynomial=int(data["poly"], 16) if isinstance(data["poly"], str) else data["poly"],
             initial_value=int(data["init"], 16) if isinstance(data["init"], str) else data["init"],
             final_xor=int(data["xor"], 16) if isinstance(data["xor"], str) else data["xor"],
@@ -40,6 +46,44 @@ def _parse_crc_range(mode: str, start: int | None, end: int | None) -> CRCRange:
         start_byte=start or 0,
         end_byte=end if end is not None else -1,
     )
+
+
+def _expand_trace_paths(trace_files: list[str]) -> list[str]:
+    """Expand trace file paths, recursing into directories."""
+    result: list[str] = []
+    for t in trace_files:
+        tp = Path(t)
+        if tp.is_dir():
+            files = sorted(f for f in tp.iterdir()
+                          if f.suffix.lower() in _TRACE_EXTENSIONS)
+            if not files:
+                raise click.BadParameter(f"No trace files found in: {t}")
+            result.extend(str(f) for f in files)
+        else:
+            result.append(str(tp))
+    return result
+
+
+def _build_algorithms(crc_params: CRCParams | None):
+    """Build protection algorithm list from CRC params."""
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.protect.checksum import CRCVerifier
+    from crc_checker.protect.rolling_counter import RollingCounterVerifier
+    algos = [RollingCounterVerifier()]
+    if crc_params:
+        algos.insert(0, CRCVerifier(crc_params, None))
+    return algos
+
+
+def _output_report(report, output_fmt: str, output_file: str,
+                   only_failures: bool):
+    """Render verification report as table or HTML."""
+    if output_fmt == "html":
+        path = output_file or "crc_report.html"
+        write_html(report, path, only_failures)
+        click.echo(f"HTML: {path}")
+    else:
+        _print_table(report, only_failures)
 
 
 # pylint: disable=too-many-locals
@@ -217,45 +261,16 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     if verbose:
         click.echo(f"Found protection signals in {len(protection_map.all_frame_ids())} CAN IDs")
 
-    # Expand trace directories
-    _trace_extensions = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
-    expanded_traces: list[str] = []
-    for t in trace_files:
-        tp = Path(t)
-        if tp.is_dir():
-            files = sorted(f for f in tp.iterdir() if f.suffix.lower() in _trace_extensions)
-            if not files:
-                raise click.BadParameter(f"No trace files found in directory: {t}")
-            expanded_traces.extend(str(f) for f in files)
-        else:
-            expanded_traces.append(str(tp))
+    algorithms = _build_algorithms(crc_params)
 
-    # Process each trace file — create engine ONCE per file
-    for trace_path in expanded_traces:
+    for trace_path in _expand_trace_paths(list(trace_files)):
         if verbose:
             click.echo(f"Processing trace: {trace_path}")
-
-        # Build engine with fresh imports to avoid any stale cache
-        from crc_checker.protect.checksum import CRCVerifier
-        from crc_checker.protect.rolling_counter import RollingCounterVerifier
-        algorithms = []
-        if crc_params:
-            algorithms.append(CRCVerifier(crc_params, None))
-        algorithms.append(RollingCounterVerifier())
         engine = VerifyEngine(protection_map, algorithms)
-
         with TraceReader(trace_path) as reader:
             report = engine.run(reader, frame_ids=id_filter, max_frames=max_frames)
-
         report.dbc_paths = protection_map.dbc_paths
-
-        # Output
-        if output_fmt == "table":
-            _print_table(report, only_failures)
-        elif output_fmt == "html":
-            path = output_file or "crc_report.html"
-            write_html(report, path, only_failures)
-            click.echo(f"HTML report written to {path}")
+        _output_report(report, output_fmt, output_file, only_failures)
 
 
 @cli.command("presets")
@@ -363,7 +378,8 @@ def run_cmd(config_path, verbose):
 
     # Load DataID per-channel: each channel's DBC auto-matches its own sheet
     ch0_dataid_map = None  # Saved for fallback to CH1/CH2
-    if cfg.dataid_xlsx and isinstance(protection_map, ChannelProtectionMap):
+    has_dataid = cfg.dataid_xlsx or cfg.dataid_json
+    if has_dataid and isinstance(protection_map, ChannelProtectionMap):
         for ch, pm in sorted(ch_dbc.items()):
             ch_dbc_name = Path(pm.dbc_paths[0]).name if pm.dbc_paths else ""
             ch_dataid = cfg.load_dataid(dbc_name=ch_dbc_name)
@@ -386,13 +402,19 @@ def run_cmd(config_path, verbose):
                 fallback_total += n
             if fallback_total > 0 and verbose:
                 click.echo(f"  DataID fallback from CH0: {fallback_total} entries")
-    elif cfg.dataid_xlsx:
+    elif has_dataid:
         dbc_name = Path(list(protection_map.dbc_paths)[0]).name if protection_map.dbc_paths else ""
         dataid_map = cfg.load_dataid(dbc_name=dbc_name)
         if dataid_map:
             protection_map.apply_dataid_map(dataid_map)
         if verbose and dataid_map:
             click.echo(f"DataID: {len(dataid_map)} entries (sheet: {dataid_map.sheet_name})")
+
+    # Fill unmatched DataID with default (0x0000) if configured
+    if cfg.dataid_default is not None:
+        n = protection_map.apply_dataid_default(cfg.dataid_default)
+        if verbose and n > 0:
+            click.echo(f"DataID default (0x{cfg.dataid_default:04X}): {n} groups")
 
     if crc_params:
         protection_map.apply_crc_params(crc_params)
@@ -409,25 +431,13 @@ def run_cmd(config_path, verbose):
         for p in trace_paths:
             click.echo(f"  {p}")
 
+    algorithms = _build_algorithms(crc_params)
     for trace_path in trace_paths:
-        from crc_checker.protect.checksum import CRCVerifier
-        from crc_checker.protect.rolling_counter import RollingCounterVerifier
-        algorithms = []
-        if crc_params:
-            algorithms.append(CRCVerifier(crc_params, None))
-        algorithms.append(RollingCounterVerifier())
         engine = VerifyEngine(protection_map, algorithms)
         with TraceReader(trace_path) as reader:
             report = engine.run(reader, frame_ids=cfg.frame_ids, max_frames=cfg.max_frames)
-
         report.dbc_paths = protection_map.dbc_paths
-
-        if cfg.output_format == "table":
-            _print_table(report, cfg.only_failures)
-        elif cfg.output_format == "html":
-            path = cfg.output_file or "crc_report.html"
-            write_html(report, path, cfg.only_failures)
-            click.echo(f"HTML: {path}")
+        _output_report(report, cfg.output_format, cfg.output_file, cfg.only_failures)
 
 
 @cli.command("preprocess-dataid")

@@ -31,7 +31,7 @@ class MessageProtection:  # pylint: disable=too-many-instance-attributes
     crc_params: CRCParams | None = None                        # Algorithm (set by user/config)
     crc_range: CRCRange | None = None                          # Data range (set by user/config)
     dataid: int | None = None                                  # 16-bit DataID from AUTOSAR E2E
-    crc_profile: str = ""                                      # Profile hint from DataID (e.g. "Profile 1A")
+    crc_profile: str = ""               # Profile hint from DataID (e.g. "Profile 1A")
     frame_protection_count: int = 1                            # How many protection groups
     rc_max_valid: int | None = None                            # Max RC before wrap
     dbc_source: str = ""                                       # Source DBC file name
@@ -91,6 +91,7 @@ class DBCProtectionMap:
         """
         # Pre-build a reverse index: frame_id → list of (signal_name, dataid, profile)
         rev_index: dict[int, list[tuple[str, int, str]]] = {}
+        # pylint: disable=protected-access
         for (fid, sig), did in dataid_map._map.items():
             if fid not in rev_index:
                 rev_index[fid] = []
@@ -138,6 +139,23 @@ class DBCProtectionMap:
                     applied += 1
         return applied
 
+    def apply_dataid_default(self, default: int) -> int:
+        """Fill protection groups without DataID with a default value.
+
+        Used when DataID is not configured for some messages (e.g. Chery
+        APA_246h with 'No ASIL' DataID → use 0x0000).
+
+        Returns:
+            Number of groups that received the default value.
+        """
+        applied = 0
+        for prot_list in self.messages.values():
+            for prot in prot_list:
+                if prot.checksum_signal and prot.dataid is None:
+                    prot.dataid = default
+                    applied += 1
+        return applied
+
     def apply_dataid_map_fallback(self, dataid_map) -> int:
         """Apply DataID only to protection groups that currently have dataid=None.
 
@@ -171,6 +189,7 @@ class DBCProtectionMap:
             profile_overrides: Optional dict mapping profile pattern → CRCParams.
                                Defaults to {"Profile 1": CRC8/SAE-J1850-ZERO}.
         """
+        # pylint: disable=import-outside-toplevel
         from crc_checker.crc.presets import get_preset
 
         if profile_overrides is None:
@@ -308,6 +327,15 @@ class ChannelProtectionMap:
             applied += pm.apply_dataid_map_fallback(dataid_map)
         if self._fallback:
             applied += self._fallback.apply_dataid_map_fallback(dataid_map)
+        return applied
+
+    def apply_dataid_default(self, default: int) -> int:
+        """Apply default DataID to all channel maps."""
+        applied = 0
+        for pm in self._maps.values():
+            applied += pm.apply_dataid_default(default)
+        if self._fallback:
+            applied += self._fallback.apply_dataid_default(default)
         return applied
 
     def apply_profile_crc_params(self, default_params, profile_overrides=None):

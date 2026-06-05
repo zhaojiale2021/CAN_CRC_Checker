@@ -47,9 +47,11 @@ from crc_checker.dataid.parser import (
 
 def _get_xlsx_sheet_names(xlsx_path: str) -> list[str]:
     """Get sheet names from an .xlsx file using zipfile (avoids openpyxl bugs)."""
+    # pylint: disable=import-outside-toplevel
     import zipfile
     import xml.etree.ElementTree as ET
     ns = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+    # pylint: disable=consider-using-with
     with zipfile.ZipFile(xlsx_path) as zf:
         wb_tree = ET.parse(zf.open('xl/workbook.xml'))
         return [s.get('name', '') for s in wb_tree.findall('.//s:sheet', ns)]
@@ -75,12 +77,13 @@ class RunConfig:
     range_mode: str = "exclude_crc"             # full_payload | exclude_crc | custom_range
     range_start: int = 0
     range_end: int = -1
-    dataid_position: str = "prepend"            # "prepend" (GWM) | "append" (AUTOSAR E2E Profile 5/1)
-    dataid_byte_order: str = "lo_hi"            # "lo_hi" (low byte first) | "hi_lo" (high byte first)
+    dataid_position: str = "prepend"    # "prepend" (GWM) | "append" (E2E Profile 5/1)
+    dataid_byte_order: str = "lo_hi"    # "lo_hi" | "hi_lo" (high byte first)
     dataid_xlsx: str = ""                       # DataID Excel path
     dataid_sheet: str = ""                      # Sheet name(s), comma-separated ("" = auto)
     dataid_mapping: str = ""                    # Column mapping name/JSON
     dataid_json: str = ""                       # Preprocessed DataID JSON path (fast load)
+    dataid_default: int | None = None           # Fallback DataID value (0x0000) when not found
     frame_ids: list[int] | None = None          # CAN ID filter
     max_frames: int | None = None               # Frame limit
     checksum_pattern: str | None = None         # Regex override
@@ -396,6 +399,7 @@ def load_config(config_path: str) -> RunConfig:
         cfg.dataid_json = did.get("json", "")
         cfg.dataid_position = did.get("position", "prepend")
         cfg.dataid_byte_order = did.get("byte_order", "lo_hi")
+        cfg.dataid_default = did.get("default")
 
     # Filter
     flt = data.get("filter", {})

@@ -1,5 +1,5 @@
 @echo off
-REM GWM CAN CRC Checker
+REM GAC T75 CAN CRC Checker
 REM Usage: run.bat [config.json]   (default: config.json)
 
 setlocal
@@ -14,7 +14,7 @@ if not exist "%CONFIG%" (
     exit /b 1
 )
 
-echo GWM CAN CRC Check: %CONFIG%
+echo GAC T75 CAN CRC Check: %CONFIG%
 crc-check.exe run -c "%CONFIG%" -v
 
 if %errorlevel% neq 0 pause

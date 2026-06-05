@@ -1,0 +1,33 @@
+{
+  "dbc": "dbc",
+  "traces": ["trace"],
+  "crc": {
+    "preset": "CRC8/SAE-J1850-ZERO"
+  },
+  "range": {
+    "mode": "exclude_crc"
+  },
+  "dataid": {
+    "json": "dbc/dataid.json",
+    "mapping": "chery_t1jfl3",
+    "position": "prepend",
+    "byte_order": "lo_hi",
+    "default": 0
+  },
+  "signals": {
+    "checksum_pattern": null,
+    "rc_pattern": null
+  },
+  "filter": {
+    "frame_ids": null,
+    "max_frames": null
+  },
+  "output": {
+    "format": "html",
+    "file": "report.html",
+    "only_failures": false
+  },
+  "rc": {
+    "max_valid": 14
+  }
+}

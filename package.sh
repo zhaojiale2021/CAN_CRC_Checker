@@ -1,59 +1,78 @@
 #!/bin/bash
 # ============================================================
-#  CAN CRC Checker — Package for customer distribution
-#  Usage: ./package.sh <customer>   (e.g. ./package.sh gwm)
+#  CAN CRC Checker — Package customer release
+#
+#  Usage:
+#    ./package.sh              Package all customers
+#    ./package.sh gac/t75      Package GAC T75 only
+#    ./package.sh gwm/de09g    Package GWM DE09G only
+#    ./package.sh chery/t1jfl3 Package Chery T1JFL3 only
 # ============================================================
 set -e
 
-CUSTOMER="${1:-}"
-if [ -z "$CUSTOMER" ]; then
-    echo "Usage: ./package.sh <customer>"
-    echo "  e.g. ./package.sh gwm"
-    echo
-    echo "Available customers:"
-    for d in customers/*/; do echo "  - $(basename "$d")"; done
-    exit 1
-fi
+RELEASE_DIR="release"
+ALL_CUSTOMERS=(
+    "gac/t75"
+    "gwm/de09g"
+    "gwm/b06-5"
+    "chery/t1jfl3"
+)
 
-CUST_DIR="customers/$CUSTOMER"
-if [ ! -d "$CUST_DIR" ]; then
-    echo "Customer directory not found: $CUST_DIR"
-    exit 1
-fi
+package_one() {
+    local CUST="$1"
+    local CUST_SRC="customers/$CUST"
+    local CUST_OUT="$RELEASE_DIR/$CUST"
 
-echo
-echo "=== Packaging for: $CUSTOMER ==="
-echo
+    if [ ! -d "$CUST_SRC" ]; then
+        echo "[WARN] Not found: $CUST_SRC"
+        return
+    fi
+
+    echo "Packaging: $CUST"
+
+    mkdir -p "$CUST_OUT" "$CUST_OUT/dbc" "$CUST_OUT/trace"
+
+    cp dist/crc-check.exe "$CUST_OUT/" 2>/dev/null || true
+    cp "$CUST_SRC"/config.json "$CUST_OUT/" 2>/dev/null || true
+    cp "$CUST_SRC"/run.bat     "$CUST_OUT/" 2>/dev/null || true
+    cp "$CUST_SRC"/run.sh      "$CUST_OUT/" 2>/dev/null || true
+    cp "$CUST_SRC"/README.md   "$CUST_OUT/" 2>/dev/null || true
+    cp "$CUST_SRC"/dbc/*.dbc   "$CUST_OUT/dbc/" 2>/dev/null || true
+    cp "$CUST_SRC"/dbc/dataid.json "$CUST_OUT/dbc/" 2>/dev/null || true
+
+    echo "  Done: $CUST_OUT"
+}
 
 # Check / build exe
 if [ ! -f "dist/crc-check.exe" ]; then
     echo "Building exe..."
-    ./build.bat || {
+    cmd.exe /c build.bat
+    if [ ! -f "dist/crc-check.exe" ]; then
         echo "Build failed!"
         exit 1
-    }
+    fi
 fi
 
-# Create output dir
-OUT_DIR="release/$CUSTOMER"
-rm -rf "$OUT_DIR"
-mkdir -p "$OUT_DIR"
-
-# Copy exe
-echo "Copying crc-check.exe..."
-cp dist/crc-check.exe "$OUT_DIR/"
-
-# Copy customer files
-echo "Copying $CUSTOMER files..."
-cp -r "$CUST_DIR"/* "$OUT_DIR/"
-
-# Clean up traces from package
-rm -rf "$OUT_DIR/trace"
-mkdir -p "$OUT_DIR/trace"
-rm -f "$OUT_DIR/report.html"
+# Clean release
+rm -rf "$RELEASE_DIR"
 
 echo
-echo "=== Package ready: $OUT_DIR ==="
-ls -la "$OUT_DIR/"
+echo "========================================"
+echo " CAN CRC Checker — Package Release"
+echo "========================================"
 echo
-echo "To distribute, zip the $OUT_DIR folder."
+
+if [ -n "${1:-}" ]; then
+    package_one "$1"
+else
+    for CUST in "${ALL_CUSTOMERS[@]}"; do
+        package_one "$CUST"
+    done
+fi
+
+echo
+echo "========================================"
+echo " Package Complete: $RELEASE_DIR"
+echo "========================================"
+ls -d "$RELEASE_DIR"/*/ 2>/dev/null || true
+echo

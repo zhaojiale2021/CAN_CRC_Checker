@@ -23,7 +23,7 @@ class TestDataIDMapSerialization:
 
             with open(tmp_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
-            assert raw["format"] == "dataid_map_v1"
+            assert raw["format"] == "dataid_map_v2"
             assert raw["source"] == "test.xlsx"
             assert len(raw["entries"]) == 3
             # Verify hex format

@@ -14,10 +14,18 @@ DEFAULT_PATTERNS: dict[str, str] = {
     "rolling_counter": r"(?i)^(rolling.?counter|rolling_?cntr|rc_|live.?counter|alive.?counter)",
 }
 
-# Additional suffix-based patterns for OEMs like GAC
+# Additional suffix-based patterns for OEMs like GAC, Chery
 SUFFIX_PATTERNS: dict[str, str] = {
-    "checksum":        r"(?i)(_crc$|_checksum$|_e2e_crc$|_crc_[0-9]+$)",
-    "rolling_counter": r"(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$)",
+    "checksum": (
+        r"(?i)(_crc$|_checksum$|_e2e_crc$|_crc[0-9]*$"
+        r"|_crc[0-9]+_[0-9]+[a-z]*$)"
+    ),
+    "rolling_counter": (
+        r"(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$"
+        r"|_rollgcntr$|_rollgcntr[0-9]*$"
+        r"|_rollgcntr[0-9]+_[0-9]+[a-z]*$"
+        r"|_rollingcounter$|_rollingcounter_[0-9]+$)"
+    ),
 }
 
 
@@ -93,10 +101,9 @@ class SignalResolver:
                     suffix_only_count += 1
 
         # Only use suffix if there are zero prefix matches AND at least
-        # MIN_SUFFIX_THRESHOLD suffix-only matches (avoids false positives
-        # like Sync_CRC / Sync_Counter in individual DBC files)
-        MIN_SUFFIX_THRESHOLD = 3
-        return prefix_count == 0 and suffix_only_count >= MIN_SUFFIX_THRESHOLD
+        # 3 suffix-only matches (avoids false positives like Sync_CRC)
+        min_suffix = 3
+        return prefix_count == 0 and suffix_only_count >= min_suffix
 
     @staticmethod
     def extract_suffix(signal_name: str) -> str:
@@ -119,12 +126,18 @@ class SignalResolver:
                 return signal_name[len(prefix):]
 
         # Remove common suffixes (GAC-style)
-        import re
         suffix_match = re.search(
-            r'_(CRC|Counter|Alive|Checksum)(_[0-9]+)?$', signal_name, re.IGNORECASE
+            r'_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter)'
+            r'([0-9]*)(_[0-9]+[a-z]*)?$',
+            signal_name, re.IGNORECASE
         )
         if suffix_match:
-            return signal_name[:suffix_match.start()]
+            prefix = signal_name[:suffix_match.start()]
+            # Append CRC index if present (e.g. APA_CRC1 → APA_1, APA_CRC2 → APA_2)
+            crc_index = suffix_match.group(2)
+            if crc_index:
+                prefix = f"{prefix}_{crc_index}"
+            return prefix
 
         # Fallback: take part between first and last underscore
         if "_" in signal_name:

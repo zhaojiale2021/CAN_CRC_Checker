@@ -1,0 +1,459 @@
+{
+  "format": "dataid_map_v2",
+  "source": "customers/chery/t1jfl3/dbc/EEA(5.1)_Message_List_version1.5.1_APA_20260307120037.xlsx",
+  "mapping": "chery_t1jfl3",
+  "sheets": [
+    "FL_CH_CANFD",
+    "FL_DA_CANFD"
+  ],
+  "entries": [
+    {
+      "frame_id": "0x021",
+      "dataid": "0x0002",
+      "signal_name": "ACU_3_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ACU_3"
+    },
+    {
+      "frame_id": "0x031",
+      "dataid": "0x0001",
+      "signal_name": "ACU_2_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ACU_2"
+    },
+    {
+      "frame_id": "0x038",
+      "dataid": "0x0068",
+      "signal_name": "VCU_10_CRC",
+      "profile": "Profile1A",
+      "frame_name": "VCU_COM_10"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x0069",
+      "signal_name": "VCU_11_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x006A",
+      "signal_name": "VCU_11_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x006B",
+      "signal_name": "VCU_11_CRC3",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x006C",
+      "signal_name": "VCU_11_CRC4",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x01B7",
+      "signal_name": "VCU_11_CRC5",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x01B6",
+      "signal_name": "VCU_11_CRC6",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x03B",
+      "dataid": "0x01B5",
+      "signal_name": "VCU_11_CRC7",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ONEBOX_11"
+    },
+    {
+      "frame_id": "0x04B",
+      "dataid": "0x006D",
+      "signal_name": "VCU_12_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ADCC_12"
+    },
+    {
+      "frame_id": "0x04B",
+      "dataid": "0x006E",
+      "signal_name": "VCU_12_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ADCC_12"
+    },
+    {
+      "frame_id": "0x04B",
+      "dataid": "0x006F",
+      "signal_name": "VCU_12_CRC3",
+      "profile": "Profile1A",
+      "frame_name": "VCU_ADCC_12"
+    },
+    {
+      "frame_id": "0x098",
+      "dataid": "0x0049",
+      "signal_name": "ONEBOX_1_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_1"
+    },
+    {
+      "frame_id": "0x098",
+      "dataid": "0x004A",
+      "signal_name": "ONEBOX_1_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_1"
+    },
+    {
+      "frame_id": "0x098",
+      "dataid": "0x01CB",
+      "signal_name": "ONEBOX_1_CRC3",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_1"
+    },
+    {
+      "frame_id": "0x0A8",
+      "dataid": "0x004B",
+      "signal_name": "ONEBOX_2_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_2"
+    },
+    {
+      "frame_id": "0x0A8",
+      "dataid": "0x004C",
+      "signal_name": "ONEBOX_2_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_2"
+    },
+    {
+      "frame_id": "0x0A8",
+      "dataid": "0x00A1",
+      "signal_name": "ONEBOX_2_CRC3",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_2"
+    },
+    {
+      "frame_id": "0x106",
+      "dataid": "0x01D3",
+      "signal_name": "EPS_CRC1_106h",
+      "profile": "Profile1A",
+      "frame_name": "EPS_HW_106h"
+    },
+    {
+      "frame_id": "0x106",
+      "dataid": "0x01D2",
+      "signal_name": "EPS_CRC2_106h",
+      "profile": "Profile1A",
+      "frame_name": "EPS_HW_106h"
+    },
+    {
+      "frame_id": "0x106",
+      "dataid": "0x01D1",
+      "signal_name": "EPS_CRC3_106h",
+      "profile": "Profile1A",
+      "frame_name": "EPS_HW_106h"
+    },
+    {
+      "frame_id": "0x106",
+      "dataid": "0x01D9",
+      "signal_name": "EPS_CRC4_106h",
+      "profile": "Profile1A",
+      "frame_name": "EPS_HW_106h"
+    },
+    {
+      "frame_id": "0x122",
+      "dataid": "0x002E",
+      "signal_name": "EPS_1_CRC",
+      "profile": "Profile1A",
+      "frame_name": "EPS_1"
+    },
+    {
+      "frame_id": "0x124",
+      "dataid": "0x0107",
+      "signal_name": "CRC1_124h",
+      "profile": "Profile1A",
+      "frame_name": "EMS_COM_124h"
+    },
+    {
+      "frame_id": "0x124",
+      "dataid": "0x0108",
+      "signal_name": "CRC2_124h",
+      "profile": "Profile1A",
+      "frame_name": "EMS_COM_124h"
+    },
+    {
+      "frame_id": "0x124",
+      "dataid": "0x0109",
+      "signal_name": "CRC3_124h",
+      "profile": "Profile1A",
+      "frame_name": "EMS_COM_124h"
+    },
+    {
+      "frame_id": "0x126",
+      "dataid": "0x010A",
+      "signal_name": "CRC1_126h",
+      "profile": "Profile1A",
+      "frame_name": "TCU_COM_126h"
+    },
+    {
+      "frame_id": "0x126",
+      "dataid": "0x010B",
+      "signal_name": "CRC2_126h",
+      "profile": "Profile1A",
+      "frame_name": "TCU_COM_126h"
+    },
+    {
+      "frame_id": "0x132",
+      "dataid": "0x0035",
+      "signal_name": "SAM_1_CRC",
+      "profile": "Profile1A",
+      "frame_name": "SAS_1"
+    },
+    {
+      "frame_id": "0x14F",
+      "dataid": "0x0055",
+      "signal_name": "ONEBOX_5_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_5"
+    },
+    {
+      "frame_id": "0x14F",
+      "dataid": "0x00B0",
+      "signal_name": "ONEBOX_5_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_5"
+    },
+    {
+      "frame_id": "0x14F",
+      "dataid": "0x01E6",
+      "signal_name": "ONEBOX_CRC3_14Fh",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_5"
+    },
+    {
+      "frame_id": "0x159",
+      "dataid": "0x0008",
+      "signal_name": "ADS_1_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ADS_ONEBOX_1"
+    },
+    {
+      "frame_id": "0x159",
+      "dataid": "0x00AC",
+      "signal_name": "ADS_1_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "ADS_ONEBOX_1"
+    },
+    {
+      "frame_id": "0x1BC",
+      "dataid": "0x0006",
+      "signal_name": "ADS_CRC1_1BCh",
+      "profile": "Profile1A",
+      "frame_name": "ADS_EPS_3"
+    },
+    {
+      "frame_id": "0x1BC",
+      "dataid": "0x0007",
+      "signal_name": "ADS_CRC2_1BCh",
+      "profile": "Profile1A",
+      "frame_name": "ADS_EPS_3"
+    },
+    {
+      "frame_id": "0x22B",
+      "dataid": "0x004D",
+      "signal_name": "ONEBOX_3_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_3"
+    },
+    {
+      "frame_id": "0x22B",
+      "dataid": "0x004E",
+      "signal_name": "ONEBOX_3_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_3"
+    },
+    {
+      "frame_id": "0x22B",
+      "dataid": "0x004F",
+      "signal_name": "ONEBOX_3_CRC3",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_3"
+    },
+    {
+      "frame_id": "0x22B",
+      "dataid": "0x0050",
+      "signal_name": "ONEBOX_3_CRC4",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_3"
+    },
+    {
+      "frame_id": "0x22B",
+      "dataid": "0x01C9",
+      "signal_name": "ONEBOX_3_CRC5",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_3"
+    },
+    {
+      "frame_id": "0x22B",
+      "dataid": "0x01C8",
+      "signal_name": "ONEBOX_CRC6_22Bh",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_3"
+    },
+    {
+      "frame_id": "0x23B",
+      "dataid": "0x0036",
+      "signal_name": "FLZCU_1_CRC",
+      "profile": "Profile1A",
+      "frame_name": "FLZCU_1"
+    },
+    {
+      "frame_id": "0x24B",
+      "dataid": "0x0051",
+      "signal_name": "ONEBOX_4_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_4"
+    },
+    {
+      "frame_id": "0x24B",
+      "dataid": "0x0052",
+      "signal_name": "ONEBOX_4_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_4"
+    },
+    {
+      "frame_id": "0x24B",
+      "dataid": "0x0053",
+      "signal_name": "ONEBOX_4_CRC3",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_4"
+    },
+    {
+      "frame_id": "0x24B",
+      "dataid": "0x0054",
+      "signal_name": "ONEBOX_4_CRC4",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_4"
+    },
+    {
+      "frame_id": "0x24B",
+      "dataid": "0x00FD",
+      "signal_name": "ONEBOX_4_CRC5",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_4"
+    },
+    {
+      "frame_id": "0x24B",
+      "dataid": "0x00FE",
+      "signal_name": "ONEBOX_4_CRC6",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_4"
+    },
+    {
+      "frame_id": "0x264",
+      "dataid": "0x002B",
+      "signal_name": "CRC1_264h",
+      "profile": "Profile1A",
+      "frame_name": "EPB_R_1"
+    },
+    {
+      "frame_id": "0x27E",
+      "dataid": "0x01E3",
+      "signal_name": "FRZCU_9_CRC1",
+      "profile": "Profile1A",
+      "frame_name": "FRZCU_9"
+    },
+    {
+      "frame_id": "0x27E",
+      "dataid": "0x01E4",
+      "signal_name": "FRZCU_9_CRC2",
+      "profile": "Profile1A",
+      "frame_name": "FRZCU_9"
+    },
+    {
+      "frame_id": "0x2AB",
+      "dataid": "0x003A",
+      "signal_name": "FRZCU_1_CRC",
+      "profile": "Profile1A",
+      "frame_name": "FRZCU_1"
+    },
+    {
+      "frame_id": "0x2BB",
+      "dataid": "0x003B",
+      "signal_name": "RZCU_2_CRC",
+      "profile": "Profile1A",
+      "frame_name": "RZCU_2"
+    },
+    {
+      "frame_id": "0x2CB",
+      "dataid": "0x002F",
+      "signal_name": "EPS_3_CRC",
+      "profile": "Profile1A",
+      "frame_name": "EPS_3"
+    },
+    {
+      "frame_id": "0x30F",
+      "dataid": "0x000F",
+      "signal_name": "ADS_CRC1_30Fh",
+      "profile": "Profile1A",
+      "frame_name": "ADS_COM_1"
+    },
+    {
+      "frame_id": "0x406",
+      "dataid": "0x009B",
+      "signal_name": "FLZCU_12_CRC",
+      "profile": "Profile1A",
+      "frame_name": "FLZCU_12"
+    },
+    {
+      "frame_id": "0x485",
+      "dataid": "0x009D",
+      "signal_name": "ICC_DA_15_CRC",
+      "profile": "Profile1A",
+      "frame_name": "ICC_DA_15"
+    },
+    {
+      "frame_id": "0x49D",
+      "dataid": "0x009C",
+      "signal_name": "FLZCU_9_CRC",
+      "profile": "Profile1A",
+      "frame_name": "FLZCU_9"
+    },
+    {
+      "frame_id": "0x4A9",
+      "dataid": "0x007A",
+      "signal_name": "ONEBOX_2_G_CRC",
+      "profile": "Profile1A",
+      "frame_name": "ONEBOX_2_G"
+    },
+    {
+      "frame_id": "0x4B4",
+      "dataid": "0x005C",
+      "signal_name": "VCU_1_G_CRC",
+      "profile": "Profile1A",
+      "frame_name": "VCU_1_G"
+    },
+    {
+      "frame_id": "0x4B9",
+      "dataid": "0x005D",
+      "signal_name": "VCU_2_G_CRC",
+      "profile": "Profile1A",
+      "frame_name": "VCU_2_G"
+    },
+    {
+      "frame_id": "0x52C",
+      "dataid": "0x0082",
+      "signal_name": "FRZCU_7_CRC",
+      "profile": "Profile1A",
+      "frame_name": "FRZCU_7"
+    }
+  ]
+}

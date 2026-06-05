@@ -1,28 +1,23 @@
 @echo off
 REM ============================================================
-REM  CAN CRC Checker — Package for customer distribution
-REM  Usage: package.bat <customer>   (e.g. package.bat gwm)
+REM  CAN CRC Checker — Package customer release
+REM
+REM  Usage:
+REM    package.bat              Package all customers
+REM    package.bat gac/t75      Package GAC T75 only
+REM    package.bat gwm/de09g    Package GWM DE09G only
+REM    package.bat chery/t1jfl3 Package Chery T1JFL3 only
 REM ============================================================
+setlocal enabledelayedexpansion
 
-set CUSTOMER=%~1
-if "%CUSTOMER%"=="" (
-    echo Usage: package.bat ^<customer^>
-    echo   e.g. package.bat gwm
-    echo/
-    echo Available customers:
-    for /d %%D in (customers\*) do echo   - %%~nxD
-    exit /b 1
-)
+set TARGET=%~1
+set RELEASE_DIR=release
 
-set CUST_DIR=customers\%CUSTOMER%
-if not exist "%CUST_DIR%" (
-    echo Customer directory not found: %CUST_DIR%
-    exit /b 1
-)
-
-echo/
-echo === Packaging for: %CUSTOMER% ===
-echo/
+echo.
+echo ========================================
+echo  CAN CRC Checker — Package Release
+echo ========================================
+echo.
 
 REM Check / build exe
 if not exist "dist\crc-check.exe" (
@@ -30,37 +25,60 @@ if not exist "dist\crc-check.exe" (
     call build.bat
     if not exist "dist\crc-check.exe" (
         echo Build failed!
+        pause
         exit /b 1
     )
 )
 
-REM Create output dir
-set OUT_DIR=release\%CUSTOMER%
-if exist "%OUT_DIR%" rmdir /s /q "%OUT_DIR%" 2>nul
-mkdir "%OUT_DIR%" 2>nul
+REM Clean release
+if exist "%RELEASE_DIR%" rmdir /s /q "%RELEASE_DIR%"
 
-REM Copy exe
-echo [1/3] Copying exe...
-copy /y dist\crc-check.exe "%OUT_DIR%\" >nul 2>&1
-
-REM Copy customer files (excluding trace, report)
-echo [2/3] Copying config and scripts...
-for %%F in (config.json run.bat run.sh README.md) do (
-    if exist "%CUST_DIR%\%%F" copy /y "%CUST_DIR%\%%F" "%OUT_DIR%\" >nul 2>&1
+if "%TARGET%"=="" (
+    call :package gac\t75
+    call :package gwm\de09g
+    call :package gwm\b06-5
+    call :package chery\t1jfl3
+    goto :end
 )
 
-REM Copy dbc directory
-if exist "%CUST_DIR%\dbc" (
-    echo [3/3] Copying dbc...
-    mkdir "%OUT_DIR%\dbc" 2>nul
-    xcopy /e /i /q /y "%CUST_DIR%\dbc\*" "%OUT_DIR%\dbc\" >nul 2>&1
+call :package %TARGET%
+goto :end
+
+:package
+set CUST=%~1
+set CUST_SRC=customers\%CUST%
+set CUST_OUT=%RELEASE_DIR%\%CUST%
+
+if not exist "%CUST_SRC%" (
+    echo [WARN] Not found: %CUST_SRC%
+    exit /b 1
 )
 
-REM Create empty trace dir
-mkdir "%OUT_DIR%\trace" 2>nul
+echo Packaging: %CUST%
 
-echo/
-echo === Package ready: %OUT_DIR% ===
-dir /b "%OUT_DIR%"
-echo/
-echo To distribute, zip the %OUT_DIR% folder.
+mkdir "%CUST_OUT%"              2>nul
+mkdir "%CUST_OUT%\dbc"          2>nul
+mkdir "%CUST_OUT%\trace"        2>nul
+
+copy /y "dist\crc-check.exe" "%CUST_OUT%\" >nul
+if exist "%CUST_SRC%\config.json"   copy /y "%CUST_SRC%\config.json"   "%CUST_OUT%\" >nul
+if exist "%CUST_SRC%\run.bat"       copy /y "%CUST_SRC%\run.bat"       "%CUST_OUT%\" >nul
+if exist "%CUST_SRC%\run.sh"        copy /y "%CUST_SRC%\run.sh"        "%CUST_OUT%\" >nul
+if exist "%CUST_SRC%\README.md"     copy /y "%CUST_SRC%\README.md"     "%CUST_OUT%\" >nul
+
+REM Copy DBC files + dataid.json
+if exist "%CUST_SRC%\dbc\*.dbc"     xcopy /y /q "%CUST_SRC%\dbc\*.dbc"     "%CUST_OUT%\dbc\" >nul 2>&1
+if exist "%CUST_SRC%\dbc\dataid.json" copy /y "%CUST_SRC%\dbc\dataid.json" "%CUST_OUT%\dbc\" >nul
+
+echo   Done: %CUST_OUT%
+exit /b 0
+
+:end
+echo.
+echo ========================================
+echo  Package Complete: %RELEASE_DIR%
+echo ========================================
+echo.
+dir /ad /b "%RELEASE_DIR%" 2>nul
+echo.
+endlocal
