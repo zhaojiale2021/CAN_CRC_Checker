@@ -170,11 +170,11 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     seg_size = 8 if dlc > 8 else dlc
     num_segments = (dlc + seg_size - 1) // seg_size
 
-    seg_dataid: dict[int, tuple[int, str]] = {}  # seg_idx -> (dataid, name)
+    seg_dataid: dict[int, tuple[int, str, str]] = {}  # seg_idx -> (dataid, name, profile)
     for v in verdicts:
         if v.dataid is not None and v.start_bit is not None:
             seg_idx = v.start_bit // (seg_size * 8)
-            seg_dataid[seg_idx] = (v.dataid, v.dataid_name)
+            seg_dataid[seg_idx] = (v.dataid, v.dataid_name, v.dataid_profile)
 
     crc_ok = sum(1 for v in verdicts if v.algorithm == "crc" and v.is_pass)
     crc_err = sum(1 for v in verdicts if v.algorithm == "crc" and not v.is_pass)
@@ -227,10 +227,12 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         offset = f"0x{seg_start:04X}"
         did_info = seg_dataid.get(seg_idx)
         if did_info is not None:
-            did, did_name = did_info
+            did, did_name, did_profile = did_info
             tip = f"DataID 0x{did:04X}"
             if did_name:
                 tip += f" · {did_name}"
+            if did_profile:
+                tip += f" · {did_profile}"
             label = (f'Seg{seg_idx} '
                      f'<span class="did">0x{did:04X}'
                      f'<span class="tooltip">{escape(tip)}</span></span>')

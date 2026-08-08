@@ -65,6 +65,7 @@ class RollingCounterVerifier(ProtectionAlgorithm):
                 byte_order=rc_signal.byte_order,
                 dataid=protection.dataid,
                 dataid_name=protection.dataid_name,
+                dataid_profile=protection.crc_profile,
             )
 
         prev_value = self._state[key]
@@ -112,4 +113,5 @@ class RollingCounterVerifier(ProtectionAlgorithm):
             byte_order=rc_signal.byte_order,
             dataid=protection.dataid,
             dataid_name=protection.dataid_name,
+            dataid_profile=protection.crc_profile,
         )

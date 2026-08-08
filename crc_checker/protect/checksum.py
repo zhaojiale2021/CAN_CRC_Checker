@@ -103,4 +103,5 @@ class CRCVerifier(ProtectionAlgorithm):
             byte_order=cs_signal.byte_order,
             dataid=protection.dataid,
             dataid_name=protection.dataid_name,
+            dataid_profile=protection.crc_profile,
         )
