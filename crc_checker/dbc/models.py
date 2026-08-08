@@ -31,6 +31,7 @@ class MessageProtection:  # pylint: disable=too-many-instance-attributes
     crc_params: CRCParams | None = None                        # Algorithm (set by user/config)
     crc_range: CRCRange | None = None                          # Data range (set by user/config)
     dataid: int | None = None                                  # 16-bit DataID from AUTOSAR E2E
+    dataid_name: str = ""            # Entry name matched in DataIDMap (msg/signal name)
     crc_profile: str = ""               # Profile hint from DataID (e.g. "Profile 1A")
     checksum_comment: str = ""          # DBC comment of the checksum signal (fx12fl auto-classify)
     frame_protection_count: int = 1                            # How many protection groups
@@ -119,6 +120,7 @@ class DBCProtectionMap:
 
         Also stores profile info (e.g. "Profile 1A") from DataID entries.
         """
+        # pylint: disable=too-many-locals,too-many-branches
         # Pre-build a reverse index: frame_id → list of (signal_name, dataid, profile)
         rev_index: dict[int, list[tuple[str, int, str]]] = {}
         # pylint: disable=protected-access
@@ -142,17 +144,24 @@ class DBCProtectionMap:
                     continue
                 dataid = None
                 profile = ""
+                matched_name = ""
 
                 # Strategy 1: exact checksum signal name match
                 dataid, profile = _try_lookup(prot.frame_id, prot.checksum_signal.name)
+                if dataid is not None:
+                    matched_name = prot.checksum_signal.name
 
                 # Strategy 2: match by frame/message name
                 if dataid is None and prot.frame_name:
                     dataid, profile = _try_lookup(prot.frame_id, prot.frame_name)
+                    if dataid is not None:
+                        matched_name = prot.frame_name
 
                 # Strategy 3: match by pair_suffix
                 if dataid is None and prot.pair_suffix:
                     dataid, profile = _try_lookup(prot.frame_id, prot.pair_suffix)
+                    if dataid is not None:
+                        matched_name = prot.pair_suffix
 
                 # Strategy 4: fuzzy substring match in reverse index
                 if dataid is None and prot.frame_id in rev_index:
@@ -161,10 +170,12 @@ class DBCProtectionMap:
                         sig_lower = sig.lower()
                         if sig_lower in fname or fname in sig_lower:
                             dataid, profile = did, prof
+                            matched_name = sig
                             break
 
                 if dataid is not None:
                     prot.dataid = dataid
+                    prot.dataid_name = matched_name
                     prot.crc_profile = profile
                     applied += 1
         return applied
@@ -202,6 +213,7 @@ class DBCProtectionMap:
                     dataid = dataid_map.get(prot.frame_id, prot.checksum_signal.name)
                     if dataid is not None:
                         prot.dataid = dataid
+                        prot.dataid_name = prot.checksum_signal.name
                         prot.crc_profile = dataid_map.get_profile(
                             prot.frame_id, prot.checksum_signal.name) or ""
                         applied += 1

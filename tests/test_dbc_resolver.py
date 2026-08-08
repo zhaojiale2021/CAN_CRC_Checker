@@ -1,7 +1,8 @@
 """Tests for signal name resolution and DBC parsing."""
 
 from crc_checker.dbc.resolver import SignalResolver
-from crc_checker.dbc.models import DBCProtectionMap, MessageProtection
+from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
+from crc_checker.dataid.parser import DataIDMap
 
 
 class TestSignalResolver:
@@ -229,3 +230,44 @@ class TestDBCProtectionMapMerge:
         added = map1.merge(map2)
         assert added == 0
         assert len(map1.messages) == 1
+
+
+class TestApplyDataIDName:
+    """apply_dataid_map must record the matched entry name for display."""
+
+    @staticmethod
+    def _prot(frame_id: int, frame_name: str, checksum: str) -> MessageProtection:
+        prot = MessageProtection(frame_id=frame_id, frame_name=frame_name, dlc=8)
+        prot.checksum_signal = SignalInfo(name=checksum, start_bit=56, length=8)
+        return prot
+
+    def test_exact_checksum_signal_match(self):
+        """Strategy 1: dataid_name is the checksum signal name."""
+        pm = DBCProtectionMap()
+        prot = self._prot(0x100, "FrameA", "Checksum_X")
+        pm.messages[0x100] = [prot]
+        dm = DataIDMap()
+        dm.add(0x100, "Checksum_X", 0x1234)
+        assert pm.apply_dataid_map(dm) == 1
+        assert prot.dataid == 0x1234
+        assert prot.dataid_name == "Checksum_X"
+
+    def test_frame_name_match(self):
+        """Strategy 2: dataid_name is the frame name."""
+        pm = DBCProtectionMap()
+        prot = self._prot(0x200, "FrameB", "Checksum_Y")
+        pm.messages[0x200] = [prot]
+        dm = DataIDMap()
+        dm.add(0x200, "FrameB", 0x5678)
+        pm.apply_dataid_map(dm)
+        assert prot.dataid_name == "FrameB"
+
+    def test_fuzzy_match_records_index_name(self):
+        """Strategy 4: dataid_name is the entry name from the reverse index."""
+        pm = DBCProtectionMap()
+        prot = self._prot(0x300, "FrameSigABC", "Checksum_Z")
+        pm.messages[0x300] = [prot]
+        dm = DataIDMap()
+        dm.add(0x300, "SigABC", 0x9ABC)
+        pm.apply_dataid_map(dm)
+        assert prot.dataid_name == "SigABC"

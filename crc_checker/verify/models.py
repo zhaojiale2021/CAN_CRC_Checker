@@ -21,6 +21,7 @@ class VerifyVerdict:  # pylint: disable=too-many-instance-attributes
     length: int = 0
     byte_order: str = "little_endian"
     dataid: int | None = None       # DataID for this protection group (from E2E config)
+    dataid_name: str = ""           # DataID entry name (message/signal name) for display
 
     def __str__(self) -> str:
         status = "PASS" if self.is_pass else "FAIL"

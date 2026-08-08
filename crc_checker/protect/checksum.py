@@ -102,4 +102,5 @@ class CRCVerifier(ProtectionAlgorithm):
             length=cs_signal.length,
             byte_order=cs_signal.byte_order,
             dataid=protection.dataid,
+            dataid_name=protection.dataid_name,
         )

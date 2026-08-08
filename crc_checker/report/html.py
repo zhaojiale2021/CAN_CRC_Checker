@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from datetime import datetime
+from html import escape
 
 from crc_checker.bit_utils import _canmatrix_to_physical_msb
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
@@ -77,7 +78,18 @@ CSS = """
 
   .segment-label { color: #556677; font-size: 10px; min-width: 85px;
                    text-align: right; margin-right: 4px; }
-  .segment-label .did { color: #3a6b8c; }
+  .segment-label .did { color: #ffd700; font-weight: bold;
+                        background: rgba(255, 215, 0, 0.16);
+                        padding: 1px 5px; border-radius: 3px;
+                        cursor: default; position: relative;
+                        border: 1px solid rgba(255, 215, 0, 0.4); }
+  .segment-label .did .tooltip { visibility: hidden; position: absolute;
+                                 bottom: 110%; left: 50%;
+                                 transform: translateX(-50%);
+                                 background: #333; color: #fff; font-size: 11px;
+                                 padding: 3px 8px; border-radius: 4px;
+                                 white-space: nowrap; z-index: 10; }
+  .segment-label .did:hover .tooltip { visibility: visible; }
 
   .verdict-table { margin-top: 12px; border-top: 1px solid #1a1a2e; padding-top: 8px; }
   .verdict-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -98,12 +110,21 @@ CSS = """
 
 
 def _bit_to_byte_pos(start_bit: int, bit_index: int, byte_order: str) -> tuple[int, int]:
-    """Convert signal start_bit + bit_index to (byte_offset, bit_in_byte)."""
+    """Convert signal start_bit + bit_index to (byte_offset, bit_in_byte).
+
+    For Motorola (big-endian) signals the MSB sits at the converted physical
+    position and bits run downward; after bit 0 of a byte the sequence
+    continues at bit 7 of the next byte.
+    """
     if byte_order == "big_endian":
         physical_msb = _canmatrix_to_physical_msb(start_bit)
-        phys_bit = physical_msb - bit_index
-    else:
-        phys_bit = start_bit + bit_index
+        msb_byte = physical_msb // 8
+        msb_bit = physical_msb % 8
+        if bit_index <= msb_bit:
+            return msb_byte, msb_bit - bit_index
+        offset = bit_index - (msb_bit + 1)
+        return msb_byte + 1 + offset // 8, 7 - (offset % 8)
+    phys_bit = start_bit + bit_index
     return phys_bit // 8, phys_bit % 8
 
 
@@ -149,11 +170,11 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     seg_size = 8 if dlc > 8 else dlc
     num_segments = (dlc + seg_size - 1) // seg_size
 
-    seg_dataid: dict[int, int] = {}
+    seg_dataid: dict[int, tuple[int, str]] = {}  # seg_idx -> (dataid, name)
     for v in verdicts:
         if v.dataid is not None and v.start_bit is not None:
             seg_idx = v.start_bit // (seg_size * 8)
-            seg_dataid[seg_idx] = v.dataid
+            seg_dataid[seg_idx] = (v.dataid, v.dataid_name)
 
     crc_ok = sum(1 for v in verdicts if v.algorithm == "crc" and v.is_pass)
     crc_err = sum(1 for v in verdicts if v.algorithm == "crc" and not v.is_pass)
@@ -204,9 +225,15 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             bytes_html += f'<span class="hex-byte {css_class}">{b:02X}{tooltip_html}</span>'
 
         offset = f"0x{seg_start:04X}"
-        did = seg_dataid.get(seg_idx)
-        if did is not None:
-            label = f'Seg{seg_idx} <span class="did">0x{did:04X}</span>'
+        did_info = seg_dataid.get(seg_idx)
+        if did_info is not None:
+            did, did_name = did_info
+            tip = f"DataID 0x{did:04X}"
+            if did_name:
+                tip += f" · {did_name}"
+            label = (f'Seg{seg_idx} '
+                     f'<span class="did">0x{did:04X}'
+                     f'<span class="tooltip">{escape(tip)}</span></span>')
         else:
             label = f"Seg{seg_idx}"
         hex_rows.append(

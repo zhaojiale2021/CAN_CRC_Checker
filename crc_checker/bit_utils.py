@@ -135,13 +135,33 @@ def _extract_motorola(data: bytes, can_start_bit: int, length: int) -> int:
 
 
 def _zero_motorola(data: bytearray, can_start_bit: int, length: int):
-    """Zero bits in Motorola layout."""
-    physical_msb = _canmatrix_to_physical_msb(can_start_bit)
-    for i in range(length):
-        bit_pos = physical_msb - i
-        if bit_pos < 0:
-            continue
-        byte_idx = bit_pos // 8
-        bit_idx = bit_pos % 8
-        if byte_idx < len(data):
-            data[byte_idx] &= ~(1 << bit_idx)
+    """Zero bits in Motorola layout.
+
+    Bits run from the MSB downward; after bit 0 of the first byte the
+    sequence continues at bit 7 of the next byte (same traversal as
+    ``_extract_motorola``).
+    """
+    physical_msb_byte = can_start_bit // 8
+    physical_msb_bit = 7 - (can_start_bit % 8)
+    remaining = length
+    byte_idx = physical_msb_byte
+
+    # First byte: bits physical_msb_bit..0
+    if byte_idx < len(data):
+        bits_in_first_byte = physical_msb_bit + 1
+        take = min(bits_in_first_byte, remaining)
+        shift = bits_in_first_byte - take
+        data[byte_idx] &= ~(((1 << take) - 1) << shift)
+        remaining -= take
+        byte_idx += 1
+
+    # Middle bytes: all 8 bits each
+    while remaining >= 8 and byte_idx < len(data):
+        data[byte_idx] = 0
+        remaining -= 8
+        byte_idx += 1
+
+    # Last byte: partial (remaining < 8), top `remaining` bits
+    if remaining > 0 and byte_idx < len(data):
+        mask = ((1 << remaining) - 1) << (8 - remaining)
+        data[byte_idx] &= ~mask

@@ -26,3 +26,6 @@ customers/*/*/crc-check.exe
 # Tool metadata
 .reasonix/
 
+
+# Reasonix tool metadata
+.reasonix/
