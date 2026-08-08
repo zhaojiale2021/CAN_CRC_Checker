@@ -104,4 +104,5 @@ class CRCVerifier(ProtectionAlgorithm):
             dataid=protection.dataid,
             dataid_name=protection.dataid_name,
             dataid_profile=protection.crc_profile,
+            crc_algorithm=params.name,
         )

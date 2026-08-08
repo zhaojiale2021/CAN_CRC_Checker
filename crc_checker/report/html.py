@@ -53,6 +53,9 @@ CSS = """
              font-size: 10px; color: #667788; background: #1a1a2e;
              font-family: 'SF Mono', 'Consolas', monospace;
              max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .algo-tag { display: inline-block; padding: 1px 6px; border-radius: 3px;
+              font-size: 10px; color: #9a8ad8; background: #241a3a;
+              font-family: 'SF Mono', 'Consolas', monospace; }
 
   .hex-grid { display: flex; flex-direction: column; gap: 2px;
               font-family: 'SF Mono', 'Consolas', 'Courier New', monospace; }
@@ -105,6 +108,11 @@ CSS = """
                        cursor: pointer; font-size: 12px; }
   .filter-bar button.active { background: #0f3460; border-color: #e94560; }
   .filter-bar button:hover { background: #0f3460; }
+  .filter-bar input { padding: 6px 12px; border: 1px solid #0f3460;
+                      background: #16213e; color: #e0e0e0; border-radius: 4px;
+                      font-size: 12px; width: 240px; outline: none; }
+  .filter-bar input:focus { border-color: #e94560; }
+  .filter-bar input::placeholder { color: #556677; }
   .filter-bar .sep { color: #334455; margin: 0 4px; font-size: 12px; }
 """
 
@@ -272,9 +280,15 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     # Channel tag (always show, channel 0 is valid)
     ch_tag = f'<span class="channel-tag channel-{channel % 4}">CH{channel}</span>'
 
+    # CRC algorithm tags (deduped, e.g. mixed Profile 5 + Profile 1A)
+    algo_tags = "".join(
+        f'<span class="algo-tag">{escape(a)}</span>'
+        for a in sorted({v.crc_algorithm for v in verdicts if v.crc_algorithm})
+    )
+
     # DBC source tag
     if dbc_source:
-        dbc_tag = f'<span class="dbc-tag" title="{dbc_source}">{dbc_source}</span>'
+        dbc_tag = f'<span class="dbc-tag" title="{escape(dbc_source)}">{escape(dbc_source)}</span>'
     else:
         dbc_tag = ""
 
@@ -288,6 +302,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         {ch_tag}
         <span class="id">0x{frame_id:03X}</span>
         {name_html}
+        {algo_tags}
         {dbc_tag}
         <span class="ts">@{ts:.6f}s</span>
         <span class="stats">{stats_html}</span>
@@ -390,6 +405,9 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
   <button onclick="showErrors()">Errors only</button>
   {ch_buttons}
   <span class="sep">|</span>
+  <input id="searchInput" type="text" placeholder="Search ID / signal / frame name"
+         oninput="searchFrames()">
+  <span class="sep">|</span>
   <button onclick="expandAll()">Expand all</button>
   <button onclick="collapseAll()">Collapse all</button>
 </div>
@@ -413,6 +431,20 @@ function showChannel(ch) {{
     el.style.display = el.dataset.channel == ch ? '' : 'none';
   }});
   updateBtns('ch'+ch);
+}}
+function searchFrames() {{
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  document.querySelectorAll('.frame-section').forEach(el => {{
+    if (!q) {{ el.style.display = ''; return; }}
+    const id = (el.querySelector('.id')?.textContent || '').toLowerCase();
+    const name = (el.querySelector('.name')?.textContent || '').toLowerCase();
+    const dbc = (el.querySelector('.dbc-tag')?.textContent || '').toLowerCase();
+    const sigs = Array.from(el.querySelectorAll('.verdict-table td:first-child'))
+                      .map(td => td.textContent.toLowerCase()).join(' ');
+    const hit = id.includes(q) || name.includes(q) || dbc.includes(q) || sigs.includes(q);
+    el.style.display = hit ? '' : 'none';
+  }});
+  updateBtns('search');
 }}
 function expandAll() {{
   document.querySelectorAll('.frame-section').forEach(el => el.classList.remove('collapsed'));

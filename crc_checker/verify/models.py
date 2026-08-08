@@ -23,6 +23,7 @@ class VerifyVerdict:  # pylint: disable=too-many-instance-attributes
     dataid: int | None = None       # DataID for this protection group (from E2E config)
     dataid_name: str = ""           # DataID entry name (message/signal name) for display
     dataid_profile: str = ""        # E2E profile hint (e.g. "Profile Variant 1A")
+    crc_algorithm: str = ""         # CRC algorithm name used (e.g. "CRC16/CCITT")
 
     def __str__(self) -> str:
         status = "PASS" if self.is_pass else "FAIL"

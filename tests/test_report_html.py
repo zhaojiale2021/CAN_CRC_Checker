@@ -69,3 +69,29 @@ class TestCRCHighlight:
         v = _crc_verdict(start_bit=48, byte_order="little_endian")
         html = _build_frame_html([v], bytes(8))
         assert html.count('class="hex-byte crc-pass"') == 2
+
+
+class TestCRCAlgorithmTag:
+    """Frame header shows deduplicated CRC algorithm name."""
+
+    def test_single_algorithm_tag(self):
+        """One algorithm -> one tag after the frame name."""
+        v = _crc_verdict(crc_algorithm="CRC16/CCITT")
+        html = _build_frame_html([v], bytes(8))
+        assert '<span class="algo-tag">CRC16/CCITT</span>' in html
+
+    def test_multiple_verdicts_dedup(self):
+        """Two verdicts with the same algorithm render a single tag."""
+        v1 = _crc_verdict(crc_algorithm="CRC16/CCITT")
+        v2 = _crc_verdict(
+            timestamp=2.0, signal_name="Other_CRC",
+            crc_algorithm="CRC16/CCITT",
+        )
+        html = _build_frame_html([v1, v2], bytes(8))
+        assert html.count('class="algo-tag"') == 1
+
+    def test_no_algorithm_no_tag(self):
+        """Verdicts without crc_algorithm (e.g. RC) render no tag."""
+        v = _crc_verdict(crc_algorithm="")
+        html = _build_frame_html([v], bytes(8))
+        assert 'class="algo-tag"' not in html
