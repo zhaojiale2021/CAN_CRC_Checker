@@ -23,3 +23,6 @@ release/
 # Customer exe (built, not committed)
 customers/*/crc-check.exe
 
+# Tool metadata
+.reasonix/
+

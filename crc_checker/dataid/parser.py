@@ -183,7 +183,9 @@ class ColumnMapping:  # pylint: disable=too-many-instance-attributes
       - "two_cols_lsb_first" : Like hi_lo but low byte comes first
 
     `data_row_start` is the 1-based row number where data begins (after headers).
-    `signal_name_filter` is a list of prefixes used to identify checksum rows.
+    `signal_name_filter` is a list of keywords used to identify checksum rows.
+      Signal names are matched case-insensitively by substring (e.g. "checksum"
+      matches both ``Checksum_RSDS_R_2`` and ``RSDS_L_SGU1_Checksum1``).
       Set to None to accept all rows that have a DataID value.
     `col_remark` is an optional column for remarks (e.g. profile info).
     """
@@ -576,10 +578,10 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
             if not isinstance(signal_name, str):
                 continue
 
-            # Filter by signal name prefix
+            # Filter by signal name keyword (supports both prefix and suffix naming)
             if mapping.signal_name_filter:
                 name_lower = signal_name.lower()
-                if not any(name_lower.startswith(pfx)
+                if not any(pfx in name_lower
                           for pfx in mapping.signal_name_filter):
                     continue
 
@@ -657,10 +659,10 @@ def _parse_description_regex(ws, mapping, dataid_map, sheet_name, wb) -> DataIDM
         if not isinstance(signal_name, str) or not signal_name.strip():
             continue
 
-        # Filter by signal name prefix
+        # Filter by signal name keyword (supports both prefix and suffix naming)
         if mapping.signal_name_filter:
             name_lower = signal_name.lower()
-            if not any(name_lower.startswith(pfx) for pfx in mapping.signal_name_filter):
+            if not any(pfx in name_lower for pfx in mapping.signal_name_filter):
                 continue
 
         # Extract DataID from description column using regex
@@ -789,10 +791,10 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
         if not isinstance(signal_name, str):
             continue
 
-        # Filter by signal name prefix
+        # Filter by signal name keyword (supports both prefix and suffix naming)
         if mapping.signal_name_filter:
             name_lower = signal_name.lower()
-            if not any(name_lower.startswith(pfx) for pfx in mapping.signal_name_filter):
+            if not any(pfx in name_lower for pfx in mapping.signal_name_filter):
                 continue
 
         # Parse message ID

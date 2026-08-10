@@ -20,7 +20,7 @@
   },
   "filter": {
     "frame_ids": null,
-    "max_frames": null
+    "max_frames": 6000
   },
   "output": {
     "format": "html",

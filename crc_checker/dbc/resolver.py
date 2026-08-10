@@ -18,13 +18,15 @@ DEFAULT_PATTERNS: dict[str, str] = {
 SUFFIX_PATTERNS: dict[str, str] = {
     "checksum": (
         r"(?i)(_crc$|_checksum$|_e2e_crc$|_crc[0-9]*$"
-        r"|_crc[0-9]+_[0-9]+[a-z]*$)"
+        r"|_crc[0-9]+_[0-9]+[a-z]*$"
+        r"|_checksum[0-9]*$)"
     ),
     "rolling_counter": (
         r"(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$"
         r"|_rollgcntr$|_rollgcntr[0-9]*$"
         r"|_rollgcntr[0-9]+_[0-9]+[a-z]*$"
-        r"|_rollingcounter$|_rollingcounter_[0-9]+$)"
+        r"|_rollingcounter$|_rollingcounter_[0-9]+$"
+        r"|_rollingcounter[0-9]*$)"
     ),
 }
 
@@ -32,12 +34,15 @@ SUFFIX_PATTERNS: dict[str, str] = {
 class SignalResolver:
     """Identifies protection signals within CAN messages by name matching.
 
-    Supports both prefix-based (Checksum_XXX, CRC_XXX) and suffix-based
-    (XXX_CRC, XXX_Counter) naming conventions.
+    Supports both prefix-based (``Checksum_XXX``, ``CRC_XXX``) and suffix-based
+    (``XXX_CRC``, ``XXX_Counter``, ``XXX_Checksum8``) naming conventions.
 
-    Suffix patterns are only enabled when ``use_suffix`` is True, to avoid
-    false positives on signals like ``Sync_CRC`` that end with ``_CRC``
-    but are not protection signals.
+    Prefix patterns are always checked first. Suffix patterns are also always
+    checked as a fallback, so mixed-naming DBCs (e.g. GWM ADAS2 with both
+    ``Checksum_RSDS_R_5`` and ``RSDS_L_SGU1_Checksum8``) are fully detected.
+
+    The ``use_suffix`` flag controls only ``detect_naming_convention``, which
+    determines whether the DBC is *primarily* suffix-based (GAC-style).
     """
 
     def __init__(self, patterns: dict[str, str] | None = None,
@@ -52,24 +57,35 @@ class SignalResolver:
             self._rc_re = re.compile(DEFAULT_PATTERNS["rolling_counter"])
 
     def is_checksum_signal(self, signal_name: str) -> bool:
-        """Check if a signal name matches checksum/CRC pattern."""
+        """Check if a signal name matches checksum/CRC pattern.
+
+        Checks both prefix-based (``Checksum_*``, ``CRC_*``) and suffix-based
+        (``*_CRC``, ``*_ChecksumN``) naming conventions so that mixed-naming
+        DBCs (e.g. GWM ADAS2 with both ``Checksum_RSDS_R_5`` and
+        ``RSDS_L_SGU1_Checksum8``) are fully detected.
+        """
         if self._custom_patterns:
             return bool(self._checksum_re.search(signal_name))
         if self._checksum_re.match(signal_name):
             return True
-        if self._use_suffix:
-            return bool(re.search(SUFFIX_PATTERNS["checksum"], signal_name))
-        return False
+        # Always check suffix patterns as well (not gated by use_suffix).
+        # Suffix-only signals like RSDS_L_SGU1_Checksum8 may coexist with
+        # prefix-based signals in the same DBC.
+        return bool(re.search(SUFFIX_PATTERNS["checksum"], signal_name))
 
     def is_rolling_counter_signal(self, signal_name: str) -> bool:
-        """Check if a signal name matches rolling counter pattern."""
+        """Check if a signal name matches rolling counter pattern.
+
+        Checks both prefix-based (``RollingCounter_*``, ``RC_*``) and
+        suffix-based (``*_Counter``, ``*_RollingCounterN``) naming
+        conventions so that mixed-naming DBCs are fully detected.
+        """
         if self._custom_patterns:
             return bool(self._rc_re.search(signal_name))
         if self._rc_re.match(signal_name):
             return True
-        if self._use_suffix:
-            return bool(re.search(SUFFIX_PATTERNS["rolling_counter"], signal_name))
-        return False
+        # Always check suffix patterns as well (not gated by use_suffix).
+        return bool(re.search(SUFFIX_PATTERNS["rolling_counter"], signal_name))
 
     @staticmethod
     def detect_naming_convention(frames: list[dict]) -> bool:
