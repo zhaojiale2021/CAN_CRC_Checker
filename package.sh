@@ -7,6 +7,7 @@
 #    ./package.sh gac/t75      Package GAC T75 only
 #    ./package.sh gwm/de09g    Package GWM DE09G only
 #    ./package.sh chery/t1jfl3 Package Chery T1JFL3 only
+#    ./package.sh chery/fx12fl Package Chery FX12FL only
 # ============================================================
 set -e
 
@@ -16,6 +17,7 @@ ALL_CUSTOMERS=(
     "gwm/de09g"
     "gwm/b06-5"
     "chery/t1jfl3"
+    "chery/fx12fl"
 )
 
 package_one() {
