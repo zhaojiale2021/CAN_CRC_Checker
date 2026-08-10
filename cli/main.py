@@ -319,6 +319,10 @@ def run_cmd(config_path, verbose):
             click.echo(f"DataID xlsx: {cfg.dataid_xlsx}")
 
     crc_params = cfg.build_crc_params()
+
+    # fx12fl: auto-classify needs a fallback algorithm when the config omits one
+    if cfg.crc_auto_classify and crc_params is None:
+        crc_params = get_preset("CRC8/SAE-J1850")
     crc_range = cfg.build_crc_range()
 
     if not crc_params:
@@ -421,6 +425,12 @@ def run_cmd(config_path, verbose):
         # Apply profile-based CRC overrides (Profile 1 → CRC8/SAE-J1850-ZERO)
         protection_map.apply_profile_crc_params(crc_params)
     protection_map.apply_crc_range(crc_range)
+
+    # fx12fl: per-message algorithm from DBC comments (overrides the defaults above)
+    if cfg.crc_auto_classify:
+        n = protection_map.apply_comment_classification(crc_params)
+        if verbose and n > 0:
+            click.echo(f"CRC auto-classify (DBC comments): {n} groups")
 
     if cfg.rc_max_valid is not None:
         protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)

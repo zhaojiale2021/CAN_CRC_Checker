@@ -53,6 +53,19 @@ PRESETS: dict[str, CRCParams] = {
         final_xor=0x00, reflect_in=False, reflect_out=False,
         name="XOR8 (Simple Checksum)",
     ),
+    # fx12fl (Chery FX12) non-CRC checksums — see crc/classify.py
+    "SUM8/XOR-FF": CRCParams(
+        width=8, polynomial=0x00, initial_value=0x00,
+        final_xor=0xFF, reflect_in=False, reflect_out=False,
+        name="SUM8/XOR-FF (fx12fl: sum of bytes AND 0xFF, XOR 0xFF)",
+        checksum_type="sum_xor",
+    ),
+    "XOR8/SEED": CRCParams(
+        width=8, polynomial=0x00, initial_value=0x00,
+        final_xor=0x00, reflect_in=False, reflect_out=False,
+        name="XOR8/SEED (fx12fl: byte-wise XOR with constant seed)",
+        checksum_type="xor_seed",
+    ),
 }
 
 

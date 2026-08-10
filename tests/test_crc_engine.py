@@ -88,6 +88,37 @@ class TestCRCEngine:
         # With no data, CRC stays at init=0xFF, then XOR 0xFF → 0x00
         assert result == 0x00
 
+    def test_sum_xor_known_vector(self):
+        """SUM8/XOR-FF: (sum of bytes AND 0xFF) XOR 0xFF.
+
+        Mirrors crc_calculatecrcxor (uint8 accumulation + final XOR 0xFF).
+        """
+        engine = CRCEngine(get_preset("SUM8/XOR-FF"))
+        # 0x01+0x02+0x03+0x04 = 0x0A -> 0x0A ^ 0xFF = 0xF5
+        assert engine.compute(bytes([0x01, 0x02, 0x03, 0x04])) == 0xF5
+        # 0xFF+0xFF = 0x1FE -> &0xFF = 0xFE -> ^0xFF = 0x01
+        assert engine.compute(bytes([0xFF, 0xFF])) == 0x01
+        # empty -> 0x00 ^ 0xFF = 0xFF
+        assert engine.compute(b"") == 0xFF
+
+    def test_xor_seed_known_vector(self):
+        """XOR8/SEED: seed XOR every byte (mirrors crc_calculatecrcxor_seed).
+
+        YAS_1 seed = 0x01 ^ 0x27 = 0x26.
+        """
+        from crc_checker.crc.classify import build_crc_params_from_comment
+        params = build_crc_params_from_comment(
+            "0x01 XOR 0x27 XOR Byte0 XOR Byte1 XOR Byte2 XOR Byte3 XOR Byte4 XOR Byte5 XOR Byte6")
+        assert params is not None
+        assert params.checksum_type == "xor_seed"
+        assert params.initial_value == 0x26
+        engine = CRCEngine(params)
+        data = bytes([0x01, 0x02, 0x03, 0x04])
+        expected = 0x26 ^ 0x01 ^ 0x02 ^ 0x03 ^ 0x04  # 0x22
+        assert engine.compute(data) == expected
+        # seed only, no data -> 0x26
+        assert engine.compute(b"") == 0x26
+
 
 class TestCRCPresets:
     """Verify all presets have reasonable parameters."""

@@ -65,6 +65,23 @@ class CRCEngine:
         mask = self._mask
         width = self.params.width
 
+        if self.params.checksum_type == "sum_xor":
+            # fx12fl checksum: ((Byte0+Byte1+...+ByteN) AND 0xFF) XOR 0xFF
+            # (mirrors crc_calculatecrcxor: uint8 accumulation + final XOR)
+            result = 0
+            for byte in data:
+                result = (result + byte) & mask
+            return (result ^ self.params.final_xor) & mask
+
+        if self.params.checksum_type == "xor_seed":
+            # fx12fl checksum: seed XOR Byte0 XOR Byte1 ... (byte-wise XOR
+            # with a per-message constant seed, e.g. 0x01 ^ 0x27 for YAS_1;
+            # mirrors crc_calculatecrcxor_seed)
+            result = self.params.initial_value & mask
+            for byte in data:
+                result ^= byte
+            return result & mask
+
         if self.params.polynomial == 0:
             # XOR8 simple checksum
             result = 0

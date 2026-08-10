@@ -23,6 +23,9 @@ SUFFIX_PATTERNS: dict[str, str] = {
     ),
     "rolling_counter": (
         r"(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$"
+        r"|_msgcntr$|_msgcntr[0-9]*$"
+        r"|_messagecounter$|_messagecounter[0-9]*$"
+        r"|_alivecounter$|_alivecnt$"
         r"|_rollgcntr$|_rollgcntr[0-9]*$"
         r"|_rollgcntr[0-9]+_[0-9]+[a-z]*$"
         r"|_rollingcounter$|_rollingcounter_[0-9]+$"
@@ -143,7 +146,8 @@ class SignalResolver:
 
         # Remove common suffixes (GAC-style)
         suffix_match = re.search(
-            r'_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter)'
+            r'_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter|'
+            r'MsgCntr|MessageCounter|AliveCounter|AliveCnt)'
             r'([0-9]*)(_[0-9]+[a-z]*)?$',
             signal_name, re.IGNORECASE
         )
@@ -184,6 +188,7 @@ class SignalResolver:
             # Find all checksum and RC signals in this frame
             checksum_signals: list[SignalInfo] = []
             rc_signals: list[SignalInfo] = []
+            checksum_comments: dict[str, str] = {}
 
             for sig in frame.get("signals", []):
                 sig_info = SignalInfo(
@@ -194,6 +199,10 @@ class SignalResolver:
                 )
                 if self.is_checksum_signal(sig["name"]):
                     checksum_signals.append(sig_info)
+                    # Remember the DBC comment (algorithm description) for
+                    # auto-classification (fx12fl). Keep it on the signal and
+                    # copy it onto the protection group below.
+                    checksum_comments[sig["name"]] = sig.get("comment", "")
                 if self.is_rolling_counter_signal(sig["name"]):
                     rc_signals.append(sig_info)
 
@@ -211,6 +220,7 @@ class SignalResolver:
                         dlc=dlc, pair_suffix=suffix,
                     )
                 groups[suffix].checksum_signal = cs
+                groups[suffix].checksum_comment = checksum_comments.get(cs.name, "")
 
             for rc in rc_signals:
                 suffix = self.extract_suffix(rc.name)

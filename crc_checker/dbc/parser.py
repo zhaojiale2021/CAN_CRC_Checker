@@ -66,6 +66,7 @@ class DBCParser:
                     "start_bit": sig.get_startbit(),
                     "length": sig.size,
                     "byte_order": "little_endian" if sig.is_little_endian else "big_endian",
+                    "comment": getattr(sig, "comment", "") or "",
                 })
             frames.append({
                 "frame_id": frame.arbitration_id.to_compound_integer(),

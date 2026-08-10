@@ -32,6 +32,7 @@ class MessageProtection:  # pylint: disable=too-many-instance-attributes
     crc_range: CRCRange | None = None                          # Data range (set by user/config)
     dataid: int | None = None                                  # 16-bit DataID from AUTOSAR E2E
     crc_profile: str = ""               # Profile hint from DataID (e.g. "Profile 1A")
+    checksum_comment: str = ""          # DBC comment of the checksum signal (fx12fl auto-classify)
     frame_protection_count: int = 1                            # How many protection groups
     rc_max_valid: int | None = None                            # Max RC before wrap
     dbc_source: str = ""                                       # Source DBC file name
@@ -71,6 +72,35 @@ class DBCProtectionMap:
         for prot_list in self.messages.values():
             for prot in prot_list:
                 prot.crc_params = params
+
+    def apply_comment_classification(self, default_params: CRCParams | None = None) -> int:
+        """Auto-classify per-message checksum algorithm from DBC comments (fx12fl).
+
+        Overrides ``crc_params`` for messages whose checksum signal has a DBC
+        comment describing the algorithm ("sum of bytes XOR 0xFF" -> SUM8/XOR-FF,
+        "0xNN XOR ... XOR ByteN" -> XOR8/SEED with parsed seed, else CRC-8).
+
+        Returns:
+            Number of protection groups that received a classified algorithm.
+        """
+        # pylint: disable=import-outside-toplevel
+        from crc_checker.crc.classify import build_crc_params_from_comment
+
+        applied = 0
+        for prot_list in self.messages.values():
+            for prot in prot_list:
+                if not prot.checksum_signal or not prot.checksum_comment:
+                    continue
+                # An explicit DataID profile (e.g. "Profile 5") wins over the
+                # DBC-comment heuristic; only classify groups without a profile.
+                if prot.crc_profile:
+                    continue
+                params = build_crc_params_from_comment(
+                    prot.checksum_comment, default_params)
+                if params is not None:
+                    prot.crc_params = params
+                    applied += 1
+        return applied
 
     def apply_crc_range(self, crc_range: CRCRange):
         """Apply the same CRC range to all protection groups."""
@@ -305,6 +335,15 @@ class ChannelProtectionMap:
             pm.apply_crc_params(params)
         if self._fallback:
             self._fallback.apply_crc_params(params)
+
+    def apply_comment_classification(self, default_params=None) -> int:
+        """Auto-classify checksum algorithms from DBC comments (fx12fl) on all maps."""
+        applied = 0
+        for pm in self._maps.values():
+            applied += pm.apply_comment_classification(default_params)
+        if self._fallback:
+            applied += self._fallback.apply_comment_classification(default_params)
+        return applied
 
     def apply_crc_range(self, crc_range):
         """Apply CRC range to all channel maps."""

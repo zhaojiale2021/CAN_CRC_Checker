@@ -84,6 +84,89 @@ class TestSignalResolver:
         assert resolver.is_rolling_counter_signal("MY_RC_Engine")
         assert not resolver.is_rolling_counter_signal("RollingCounter_ACC1")
 
+    def test_fx12fl_suffix_detection(self):
+        """fx12fl (Chery) suffix names: <Msg>_CRC / <Msg>_MsgCntr / <Msg>_MessageCounter."""
+        resolver = SignalResolver()
+        assert resolver.is_checksum_signal("FCM_10_CRC")
+        assert resolver.is_checksum_signal("FVC_0x2E1_Checksum")
+        assert resolver.is_checksum_signal("YAS_1_Checksum")
+        assert resolver.is_rolling_counter_signal("FCM_10_MsgCntr")
+        assert resolver.is_rolling_counter_signal("FCM_2_MessageCounter")
+        assert resolver.is_rolling_counter_signal("FVC_0x2E1_MessageCounter")
+        # 'Cntrl' (Control) must NOT false-match: only the anchored _MsgCntr
+        # suffix is a rolling counter, not the 'cntr' substring.
+        assert not resolver.is_rolling_counter_signal("FCM_CntrlSysInvldNum")
+        assert not resolver.is_rolling_counter_signal("CntrlEnblReq")
+
+    def test_fx12fl_extract_suffix(self):
+        """fx12fl suffix extraction yields the message name."""
+        assert SignalResolver.extract_suffix("FCM_10_CRC") == "FCM_10"
+        assert SignalResolver.extract_suffix("FCM_10_MsgCntr") == "FCM_10"
+        assert SignalResolver.extract_suffix("FCM_2_MessageCounter") == "FCM_2"
+        assert SignalResolver.extract_suffix("FVC_0x2E1_MessageCounter") == "FVC_0x2E1"
+        assert SignalResolver.extract_suffix("YAS_1_Checksum") == "YAS_1"
+
+    def test_fx12fl_comment_classification(self):
+        """DBC comments flow through the resolver; auto-classification sets
+        per-message checksum params (crc8 / sum_xor / xor_seed)."""
+        resolver = SignalResolver()
+        frames = [
+            {
+                "frame_id": 0x2E1, "frame_name": "FVC_02", "dlc": 8,
+                "signals": [
+                    {"name": "FVC_0x2E1_Checksum", "start_bit": 56, "length": 8,
+                     "byte_order": "big_endian",
+                     "comment": "Checksum(SAE J1850 CRC-8)"},
+                    {"name": "FVC_0x2E1_MessageCounter", "start_bit": 48, "length": 4,
+                     "byte_order": "big_endian"},
+                ],
+            },
+            {
+                "frame_id": 0x295, "frame_name": "YAS_1", "dlc": 8,
+                "signals": [
+                    {"name": "YAS_1_Checksum", "start_bit": 56, "length": 8,
+                     "byte_order": "big_endian",
+                     "comment": ("0x01 XOR 0x27 XOR Byte0 XOR Byte1 XOR Byte2 "
+                                 "XOR Byte3 XOR Byte4 XOR Byte5 XOR Byte6")},
+                    {"name": "YAS_1_MsgCntr", "start_bit": 48, "length": 4,
+                     "byte_order": "big_endian"},
+                ],
+            },
+            {
+                "frame_id": 0x647, "frame_name": "ICM_5", "dlc": 8,
+                "signals": [
+                    {"name": "ICM_5_Checksum", "start_bit": 56, "length": 8,
+                     "byte_order": "big_endian",
+                     "comment": ("((Byte0+Byte1+Byte2+Byte3+Byte4+Byte5+Byte6) "
+                                 "AND 0xFF) XOR 0xFF")},
+                    {"name": "ICM_5_MsgCntr", "start_bit": 48, "length": 4,
+                     "byte_order": "big_endian"},
+                ],
+            },
+        ]
+        pm = resolver.build_protection_map(frames)
+
+        # RC now pairs with the checksum for each fx12fl-style group
+        fvc = pm.messages[0x2E1][0]
+        assert fvc.rolling_counter_signal is not None
+        assert fvc.checksum_comment == "Checksum(SAE J1850 CRC-8)"
+
+        # Auto-classify: crc8 keeps default, sum_xor + xor_seed override
+        from crc_checker.crc.presets import get_preset
+        applied = pm.apply_comment_classification(get_preset("CRC8/SAE-J1850"))
+        assert applied == 3
+
+        assert pm.messages[0x2E1][0].crc_params.checksum_type == "crc"
+        assert pm.messages[0x2E1][0].crc_params.name == "CRC8/SAE-J1850"
+
+        yas = pm.messages[0x295][0].crc_params
+        assert yas.checksum_type == "xor_seed"
+        assert yas.initial_value == 0x26  # 0x01 ^ 0x27
+
+        icm = pm.messages[0x647][0].crc_params
+        assert icm.checksum_type == "sum_xor"
+        assert icm.final_xor == 0xFF
+
 
 class TestDBCProtectionMapMerge:
     """Test DBCProtectionMap merge and backward compat."""

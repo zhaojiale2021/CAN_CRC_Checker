@@ -16,6 +16,7 @@ class CRCParams:
     reflect_in: bool = False
     reflect_out: bool = False
     name: str = ""
+    checksum_type: str = "crc"  # "crc" | "sum_xor" | "xor_seed" (fx12fl non-CRC checksums)
 
 
 @dataclass

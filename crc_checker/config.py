@@ -74,6 +74,7 @@ class RunConfig:
     crc_preset: str = ""                        # Preset name, e.g. "CRC8/AUTOSAR"
     crc_custom: dict | None = None              # Custom CRC params dict
     crc_byte_swap: bool = False                 # Byte-swap computed CRC (Profile 5 LE→BE)
+    crc_auto_classify: bool = False             # fx12fl: per-message algo from DBC comments
     range_mode: str = "exclude_crc"             # full_payload | exclude_crc | custom_range
     range_start: int = 0
     range_end: int = -1
@@ -240,6 +241,7 @@ class RunConfig:
                 reflect_in=d.get("reflect_in", False),
                 reflect_out=d.get("reflect_out", False),
                 name=d.get("name", "custom"),
+                checksum_type=d.get("type", "crc"),  # "crc" | "sum_xor" | "xor_seed"
             )
         if self.crc_preset:
             return get_preset(self.crc_preset)
@@ -270,6 +272,8 @@ CONFIG_SCHEMA_DOC = """
   // === CRC Algorithm (optional — RC-only if omitted) ===
   "crc": {
     "preset": "CRC8/AUTOSAR"            // Use a built-in preset
+    // "auto_classify": true            // fx12fl: per-message algo from DBC comments
+    //                                   // (J1850 CRC-8 / SUM8/XOR-FF / XOR8/SEED)
     // OR custom:
     // "custom": {
     //   "width": 8,
@@ -277,7 +281,8 @@ CONFIG_SCHEMA_DOC = """
     //   "init": "0xFF",
     //   "xor": "0xFF",
     //   "reflect_in": false,
-    //   "reflect_out": false
+    //   "reflect_out": false,
+    //   "type": "crc"                   // "crc" | "sum_xor" | "xor_seed"
     // }
   },
 
@@ -378,6 +383,8 @@ def load_config(config_path: str) -> RunConfig:
         cfg.crc_preset = crc.get("preset", "")
         cfg.crc_custom = crc.get("custom")
         cfg.crc_byte_swap = crc.get("byte_swap", False)
+        # fx12fl: auto-classify per-message algorithm from DBC comments
+        cfg.crc_auto_classify = crc.get("auto_classify", False)
 
     # Range
     rng = data.get("range", {})

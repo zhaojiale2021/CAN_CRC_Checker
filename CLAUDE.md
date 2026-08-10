@@ -65,7 +65,7 @@ To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `ru
 
 ### Core modules
 
-- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms. `presets.py` holds 10 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8. `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
+- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms, plus fx12fl non-CRC checksums (`sum_xor`, `xor_seed`). `presets.py` holds 12 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8, **SUM8/XOR-FF**, **XOR8/SEED**. `classify.py` auto-classifies fx12fl per-message algorithms from DBC comments (J1850 CRC-8 / sum-of-bytes XOR 0xFF / byte-wise XOR with seed). `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
 
 - **`crc_checker/dbc/`** — `parser.py` wraps `canmatrix` to load DBC files. `resolver.py` uses regex matching for Checksum/RC signal pairs. Supports both **prefix-based** naming (`Checksum_*`, `CRC_*`) and **suffix-based** naming (`*_CRC`, `*_Counter`) via auto-detection (`detect_naming_convention()`). `models.py` defines `DBCProtectionMap`, `ChannelProtectionMap` (per-channel DBC assignment), `MessageProtection` (with `crc_profile` for algorithm overrides).
 
@@ -128,4 +128,4 @@ Key config sections (see `config.py` `CONFIG_SCHEMA_DOC` for full reference):
 
 ### Testing
 
-27 tests in `tests/` — CRC engine known vectors, DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, and protection map merge logic.
+44 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl comment auto-classification, DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, and protection map merge logic.
