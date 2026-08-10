@@ -21,7 +21,7 @@ release/
 *.zip
 
 # Customer exe (built, not committed)
-customers/*/crc-check.exe
+customers/*/*/crc-check.exe
 
 # Tool metadata
 .reasonix/

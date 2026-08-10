@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  CAN CRC Checker — Build standalone .exe
+REM  CAN CRC Checker - Build standalone .exe
 REM ============================================================
 setlocal
 

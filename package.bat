@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  CAN CRC Checker — Package customer release
+REM  CAN CRC Checker - Package customer release
 REM
 REM  Usage:
 REM    package.bat              Package all customers
@@ -15,7 +15,7 @@ set RELEASE_DIR=release
 
 echo.
 echo ========================================
-echo  CAN CRC Checker — Package Release
+echo  CAN CRC Checker - Package Release
 echo ========================================
 echo.
 
