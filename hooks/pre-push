@@ -1,0 +1,32 @@
+#!/bin/sh
+# ============================================================
+#  Pre-push hook: block the push unless pylint scores 10.00/10
+#
+#  Installed from hooks/pre-push -> .git/hooks/pre-push
+#  (run install-hooks.bat after cloning; .git/hooks is not
+#  version-controlled, so the source lives in hooks/)
+# ============================================================
+set -e
+
+TOPLEVEL=$(git rev-parse --show-toplevel)
+cd "$TOPLEVEL"
+
+echo "== pylint check (required: 10.00/10) =="
+OUT=$(python -m pylint crc_checker/ cli/ 2>&1) || true
+echo "$OUT"
+
+# Score line looks like:  Your code has been rated at 10.00/10 (previous run: ...)
+SCORE=$(printf '%s\n' "$OUT" | sed -n 's/.*rated at \([0-9][0-9]*\.\?[0-9]*\)\/10.*/\1/p' | tail -n1)
+
+if [ -z "$SCORE" ]; then
+    echo "ERROR: could not parse pylint score" >&2
+    exit 1
+fi
+
+if [ "$SCORE" != "10.00" ]; then
+    echo "ERROR: pylint score is $SCORE/10, need 10.00/10 — fix issues before pushing" >&2
+    exit 1
+fi
+
+echo "OK: pylint 10.00/10"
+exit 0
