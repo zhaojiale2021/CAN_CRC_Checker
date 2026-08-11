@@ -8,6 +8,7 @@ REM    package.bat gac/t75      Package GAC T75 only
 REM    package.bat gwm/de09g    Package GWM DE09G only
 REM    package.bat chery/t1jfl3 Package Chery T1JFL3 only
 REM    package.bat chery/fx12fl Package Chery FX12FL only
+REM    package.bat baic/b81vs   Package BAIC B81VS only
 REM ============================================================
 setlocal enabledelayedexpansion
 
@@ -40,6 +41,7 @@ if "%TARGET%"=="" (
     call :package gwm\b06-5
     call :package chery\t1jfl3
     call :package chery\fx12fl
+    call :package baic\b81vs
     goto :end
 )
 

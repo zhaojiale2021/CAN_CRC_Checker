@@ -8,6 +8,7 @@
 #    ./package.sh gwm/de09g    Package GWM DE09G only
 #    ./package.sh chery/t1jfl3 Package Chery T1JFL3 only
 #    ./package.sh chery/fx12fl Package Chery FX12FL only
+#    ./package.sh baic/b81vs   Package BAIC B81VS only
 # ============================================================
 set -e
 
@@ -18,6 +19,7 @@ ALL_CUSTOMERS=(
     "gwm/b06-5"
     "chery/t1jfl3"
     "chery/fx12fl"
+    "baic/b81vs"
 )
 
 package_one() {
