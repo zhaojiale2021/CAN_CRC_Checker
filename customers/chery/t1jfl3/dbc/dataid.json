@@ -1,10 +1,9 @@
 {
   "format": "dataid_map_v2",
-  "source": "customers/chery/t1jfl3/dbc/EEA(5.1)_Message_List_version1.5.1_APA_20260307120037.xlsx",
+  "source": "dbc/EEA(5.1)_Message_List_version3.1_APA_20260724095240.xlsx",
   "mapping": "chery_t1jfl3",
   "sheets": [
-    "FL_CH_CANFD",
-    "FL_DA_CANFD"
+    "<auto>"
   ],
   "entries": [
     {
@@ -267,6 +266,13 @@
       "frame_name": "ADS_EPS_3"
     },
     {
+      "frame_id": "0x1BC",
+      "dataid": "0x0119",
+      "signal_name": "APA_CRC3_1BCh",
+      "profile": "Profile1A",
+      "frame_name": "ADS_EPS_3"
+    },
+    {
       "frame_id": "0x22B",
       "dataid": "0x004D",
       "signal_name": "ONEBOX_3_CRC1",
@@ -363,20 +369,6 @@
       "signal_name": "CRC1_264h",
       "profile": "Profile1A",
       "frame_name": "EPB_R_1"
-    },
-    {
-      "frame_id": "0x27E",
-      "dataid": "0x01E3",
-      "signal_name": "FRZCU_9_CRC1",
-      "profile": "Profile1A",
-      "frame_name": "FRZCU_9"
-    },
-    {
-      "frame_id": "0x27E",
-      "dataid": "0x01E4",
-      "signal_name": "FRZCU_9_CRC2",
-      "profile": "Profile1A",
-      "frame_name": "FRZCU_9"
     },
     {
       "frame_id": "0x2AB",

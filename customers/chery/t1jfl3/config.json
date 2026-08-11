@@ -8,6 +8,7 @@
     "mode": "exclude_crc"
   },
   "dataid": {
+    "xlsx": "dbc/EEA(5.1)_Message_List_version3.1_APA_20260724095240.xlsx",
     "json": "dbc/dataid.json",
     "mapping": "chery_t1jfl3",
     "position": "prepend",
