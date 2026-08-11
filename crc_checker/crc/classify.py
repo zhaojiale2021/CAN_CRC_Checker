@@ -103,9 +103,8 @@ def build_crc_params_from_comment(comment: str,
     if algo == 'sum_xor':
         # fx12fl/EPB1: "... AND 0xFF) XOR 0xFF" -> SUM8/XOR-FF (final XOR 0xFF)
         # b81vs:       "Checksum = (...) and 0xFF" -> SUM8 (plain sum, 0x00)
-        if _XOR_FF_RE.search(comment or ''):
-            return get_preset('SUM8/XOR-FF')
-        return get_preset('SUM8')
+        return (get_preset('SUM8/XOR-FF') if _XOR_FF_RE.search(comment or '')
+                else get_preset('SUM8'))
     if algo == 'xor_seed':
         seed = parse_crc_seed(comment)
         base = get_preset('XOR8/SEED')
@@ -116,7 +115,7 @@ def build_crc_params_from_comment(comment: str,
             name=f'XOR8/SEED (seed=0x{seed:02X})', checksum_type='xor_seed',
         )
     if algo == 'p01':
-        # b81vs Profile 1A: CRC8/SAE-J1850-ZERO (DataID applied separately)
+        # b81vs Profile 1A: CRC8/SAE-J1850-ZERO (DataID applied by caller)
         return get_preset('CRC8/SAE-J1850-ZERO')
     # crc8
     return default_params or get_preset('CRC8/SAE-J1850')
