@@ -29,9 +29,6 @@ from crc_checker.crc.presets import get_preset
 _LITERAL_HEX = re.compile(r'0[xX][0-9A-Fa-f]+')
 # b81vs Profile 1A DataID: "DataID：0x00EB" (full-width colon tolerated)
 _DATAID_RE = re.compile(r'DataID\s*[：:=]?\s*0[xX]([0-9A-Fa-f]+)', re.IGNORECASE)
-# fx12fl / b81vs-EPB1 sum-XOR-0xFF vs b81vs plain sum: the comment says
-# "XOR 0xFF" only in the XOR variants (parenthesized in EPB1: "XOR (0xFF)").
-_XOR_FF_RE = re.compile(r'XOR\s*\(?\s*0[xX]0*FF', re.IGNORECASE)
 
 
 def classify_crc_algo(comment: str) -> str:
@@ -101,10 +98,11 @@ def build_crc_params_from_comment(comment: str,
         # b81vs: algorithm described in an external file — caller keeps default.
         return None
     if algo == 'sum_xor':
-        # fx12fl/EPB1: "... AND 0xFF) XOR 0xFF" -> SUM8/XOR-FF (final XOR 0xFF)
-        # b81vs:       "Checksum = (...) and 0xFF" -> SUM8 (plain sum, 0x00)
-        return (get_preset('SUM8/XOR-FF') if _XOR_FF_RE.search(comment or '')
-                else get_preset('SUM8'))
+        # All crc_calculatecrcxor implementations (iNetE2E_Can.cpp, b70ks
+        # NetCom_CRC.cpp) end with "uCRC ^= 0xFF", so the algorithm is
+        # SUM8/XOR-FF even when the DBC comment omits the XOR (b81vs writes
+        # "Checksum = (...) and 0xFF" but the firmware still XORs 0xFF).
+        return get_preset('SUM8/XOR-FF')
     if algo == 'xor_seed':
         seed = parse_crc_seed(comment)
         base = get_preset('XOR8/SEED')

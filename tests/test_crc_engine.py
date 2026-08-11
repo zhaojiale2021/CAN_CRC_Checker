@@ -119,6 +119,42 @@ class TestCRCEngine:
         # seed only, no data -> 0x26
         assert engine.compute(b"") == 0x26
 
+    def test_b81vs_16bit_checksum_actual_alignment(self):
+        """b81vs 16-bit Checksum<ID>: firmware compares only the crc_index byte.
+
+        A 16-bit Motorola signal at byte1: frame CRC byte1=0x53, byte2 (high
+        byte) is ignored by crc_calculatecrcxor — the verifier must compare
+        expected against byte1, not the full 16-bit field.
+        """
+        # pylint: disable=import-outside-toplevel
+        from crc_checker.protect.checksum import CRCVerifier
+        from crc_checker.dbc.models import MessageProtection, SignalInfo
+        from crc_checker.crc.models import CRCRange
+        from crc_checker.trace.models import CanFrame
+
+        # 8-byte frame; Checksum450 is a 16-bit Motorola signal starting at
+        # byte1 (sb=8). Data bytes: byte0=0x11, byte1=0x23 (CRC), byte2-7 fill.
+        data = bytes([0x11, 0x23, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77])
+        # expected = (sum of bytes except byte1) ^ 0xFF
+        exp = (sum(b for i, b in enumerate(data) if i != 1) & 0xFF) ^ 0xFF
+        assert exp == 0x23  # frame CRC matches -> PASS
+
+        verifier = CRCVerifier(get_preset("SUM8/XOR-FF"))
+        prot = MessageProtection(
+            frame_id=0x1C2, frame_name="RSDS_L_AD1", dlc=8, pair_suffix="RSDS_L_AD1",
+            checksum_signal=SignalInfo(
+                name="Checksum450", start_bit=8, length=16, byte_order="big_endian"),
+            crc_params=get_preset("SUM8/XOR-FF"),
+            crc_range=CRCRange(mode="exclude_crc"),
+        )
+        frame = CanFrame(timestamp=0.0, arbitration_id=0x1C2, dlc=8, data=data)
+        verdict = verifier.verify(frame, prot)
+        assert verdict is not None
+        assert verdict.is_pass, (
+            f"expected 0x{verdict.expected_value:02X}, "
+            f"got 0x{verdict.actual_value:02X}")
+        assert verdict.actual_value == 0x23  # aligned to the crc_index byte
+
 
 class TestCRCPresets:
     """Verify all presets have reasonable parameters."""

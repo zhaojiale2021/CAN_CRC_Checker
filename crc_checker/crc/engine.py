@@ -150,7 +150,13 @@ class CRCEngine:
 
         # Compute the CRC byte position(s) so we can exclude them
         crc_byte_start = checksum_start_bit // 8
-        crc_byte_end = (checksum_start_bit + checksum_length + 7) // 8
+        if self.params.checksum_type != "crc" and checksum_length > 8:
+            # b81vs 8-bit checksum on a >8-bit field: the firmware skips only
+            # the byte at crc_index (crc_calculatecrcxor's crc_index), the rest
+            # of the field participates in the sum.
+            crc_byte_end = crc_byte_start + 1
+        else:
+            crc_byte_end = (checksum_start_bit + checksum_length + 7) // 8
 
         # Determine which bytes to use for CRC (exclude CRC bytes)
         compute_bytes = self._extract_range(bytes(data), crc_range, len(data),

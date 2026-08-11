@@ -59,7 +59,7 @@ customers/
 │   ├── t1jfl3/            # Chery T1J FL3 (E2E Profile 1A + DataID)
 │   ├── fx12fl/            # Chery FX12 FL (J1850 CRC-8 / SUM8/XOR-FF / XOR8/SEED)
 └── baic/
-    └── b81vs/             # BAIC B81VS (Profile 1A + DataID / SUM8)
+    └── b81vs/             # BAIC B81VS (Profile 1A + DataID / SUM8/XOR-FF)
 ```
 
 To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `run.bat`, `run.sh`, `dbc/` and `trace/` directories.

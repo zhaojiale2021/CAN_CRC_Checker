@@ -2,7 +2,7 @@
   "dbc": "dbc",
   "traces": ["trace"],
   "crc": {
-    "preset": "SUM8",
+    "preset": "SUM8/XOR-FF",
     "auto_classify": true
   },
   "range": {

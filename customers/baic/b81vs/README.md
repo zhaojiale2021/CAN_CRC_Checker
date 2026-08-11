@@ -6,9 +6,9 @@
 
 | 分类 | 描述（DBC 注释） | 实现 |
 |------|------------------|------|
-| SUM8 | `Checksum = (byte0+byte1+…+byteN) and 0xFF` | 排除 CRC 字节后其余字节求和 `& 0xFF`（**无** XOR 0xFF） |
+| SUM8/XOR-FF | `Checksum = (byte0+byte1+…+byteN) and 0xFF`（注释省略了 XOR） | 排除 CRC 字节后其余字节求和 `& 0xFF` 再 `XOR 0xFF`（对齐 mcu 端 `crc_calculatecrcxor`，其实现带 `^0xFF`） |
 | Profile 1A | `CRC checksum. …（Profile：1A；DataID：0x00EB）` | CRC8/SAE-J1850-ZERO + DataID（从注释解析，prepend lo_hi） |
-| skip | `算法另附文件` / 亚字节校验 | 不自动校验，保持默认算法 |
+| skip | `算法另附文件` / nibble 亚字节校验 | 不自动校验，保持默认算法 |
 
 - 命名：CRC `<Msg>_Checksum` / `<Msg>_Chks`，RC `<Msg>_RollingCounter` / `<Msg>Cntr`
 - CAN FD 多段报文：每段段首一个 CRC（`*_Chks1/2/3…`），段内 4bit RC，DataID 逐段独立

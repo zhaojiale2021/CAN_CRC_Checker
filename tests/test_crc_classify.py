@@ -120,13 +120,13 @@ class TestBuildParams:
         assert params.final_xor == 0xFF
 
     def test_b81vs_sum_params(self):
-        """b81vs plain sum comment builds SUM8 params (final XOR 0x00)."""
+        """b81vs plain-sum comment builds SUM8/XOR-FF params (firmware XORs 0xFF)."""
         params = build_crc_params_from_comment(
             "Checksum = (byte0+byte1+...+byte6）and 0xFF")
         assert params is not None
         assert params.checksum_type == "sum_xor"
-        assert params.final_xor == 0x00
-        assert params is get_preset("SUM8")
+        assert params.final_xor == 0xFF
+        assert params is get_preset("SUM8/XOR-FF")
 
     def test_b81vs_profile1a_params(self):
         """b81vs Profile 1A -> CRC8/SAE-J1850-ZERO params."""

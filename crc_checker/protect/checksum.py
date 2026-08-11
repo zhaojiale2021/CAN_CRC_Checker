@@ -71,6 +71,14 @@ class CRCVerifier(ProtectionAlgorithm):
         actual_value = extract_signal_bits(
             frame.data, cs_signal.start_bit, cs_signal.length, cs_signal.byte_order
         )
+        # b81vs-style non-CRC 8-bit checksums on >8-bit signals: the firmware
+        # (crc_calculatecrcxor) compares only the byte at crc_index (e.g. a
+        # 16-bit Checksum<ID> field where only the low byte carries the value
+        # and the high byte is ignored), so align the actual value to that byte.
+        if (cs_signal.length > 8 and params.checksum_type != "crc"
+                and params.width < 16):
+            crc_byte = cs_signal.start_bit // 8
+            actual_value = frame.data[crc_byte] if crc_byte < len(frame.data) else 0
 
         # Compute expected value
         expected_value = engine.compute_for_frame(
