@@ -1,5 +1,6 @@
 """Tests for signal name resolution and DBC parsing."""
 
+from crc_checker.crc.presets import get_preset
 from crc_checker.dbc.resolver import SignalResolver
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
 from crc_checker.dataid.parser import DataIDMap
@@ -153,7 +154,6 @@ class TestSignalResolver:
         assert fvc.checksum_comment == "Checksum(SAE J1850 CRC-8)"
 
         # Auto-classify: crc8 keeps default, sum_xor + xor_seed override
-        from crc_checker.crc.presets import get_preset
         applied = pm.apply_comment_classification(get_preset("CRC8/SAE-J1850"))
         assert applied == 3
 

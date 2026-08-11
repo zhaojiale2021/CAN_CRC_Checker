@@ -1,6 +1,7 @@
 """Smoke tests for CRC engine correctness against known vectors."""
 
 import pytest
+from crc_checker.crc.classify import build_crc_params_from_comment
 from crc_checker.crc.models import CRCParams
 from crc_checker.crc.engine import CRCEngine
 from crc_checker.crc.presets import get_preset
@@ -106,7 +107,6 @@ class TestCRCEngine:
 
         YAS_1 seed = 0x01 ^ 0x27 = 0x26.
         """
-        from crc_checker.crc.classify import build_crc_params_from_comment
         params = build_crc_params_from_comment(
             "0x01 XOR 0x27 XOR Byte0 XOR Byte1 XOR Byte2 XOR Byte3 XOR Byte4 XOR Byte5 XOR Byte6")
         assert params is not None

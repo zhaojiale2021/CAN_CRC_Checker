@@ -12,7 +12,8 @@ TOPLEVEL=$(git rev-parse --show-toplevel)
 cd "$TOPLEVEL"
 
 echo "== pylint check (required: 10.00/10) =="
-OUT=$(python -m pylint crc_checker/ cli/ 2>&1) || true
+# Same scope as the GitHub Actions CI job: every tracked .py file
+OUT=$(python -m pylint $(git ls-files '*.py') 2>&1) || true
 echo "$OUT"
 
 # Score line looks like:  Your code has been rated at 10.00/10 (previous run: ...)
