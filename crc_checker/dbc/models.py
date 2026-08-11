@@ -85,9 +85,13 @@ class DBCProtectionMap:
             Number of protection groups that received a classified algorithm.
         """
         # pylint: disable=import-outside-toplevel
-        from crc_checker.crc.classify import build_crc_params_from_comment
+        from crc_checker.crc.classify import (
+            build_crc_params_from_comment, classify_crc_algo,
+            parse_dataid_from_comment,
+        )
 
         applied = 0
+
         for prot_list in self.messages.values():
             for prot in prot_list:
                 if not prot.checksum_signal or not prot.checksum_comment:
@@ -96,6 +100,20 @@ class DBCProtectionMap:
                 # DBC-comment heuristic; only classify groups without a profile.
                 if prot.crc_profile:
                     continue
+                algo = classify_crc_algo(prot.checksum_comment)
+                if algo == 'skip':
+                    # b81vs: algorithm described in an external file —
+                    # keep whatever default params were applied.
+                    continue
+                if prot.checksum_signal.length < 8:
+                    # sub-byte checksum (e.g. nibble) — not auto-verifiable
+                    continue
+                if algo == 'p01':
+                    # b81vs Profile 1A: CRC8/SAE-J1850-ZERO, DataID parsed
+                    # from the comment ("DataID：0x00EB").
+                    dataid = parse_dataid_from_comment(prot.checksum_comment)
+                    if dataid is not None:
+                        prot.dataid = dataid
                 params = build_crc_params_from_comment(
                     prot.checksum_comment, default_params)
                 if params is not None:

@@ -19,13 +19,15 @@ SUFFIX_PATTERNS: dict[str, str] = {
     "checksum": (
         r"(?i)(_crc$|_checksum$|_e2e_crc$|_crc[0-9]*$"
         r"|_crc[0-9]+_[0-9]+[a-z]*$"
-        r"|_checksum[0-9]*$)"
+        r"|_checksum[0-9]*$"
+        r"|_chks$|_chks[0-9]*$|chks$|chks[0-9]*$)"
     ),
     "rolling_counter": (
         r"(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$"
         r"|_msgcntr$|_msgcntr[0-9]*$"
         r"|_messagecounter$|_messagecounter[0-9]*$"
         r"|_alivecounter$|_alivecnt$"
+        r"|_cntr$|_cntr[0-9]*$|cntr$|cntr[0-9]*$"
         r"|_rollgcntr$|_rollgcntr[0-9]*$"
         r"|_rollgcntr[0-9]+_[0-9]+[a-z]*$"
         r"|_rollingcounter$|_rollingcounter_[0-9]+$"
@@ -137,18 +139,21 @@ class SignalResolver:
           "CCU_1_Counter" → "CCU_1"
           "CCU_1_CRC_1" → "CCU_1"  (variant with index)
         """
-        # Remove common prefixes (GWM-style)
-        for prefix in ["Checksum_", "CheckSum_", "CRC_", "E2E_CRC_",
+        # Remove common prefixes (GWM-style / BAIC checksum<ID> naming)
+        for prefix in ["Checksum_", "Checksum", "CheckSum_", "CheckSum", "CRC_", "CRC",
+                       "E2E_CRC_",
                        "RollingCounter_", "RollingCounter", "Rolling_Counter_",
                        "RollingCntr_", "RC_", "LiveCounter_", "AliveCounter_"]:
             if signal_name.startswith(prefix):
                 return signal_name[len(prefix):]
 
-        # Remove common suffixes (GAC-style)
+        # Remove common suffixes (GAC-style / b81vs). b81vs uses underscore-less
+        # Chks/Cntr directly appended to the name (ADC_ADAS1Chks), which must
+        # also be stripped (with the leading underscore variants).
         suffix_match = re.search(
-            r'_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter|'
-            r'MsgCntr|MessageCounter|AliveCounter|AliveCnt)'
-            r'([0-9]*)(_[0-9]+[a-z]*)?$',
+            r'(?:_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter|'
+            r'MsgCntr|MessageCounter|AliveCounter|AliveCnt)|'
+            r'(?:Chks|Cntr))([0-9]*)(_[0-9]+[a-z]*)?$',
             signal_name, re.IGNORECASE
         )
         if suffix_match:

@@ -108,6 +108,29 @@ class TestSignalResolver:
         assert SignalResolver.extract_suffix("FVC_0x2E1_MessageCounter") == "FVC_0x2E1"
         assert SignalResolver.extract_suffix("YAS_1_Checksum") == "YAS_1"
 
+    def test_b81vs_suffix_detection(self):
+        """b81vs (BAIC) suffix names: *_Checksum / *_Chks CRC, *_RollingCounter / *Cntr RC."""
+        resolver = SignalResolver()
+        assert resolver.is_checksum_signal("CMRR_RR1_Checksum")
+        assert resolver.is_checksum_signal("FDCA1_CheckSum")
+        assert resolver.is_checksum_signal("ADC_ADAS1Chks")
+        assert resolver.is_checksum_signal("ADC_ADAS2Chks")
+        assert resolver.is_rolling_counter_signal("CMRR_RR1_RollingCounter")
+        assert resolver.is_rolling_counter_signal("ADC_ADAS1Cntr")
+        assert resolver.is_rolling_counter_signal("ADC_APA3Cntr")
+        # '_Cntr' must not false-match plain 'Cntr' substrings
+        assert not resolver.is_rolling_counter_signal("CntrEnblReq")
+        assert not resolver.is_rolling_counter_signal("FCM_CntrlSysInvldNum")
+
+    def test_b81vs_extract_suffix(self):
+        """b81vs suffix extraction yields the message name + segment index."""
+        assert SignalResolver.extract_suffix("CMRR_RR1_Checksum") == "CMRR_RR1"
+        assert SignalResolver.extract_suffix("CMRR_RR1_RollingCounter") == "CMRR_RR1"
+        assert SignalResolver.extract_suffix("ADC_ADAS1Chks") == "ADC_ADAS1"
+        assert SignalResolver.extract_suffix("ADC_ADAS1Cntr") == "ADC_ADAS1"
+        assert SignalResolver.extract_suffix("ADC_ADAS2Chks") == "ADC_ADAS2"
+        assert SignalResolver.extract_suffix("BleRpa1Chks") == "BleRpa1"
+
     def test_fx12fl_comment_classification(self):
         """DBC comments flow through the resolver; auto-classification sets
         per-message checksum params (crc8 / sum_xor / xor_seed)."""

@@ -50,11 +50,16 @@ customers/
 │   │   ├── dbc/           # DBC files + DataID xlsx/json
 │   │   └── trace/         # BLF trace files
 │   └── b06-5/             # GWM J6M B06-5 (CRC8/SAE-J1850-ZERO)
-└── gac/
-    └── t75/               # GAC Trumpchi T75 (E2E Profile 5 + Profile 1A)
-        ├── config.json, run.bat, run.sh
-        ├── dbc/           # DBC files + DataID xlsx/json
-        └── trace/
+├── gac/
+│   └── t75/               # GAC Trumpchi T75 (E2E Profile 5 + Profile 1A)
+│       ├── config.json, run.bat, run.sh
+│       ├── dbc/           # DBC files + DataID xlsx/json
+│       └── trace/
+├── chery/
+│   ├── t1jfl3/            # Chery T1J FL3 (E2E Profile 1A + DataID)
+│   ├── fx12fl/            # Chery FX12 FL (J1850 CRC-8 / SUM8/XOR-FF / XOR8/SEED)
+└── baic/
+    └── b81vs/             # BAIC B81VS (Profile 1A + DataID / SUM8)
 ```
 
 To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `run.bat`, `run.sh`, `dbc/` and `trace/` directories.
@@ -65,7 +70,7 @@ To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `ru
 
 ### Core modules
 
-- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms, plus fx12fl non-CRC checksums (`sum_xor`, `xor_seed`). `presets.py` holds 12 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8, **SUM8/XOR-FF**, **XOR8/SEED**. `classify.py` auto-classifies fx12fl per-message algorithms from DBC comments (J1850 CRC-8 / sum-of-bytes XOR 0xFF / byte-wise XOR with seed). `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
+- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms, plus fx12fl non-CRC checksums (`sum_xor`, `xor_seed`). `presets.py` holds 13 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8, **SUM8**, **SUM8/XOR-FF**, **XOR8/SEED**. `classify.py` auto-classifies per-message algorithms from DBC comments (fx12fl: J1850 CRC-8 / sum-XOR 0xFF / byte-wise XOR with seed; b81vs: Profile 1A + DataID / plain SUM8 / skip). `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
 
 - **`crc_checker/dbc/`** — `parser.py` wraps `canmatrix` to load DBC files. `resolver.py` uses regex matching for Checksum/RC signal pairs. Supports both **prefix-based** naming (`Checksum_*`, `CRC_*`) and **suffix-based** naming (`*_CRC`, `*_Counter`) via auto-detection (`detect_naming_convention()`). `models.py` defines `DBCProtectionMap`, `ChannelProtectionMap` (per-channel DBC assignment), `MessageProtection` (with `crc_profile` for algorithm overrides).
 
@@ -128,4 +133,4 @@ Key config sections (see `config.py` `CONFIG_SCHEMA_DOC` for full reference):
 
 ### Testing
 
-44 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl comment auto-classification, DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, and protection map merge logic.
+72 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, and protection map merge logic.

@@ -1,0 +1,76 @@
+VERSION ""
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: CGW ADC
+
+
+BO_ 1100 IDC_NM_Rx: 8 CGW
+ SG_ NM_Rx_SrcAdr : 7|8@0+ (1,0) [0|255] "" ADC
+ SG_ NM_Rx_Repeat : 8|1@0+ (1,0) [0|1] "" ADC
+ SG_ NM_Rx_ActvWakeup : 12|1@0+ (1,0) [0|1] "" ADC
+ SG_ NM_Rx_Wus : 47|8@0+ (1,0) [0|255] "" ADC
+ SG_ NM_Rx_NMSts : 48|1@0+ (1,0) [0|1] "" ADC
+
+BO_ 1298 CCW_TimeSync: 8 ADC
+ SG_ TS_Cmd_RqPerChassis : 0|1@0+ (1,0) [0|1] "" CGW
+ SG_ TS_RollingCounter : 7|4@0+ (1,0) [0|15] "" CGW
+ SG_ TS_PdcuDrvModCfmd : 11|4@0+ (1,0) [0|15] "" CGW
+ SG_ TS_Checksum : 63|8@0+ (1,0) [0|255] "" CGW
+
+
+BA_DEF_  "DBName" STRING;
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 65535;
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","StandardCAN_FD","ExtendedCAN_FD";
+BA_DEF_ BO_  "NmMessage" ENUM  "No","Yes";
+BA_DEF_ BO_  "NmAsrMessage" ENUM  "No","Yes";
+BA_DEF_ BO_  "CANFD_BRS" ENUM  "0","1";
+BA_DEF_ BO_  "GenMsgILSupport" ENUM  "No","Yes";
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "VFrameFormat" "StandardCAN";
+BA_DEF_DEF_  "NmMessage" "No";
+BA_DEF_DEF_  "NmAsrMessage" "No";
+BA_DEF_DEF_  "CANFD_BRS" "1";
+BA_DEF_DEF_  "GenMsgILSupport" "Yes";
+
+
+BA_ "DBName" "CANFD1";
+BA_ "GenMsgCycleTime" BO_ 1100 500;
+BA_ "NmMessage" BO_ 1100 1;
+BA_ "NmAsrMessage" BO_ 1100 1;
+BA_ "CANFD_BRS" BO_ 1100 0;
+BA_ "GenMsgILSupport" BO_ 1100 0;
+BA_ "GenMsgCycleTime" BO_ 1298 20;
+BA_ "VFrameFormat" BO_ 1298 14;
+BA_ "GenMsgILSupport" BO_ 1298 0;
