@@ -31,6 +31,14 @@ class TestClassifyCrcAlgo:
             "((Byte0+Byte1+ Byte2+Byte3+Byte4+Byte5+Byte6) AND 0xFF) XOR 0xFF"
         ) == "sum_xor"
 
+    def test_multiproject_comment_uses_eea401_branch(self):
+        """Chery two-branch comment: the HH12_PT_26 project uses SUM8/XOR-FF,
+        but EEA4.01 projects (fx12fl's architecture) use SAE J1850 CRC-8."""
+        assert classify_crc_algo(
+            "HH12_PT_26款项目:((Byte0+Byte1+Byte2+Byte3+Byte4+Byte5+Byte6) "
+            "AND 0xFF) XOR 0xFF\nEEA4.01其他项目:SAE J1850 CRC-8"
+        ) == "crc8"
+
     def test_b81vs_sum_comments(self):
         """b81vs plain sum (no XOR 0xFF) also classifies as sum_xor."""
         assert classify_crc_algo(

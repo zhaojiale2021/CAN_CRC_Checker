@@ -49,15 +49,23 @@ def classify_crc_algo(comment: str) -> str:
     if 'PROFILE' in desc_u and '1A' in desc_u:
         return 'p01'
 
-    # Sum checksums list the participating bytes ("byte0/byte1/...") and AND
-    # the result with 0xFF. Note b81vs may start at byte1 when the CRC sits in
-    # byte0, so match any 'BYTE' reference, not just BYTE0. The fx12fl/EPB1
-    # variant appends "XOR 0xFF" (sum then final XOR); b81vs plain sum does not.
-    if 'BYTE' in desc_u and ('AND 0XFF' in desc_u
-                             or ('XOR' in desc_u and '0XFF' in desc_u)):
-        return 'sum_xor'
-    if 'BYTE' in desc_u and 'XOR' in desc_u:
-        return 'xor_seed'
+    # Chery multi-project comment: "HH12_PT_26款项目:((Byte0+...+Byte6) AND
+    # 0xFF) XOR 0xFF\nEEA4.01其他项目:SAE J1850 CRC-8" — the first branch is a
+    # different vehicle project; fx12fl is an EEA4.01 project, so the EEA4.01
+    # branch (J1850 CRC-8) wins over the other project's sum-XOR heuristics.
+    eea401_crc = 'EEA4.01' in desc_u and 'CRC' in desc_u
+
+    if not eea401_crc:
+        # Sum checksums list the participating bytes ("byte0/byte1/...") and AND
+        # the result with 0xFF. Note b81vs may start at byte1 when the CRC sits
+        # in byte0, so match any 'BYTE' reference, not just BYTE0. The
+        # fx12fl/EPB1 variant appends "XOR 0xFF" (sum then final XOR); b81vs
+        # plain sum does not.
+        if 'BYTE' in desc_u and ('AND 0XFF' in desc_u
+                                 or ('XOR' in desc_u and '0XFF' in desc_u)):
+            return 'sum_xor'
+        if 'BYTE' in desc_u and 'XOR' in desc_u:
+            return 'xor_seed'
     if 'CRC' in desc_u or 'CHECKSUM' in desc_u:
         return 'crc8'
     return ''
