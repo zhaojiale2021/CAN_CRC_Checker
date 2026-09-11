@@ -36,13 +36,13 @@ class TestLoadConfigCrcOverrides:
             "crc": {"preset": "CRC8/SAE-J1850"},
         })
         cfg = load_config(path)
-        assert cfg.crc_overrides == {}
+        assert not cfg.crc_overrides
 
     def test_overrides_without_crc_section(self, tmp_path):
         """No crc section at all still yields an empty overrides dict."""
         path = _write_config(tmp_path, {"dbc": "x.dbc", "traces": ["t.blf"]})
         cfg = load_config(path)
-        assert cfg.crc_overrides == {}
+        assert not cfg.crc_overrides
 
 
 class TestLoadConfigDbcMerge:

@@ -312,7 +312,7 @@ class TestApplyCrcOverrides:
     def test_override_wins_over_comment_classification(self):
         """An explicit override is applied after auto-classify and wins."""
         prot = self._prot()
-        prot.checksum_comment = ("((Byte0+Byte1+Byte6) AND 0xFF) XOR 0xFF")
+        prot.checksum_comment = "((Byte0+Byte1+Byte6) AND 0xFF) XOR 0xFF"
         pm = self._map_with(prot)
         pm.apply_comment_classification(get_preset("CRC8/SAE-J1850"))
         assert prot.crc_params is get_preset("SUM8/XOR-FF")  # from comment
