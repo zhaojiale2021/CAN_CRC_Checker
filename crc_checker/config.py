@@ -70,11 +70,13 @@ class RunConfig:
     """
     dbc: str = ""                               # Path to DBC file or directory (required)
     dbcs: list[str] = field(default_factory=list)  # Explicit list of DBC paths (files or dirs)
+    dbc_merge: bool = False                     # Merge all DBCs into one map (vs per-channel)
     traces: list[str] = field(default_factory=list)  # Trace file paths (required)
     crc_preset: str = ""                        # Preset name, e.g. "CRC8/AUTOSAR"
     crc_custom: dict | None = None              # Custom CRC params dict
     crc_byte_swap: bool = False                 # Byte-swap computed CRC (Profile 5 LE→BE)
     crc_auto_classify: bool = False             # fx12fl: per-message algo from DBC comments
+    crc_overrides: dict[str, str] = field(default_factory=dict)  # frame id/name → preset
     range_mode: str = "exclude_crc"             # full_payload | exclude_crc | custom_range
     range_start: int = 0
     range_end: int = -1
@@ -268,12 +270,18 @@ CONFIG_SCHEMA_DOC = """
   // === Required ===
   "dbc": "path/to/network.dbc",
   "traces": ["trace1.blf", "trace2.asc"],
+  // "dbc_merge": true,                  // merge all DBCs into one map instead of
+  //                                     // selecting a DBC per trace channel
 
   // === CRC Algorithm (optional — RC-only if omitted) ===
   "crc": {
     "preset": "CRC8/AUTOSAR"            // Use a built-in preset
     // "auto_classify": true            // fx12fl: per-message algo from DBC comments
     //                                   // (J1850 CRC-8 / SUM8/XOR-FF / XOR8/SEED)
+    // "overrides": {                   // per-message algorithm override; keys
+    //   "0x287": "SUM8/XOR-FF",        // are frame IDs ("0x287"/647) or frame
+    //   "ICM_5": "SUM8/XOR-FF"         // names, applied after auto_classify
+    // },
     // OR custom:
     // "custom": {
     //   "width": 8,
@@ -366,6 +374,9 @@ def load_config(config_path: str) -> RunConfig:
     if isinstance(dbcs_raw, str):
         dbcs_raw = [dbcs_raw]
     cfg.dbcs = dbcs_raw
+    # Merge all DBCs into a single map instead of per-channel DBC selection
+    # (t1lfl1: B_CAN and C1_CAN are logged on both trace channels)
+    cfg.dbc_merge = data.get("dbc_merge", False)
 
     traces_raw = data.get("traces", [])
     if isinstance(traces_raw, str):
@@ -385,6 +396,9 @@ def load_config(config_path: str) -> RunConfig:
         cfg.crc_byte_swap = crc.get("byte_swap", False)
         # fx12fl: auto-classify per-message algorithm from DBC comments
         cfg.crc_auto_classify = crc.get("auto_classify", False)
+        # Per-message algorithm overrides (frame id/name → preset), applied
+        # after auto-classification so they always win.
+        cfg.crc_overrides = crc.get("overrides") or {}
 
     # Range
     rng = data.get("range", {})
@@ -449,10 +463,12 @@ def generate_example_config(output_path: str):
         "_comment": "CAN CRC Checker configuration file. Remove _comment fields before use.",
         "dbc": "dbc/",
         "dbcs": [],
+        "dbc_merge": False,
         "traces": ["test_data/trace.blf"],
         "crc": {
             "_comment": "Use 'preset' for built-in, or 'custom' for custom algorithm.",
-            "preset": "CRC8/AUTOSAR"
+            "preset": "CRC8/AUTOSAR",
+            "overrides": {}
         },
         "range": {
             "_comment": "mode: full_payload | exclude_crc | custom_range",

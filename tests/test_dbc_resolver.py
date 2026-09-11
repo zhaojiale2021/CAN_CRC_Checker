@@ -131,6 +131,90 @@ class TestSignalResolver:
         assert SignalResolver.extract_suffix("ADC_ADAS2Chks") == "ADC_ADAS2"
         assert SignalResolver.extract_suffix("BleRpa1Chks") == "BleRpa1"
 
+    def test_t1lfl1_suffix_detection(self):
+        """t1lfl1 (Chery): *_CRCCheck checksum, *_Message_Counter and
+        ALIVE_* counters."""
+        resolver = SignalResolver()
+        assert resolver.is_checksum_signal("SAS_1_CRCCheck")
+        assert resolver.is_checksum_signal("EPS_2_CRC")
+        # 'CRC' alone is a valid checksum signal name (IHU_MFS_2)
+        assert resolver.is_checksum_signal("CRC")
+        assert resolver.is_rolling_counter_signal("SAS_1_MessageCounter")
+        assert resolver.is_rolling_counter_signal("EPS_2_Message_Counter")
+        assert resolver.is_rolling_counter_signal("ALIVE_MFS_2")
+        assert not resolver.is_checksum_signal("ALIVE_MFS_2")
+
+    def test_t1lfl1_extract_suffix(self):
+        """t1lfl1 suffix extraction yields the message name for pairing."""
+        assert SignalResolver.extract_suffix("SAS_1_CRCCheck") == "SAS_1"
+        assert SignalResolver.extract_suffix("EPS_2_Message_Counter") == "EPS_2"
+
+    def test_t1lfl1_pairing(self):
+        """t1lfl1 frames pair CRC with counter across naming variants."""
+        resolver = SignalResolver()
+        frames = [
+            {
+                "frame_id": 0xC4, "frame_name": "SAS_1_G", "dlc": 8,
+                "signals": [
+                    {"name": "SAS_1_CRCCheck", "start_bit": 56, "length": 8,
+                     "byte_order": "big_endian"},
+                    {"name": "SAS_1_MessageCounter", "start_bit": 40, "length": 4,
+                     "byte_order": "big_endian"},
+                    {"name": "SAS_1_SteeringAngle", "start_bit": 0, "length": 16,
+                     "byte_order": "big_endian"},
+                ],
+            },
+            {
+                "frame_id": 0x394, "frame_name": "EPS_2", "dlc": 8,
+                "signals": [
+                    {"name": "EPS_2_CRC", "start_bit": 56, "length": 8,
+                     "byte_order": "big_endian"},
+                    {"name": "EPS_2_Message_Counter", "start_bit": 52, "length": 4,
+                     "byte_order": "big_endian"},
+                ],
+            },
+            {
+                # IHU_MFS_2: checksum named just "CRC", counter "ALIVE_MFS_2"
+                "frame_id": 0x360, "frame_name": "IHU_MFS_2", "dlc": 6,
+                "signals": [
+                    {"name": "CRC", "start_bit": 0, "length": 8,
+                     "byte_order": "big_endian"},
+                    {"name": "ALIVE_MFS_2", "start_bit": 8, "length": 4,
+                     "byte_order": "big_endian"},
+                    {"name": "MFS_Cancel", "start_bit": 26, "length": 2,
+                     "byte_order": "big_endian"},
+                ],
+            },
+        ]
+        pm = resolver.build_protection_map(frames)
+
+        sas = pm.messages[0xC4]
+        assert len(sas) == 1
+        assert sas[0].checksum_signal.name == "SAS_1_CRCCheck"
+        assert sas[0].rolling_counter_signal.name == "SAS_1_MessageCounter"
+
+        eps = pm.messages[0x394]
+        assert len(eps) == 1
+        assert eps[0].checksum_signal.name == "EPS_2_CRC"
+        assert eps[0].rolling_counter_signal.name == "EPS_2_Message_Counter"
+
+        # Single-pair fallback: no common suffix ("CRC" vs "ALIVE_MFS_2")
+        ihu = pm.messages[0x360]
+        assert len(ihu) == 1
+        assert ihu[0].checksum_signal.name == "CRC"
+        assert ihu[0].rolling_counter_signal.name == "ALIVE_MFS_2"
+
+    def test_custom_rc_pattern_keeps_default_checksum_detection(self):
+        """Supplying only rc_pattern must not turn every signal into a checksum."""
+        resolver = SignalResolver({"rolling_counter": r"(?i)^MY_RC_"})
+        # default checksum detection still applies
+        assert resolver.is_checksum_signal("Checksum_ACC1")
+        assert resolver.is_checksum_signal("SAS_1_CRCCheck")
+        assert not resolver.is_checksum_signal("SpeedValue")
+        # custom RC pattern applies as given
+        assert resolver.is_rolling_counter_signal("MY_RC_Engine")
+        assert not resolver.is_rolling_counter_signal("RollingCounter_ACC1")
+
     def test_fx12fl_comment_classification(self):
         """DBC comments flow through the resolver; auto-classification sets
         per-message checksum params (crc8 / sum_xor / xor_seed)."""
@@ -190,6 +274,66 @@ class TestSignalResolver:
         icm = pm.messages[0x647][0].crc_params
         assert icm.checksum_type == "sum_xor"
         assert icm.final_xor == 0xFF
+
+
+class TestApplyCrcOverrides:
+    """apply_crc_overrides: config-driven per-message algorithm overrides."""
+
+    @staticmethod
+    def _map_with(prot: MessageProtection) -> DBCProtectionMap:
+        pm = DBCProtectionMap()
+        pm.messages[prot.frame_id] = [prot]
+        return pm
+
+    @staticmethod
+    def _prot(frame_id: int = 0x287, frame_name: str = "ICM_5") -> MessageProtection:
+        prot = MessageProtection(frame_id=frame_id, frame_name=frame_name, dlc=8)
+        prot.checksum_signal = SignalInfo(name="ICM_5_Checksum", start_bit=56, length=8)
+        return prot
+
+    def test_override_by_hex_frame_id(self):
+        """Key "0x287" matches the frame and applies the preset."""
+        prot = self._prot()
+        pm = self._map_with(prot)
+        applied = pm.apply_crc_overrides({"0x287": "SUM8/XOR-FF"})
+        assert applied == 1
+        assert prot.crc_params is get_preset("SUM8/XOR-FF")
+
+    def test_override_by_int_and_frame_name(self):
+        """Integer frame IDs and frame names are both accepted as keys."""
+        prot = self._prot()
+        assert self._map_with(prot).apply_crc_overrides({0x287: "SUM8"}) == 1
+        assert prot.crc_params is get_preset("SUM8")
+
+        prot2 = self._prot(frame_id=0x111, frame_name="ICM_9")
+        assert self._map_with(prot2).apply_crc_overrides({"ICM_9": "SUM8"}) == 1
+        assert prot2.crc_params is get_preset("SUM8")
+
+    def test_override_wins_over_comment_classification(self):
+        """An explicit override is applied after auto-classify and wins."""
+        prot = self._prot()
+        prot.checksum_comment = ("((Byte0+Byte1+Byte6) AND 0xFF) XOR 0xFF")
+        pm = self._map_with(prot)
+        pm.apply_comment_classification(get_preset("CRC8/SAE-J1850"))
+        assert prot.crc_params is get_preset("SUM8/XOR-FF")  # from comment
+        pm.apply_crc_overrides({"0x287": "CRC8/SAE-J1850"})
+        assert prot.crc_params is get_preset("CRC8/SAE-J1850")
+
+    def test_override_by_name_matches_every_suffix_group(self):
+        """A frame-name key applies to all protection groups of that frame."""
+        pm = DBCProtectionMap()
+        p1 = self._prot(frame_id=0x500, frame_name="Dual")
+        p2 = self._prot(frame_id=0x500, frame_name="Dual")
+        pm.messages[0x500] = [p1, p2]
+        assert pm.apply_crc_overrides({"Dual": "SUM8"}) == 2
+        assert p1.crc_params is p2.crc_params is get_preset("SUM8")
+
+    def test_unmatched_override_is_noop(self):
+        """Unknown IDs/names change nothing and return 0."""
+        prot = self._prot()
+        pm = self._map_with(prot)
+        assert pm.apply_crc_overrides({"0x999": "SUM8", "NOPE": "SUM8"}) == 0
+        assert prot.crc_params is None
 
 
 class TestDBCProtectionMapMerge:

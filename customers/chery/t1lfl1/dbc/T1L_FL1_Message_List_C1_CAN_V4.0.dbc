@@ -1,0 +1,1153 @@
+VERSION ""
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: CGW EPS FCM IDC IPB ZDC Tester
+
+
+BO_ 257 HCU_EMS_2: 8 CGW
+ SG_ EMS_2_EngineStsForDCT : 55|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ EMS_2_BrakePedalStsForTCU : 32|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EMS_2_BrakePedalStsValidDataForT : 33|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 260 HCU_21: 48 CGW
+ SG_ MotorTorqueRA : 87|16@0+ (1,-32768) [-32768|32767] "NM"  IDC
+
+BO_ 263 HCU_6: 32 CGW
+ SG_ APA_HCU_available : 116|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ APA_HCU_DriverIntervention : 117|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ HCU_6_ECGPOvrd : 119|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ HCU_6_MinTorqueWheel : 103|16@0+ (1,-32767) [-32767|32767] "Nm"  IDC
+ SG_ HCU_6_MaxTorqueWheel : 87|16@0+ (1,-32767) [-32767|32767] "Nm"  IDC
+
+BO_ 269 HCU_17: 8 CGW
+ SG_ HCU_17PRNDGearActValidData : 52|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ PRNDGearTarget : 55|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ PRNDGearAct : 42|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 295 YAS_1: 8 CGW
+ SG_ YAS_1_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ YawRate : 39|16@0+ (0.01,-180) [-180|180] "Deg/sec"  IDC
+ SG_ LateralAcceleration : 23|16@0+ (0.001,-2) [-2|2] "G"  IDC
+ SG_ YawrateSigValidData : 13|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ LateralAccelerationSigValidData : 15|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ YAS_1_MessageCounter : 7|8@0+ (1,0) [0|255] "Bit"  IDC
+
+BO_ 296 YAS_2: 8 CGW
+ SG_ YAS_2_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ LongitudinalAcceleration : 23|16@0+ (0.001,-2) [-2|2] "G"  IDC
+ SG_ LongitudinalAccelerationSig : 15|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ YAS_2_MessageCounter : 7|8@0+ (1,0) [0|255] "Bit"  IDC
+
+BO_ 352 HCU_1: 8 CGW
+ SG_ HCU_1_CRC : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ HCU_1_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ MotorTorqueFA : 23|16@0+ (1,-32768) [-32768|32767] "NM"  IDC
+
+BO_ 430 TCU_1: 8 CGW
+ SG_ TCU_1_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ TCU_1_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ APA_TCU_Available : 52|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ APA_TCU_DriverIntervention : 53|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ FastTorqIntReq : 7|12@0+ (0.5,-1000) [-1000|1000] "NM"  IDC
+
+BO_ 768 TCU_2: 8 CGW
+ SG_ TCU_2_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ TCU_2_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ TargetGear : 31|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ DriverMode : 11|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ TargetGearValidData : 12|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ActualGearValidData : 13|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ShiftInProgress : 14|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ShiftInProgressValidData : 15|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ GBPositoionDisplayForPEPS : 3|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ ActualGear : 7|4@0+ (1,0) [0|15] "Bit"  IDC
+
+BO_ 805 ABS_ESP_17: 8 CGW
+ SG_ ESP_17_VLCWhlTorqReqValidData : 36|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ESP_17_VLCWhlTorqReq : 20|16@0+ (1,-32767) [-32767|32767] "Bit"  IDC
+
+BO_ 864 IHU_MFS_2: 6 CGW
+ SG_ MFS_Time_Gap_Reduce : 44|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_Time_Gap_Add : 46|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_SETMinus : 33|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_Time_Gap : 39|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_Cruise_Control : 25|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_Seepd_Limit : 27|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_Cancel : 29|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ MFS_RESPlus : 31|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ ALIVE_MFS_2 : 15|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ CRC : 7|8@0+ (1,0) [0|255] "Bit"  IDC
+
+BO_ 932 ABS_ESP_18: 8 CGW
+ SG_ ESP_18_CCO_Active : 1|2@0+ (1,0) [0|3] ""  IDC
+
+BO_ 1034 HCU_1_G: 8 CGW
+ SG_ HCU_PTReady : 49|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 1276 IHU_11: 8 CGW
+ SG_ IHU_11_ELKSwtSet : 53|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_LDWLDPSnvtySet : 55|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_LDPSwtSet : 41|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_WarnModSwtSet : 43|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_LDWSwtSet : 45|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_TLISwtSet : 47|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_TSISwtSet : 33|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_HMASwtSet : 35|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_IESSwtSet : 37|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_DAISwtSet : 39|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_SCFSwtSet : 27|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_SLASwtSet : 29|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_TJAICAExitTextInfoSwtSet : 31|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_FCWSwtSet : 17|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_FCWSnvtySet : 19|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_AEBSwtSet : 21|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 1282 ABS_ESP_G: 7 CGW
+ SG_ ABS_ESP_Checksum : 55|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ CDPFailSts : 46|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ABS_ESP_MessageCounter : 35|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ CDPActive : 13|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 1302 IHU_2: 8 CGW
+ SG_ IHU_2_IHULanguageSet : 55|4@0+ (1,0) [0|15] "Bit"  IDC
+
+BO_ 1360 ATCM_1: 8 CGW
+ SG_ ATCM_AVM : 7|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 1416 IHU_24: 8 CGW
+ SG_ RPASwitch : 8|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ FollowingTrackToReverse : 9|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ Ready2GoSwitch : 11|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IESSwtSet : 13|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_11_TSISwtSet : 15|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ RCTB_OnOffSt : 1|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ RCW_OnOffSt : 3|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ DCLC_Switch : 5|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ ELK_Switch : 7|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 1894 Diag_APA_REQ: 64 CGW
+ SG_ APA_Request_Frame_Type : 7|64@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 2015 Diag_TEST_REQ: 64 CGW
+ SG_ TEST_Request_Frame_Type : 7|64@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 250 HCU_EMS_1: 8 CGW
+ SG_ EMS_1_MessageCounter : 59|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ EMS_1_ECFail : 62|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EMS_1_ECGPOvrd : 63|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EMS_1_AcceleratorPosRaw : 55|8@0+ (0.392,0) [0|99.568] "%"  IDC
+ SG_ EMS_1_GasPedalPositionInvalidDat : 39|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EMS_1_GasPedalPosition : 31|8@0+ (0.392,0) [0|99.568] "%"  IDC
+ SG_ EMS_1_Checksum : 23|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ EMS_1_EngineSpeed : 7|16@0+ (0.25,0) [0|16383] "Rpm"  IDC
+
+BO_ 467 EPS_3: 8 EPS
+ SG_ EPS_3_CRC : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ EPS_3_Message_Counter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ EPS_3_AgFailr : 31|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS_3_StrngWhlAgValid : 9|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS_3_StrngWhlAg : 7|14@0+ (0.1,-780) [-780|780] "Bit"  IDC
+
+BO_ 483 EPS_4: 8 EPS
+ SG_ EPS_4_CRC : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ EPS_4_Message_Counter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ EPS_4_LatDrvgAvlForLvl : 6|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 916 EPS_2: 8 EPS
+ SG_ EPS_2_CRC : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ EPS_2_Message_Counter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ EPS2_Reserved2 : 47|12@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ EPS_APA_CurrentSystemStatus : 34|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ EPS_APA_FaultStatus : 39|5@0+ (1,0) [0|31] "Bit"  IDC
+ SG_ EPS_APA_SteeringWheelAngleRes : 23|16@0+ (0.0625,-2048) [-2048|2047.875] "Deg"  IDC
+ SG_ EPS_APA_SteeringAngleInvalid : 8|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS2_Reserved1 : 9|1@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ EPS_EpsControlStatus : 11|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ EPS_TosionBarTorqueValid : 12|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS_TorsionBarTorqueDir : 13|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS_TorsionBarTorque : 7|10@0+ (0.01,0) [0|10.22] "Nm"  IDC
+
+BO_ 1285 EPS_1: 3 EPS
+ SG_ EPS_1_EPSModeSts : 9|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ EPS_1_EPSFailSts : 0|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS_1_EPSSteeringAngleCalibratio : 4|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ EPS_1_EPS_AssistanceStyleSts : 6|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 196 SAS_1_G: 8 EPS
+ SG_ SAS_1_CRCCheck : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ SAS_1_MessageCounter : 47|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ SAS_1_SteeringAngleSpeedValidDat : 24|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ SAS_1_SteeringAngleValidData : 25|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ SAS_1_SASCalibrated : 26|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ SAS_1_AngleFailure : 31|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ SAS_1_SteeringAngleSpeed : 23|8@0+ (4,0) [0|1016] "Deg_Sec"  IDC
+ SG_ SAS_1_SteeringAngle : 7|16@0+ (0.0625,-2048) [-2048|2047.9375] "Deg"  IDC
+
+BO_ 837 FCM_3: 8 FCM
+ SG_ RCTB_BrakeReq : 40|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ RCTB_TargetDecel : 23|16@0+ (0.0004882,-16) [-16|15.994187] "M/s2"  IDC
+
+BO_ 933 FCM_FRM_2: 8 FCM
+ SG_ PEBSObjectType : 54|3@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ AEBHoldRequest : 19|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 554 APA_1: 8 IDC
+ SG_ AVM_APA_1_CRC : 63|8@0+ (1,0) [0|255] "Bit" Vector__XXX
+ SG_ AVM_APA_1_AliveCounter : 51|4@0+ (1,0) [0|15] "Bit" Vector__XXX
+ SG_ TarSpd : 42|7@0+ (0.1,0) [0|10] "Km/h" Vector__XXX
+ SG_ APA_1_ReasonForDVDnotDisplyAPA : 31|2@0+ (1,0) [0|3] "Bit" Vector__XXX
+ SG_ AVM_APA_SteeringWheelAngleReq : 15|16@0+ (0.0625,-2048) [-2048|2047.9375] "Deg" Vector__XXX
+ SG_ AVM_APA_EPS_Control_Request : 1|2@0+ (1,0) [0|3] "Bit" Vector__XXX
+ SG_ APA_1_HzrdLiReq : 2|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ AVM_APA_SystemSts : 5|3@0+ (1,0) [0|7] "Bit" Vector__XXX
+ SG_ APA_1_APA_Active : 6|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ APA_1_APAFailureSts : 7|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+
+BO_ 586 APA_2: 8 IDC
+ SG_ AVM_APA_2_CRC : 63|8@0+ (1,0) [0|255] "Bit" Vector__XXX
+ SG_ AVM_APA_2_AliveCounter : 51|4@0+ (1,0) [0|15] "Bit" Vector__XXX
+ SG_ MEB_WorkSts : 42|3@0+ (1,0) [0|7] "bit" Vector__XXX
+ SG_ OMPEnable_24Ah : 32|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ MEB_BrkgReq : 37|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ AVM_APA_2_APAEPBCtrlReq : 39|2@0+ (1,0) [0|3] "Bit" Vector__XXX
+ SG_ AVM_APA_FailureBrakeMode : 25|2@0+ (1,0) [0|3] "Bit" Vector__XXX
+ SG_ AVM_APA_ESP_Target_Gear_Request : 28|3@0+ (1,0) [0|7] "Bit" Vector__XXX
+ SG_ AVM_APA_ESP_Control_Request : 31|3@0+ (1,0) [0|7] "Bit" Vector__XXX
+ SG_ AVM_APA_ESP_Speed_Limitation : 23|8@0+ (0.1,0) [0|25.4] "Km/h" Vector__XXX
+ SG_ AVM_APA_Allow_ESP_Control_Brake : 11|4@0+ (1,0) [0|15] "Bit" Vector__XXX
+ SG_ AVM_APA_ESP_Stop_Distance : 7|12@0+ (1,0) [0|4094] "Cm" Vector__XXX
+
+BO_ 761 ADCC_10: 8 IDC
+ SG_ ADCC_10_CRC : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ADCC_10_MsgCntr : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ ADCC_10AVPTarAUpprLim : 47|8@0+ (0.05,-5) [-5|5] "m/s2" Vector__XXX
+ SG_ ADCC_10AVPTarALowrLim : 39|8@0+ (0.05,-5) [-5|5] "m/s2" Vector__XXX
+ SG_ ADCC_10AVPTarASlopLowrLim : 31|8@0+ (0.1,-15) [-15|0] "m/s2" Vector__XXX
+ SG_ ADCC_10AVPTarASlopUpprLim : 23|8@0+ (0.1,0) [0|15] "m/s2" Vector__XXX
+ SG_ ADCC_10AVPBrkFirst : 8|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ ADCC_10AVPVehStrtReq : 9|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ ADCC_10AVPStandstillReq : 10|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ ADCC_10AVPModForIPB : 12|2@0+ (1,0) [0|3] "Bit" Vector__XXX
+ SG_ ADCC_10AVPACmdEnable : 13|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ ADCC_10AVPTarA : 7|10@0+ (0.01,-5) [-5|1.5] "m/s2" Vector__XXX
+
+BO_ 1910 Diag_APA_RES: 8 IDC
+ SG_ APA_response_frame_type : 7|64@0+ (1,0) [0|1] "Bit"  CGW
+
+BO_ 608 ABS_ESP_7: 8 IPB
+ SG_ IPB_ABSESP_7_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ IPB_ABSESP_7_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ IPB_WheelBrakeForce : 36|16@0+ (8,-250000) [-250000|250000] "N"  IDC
+ SG_ IPB_VLCFail : 37|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_QDCACC : 39|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IPB_RHFWheelSpeedRawValidData : 24|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_RHFWheelSpeedRaw : 20|12@0+ (0.05,-30) [-30|80] "M/s"  IDC
+ SG_ IPB_RHFWheelDriveDirection : 23|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ IPB_LHFWheelSpeedRawValidData : 8|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHFWheelSpeedRaw : 4|12@0+ (0.05,-30) [-30|80] "M/s"  IDC
+ SG_ IPB_LHFWheelDriveDirection : 7|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 641 ABS_ESP_8: 8 IPB
+ SG_ IPB_ABSESP_8_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ IPB_ABSESP_8_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ IPB_ESP_APA_LC_Status : 55|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ IPB_ESP_APA_LC_FailureSts : 42|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ IPB_ESC_APA_LC_Availability : 44|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ OmpStatus_281h : 46|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IPB_ABSESP_8_RCTBdecActv : 47|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABPActive : 32|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABPAvailable : 33|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_AEBdecActive : 34|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_AEBdecAvailable : 35|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABSESP_8_RCTBAvl : 36|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABSESP_8_CDDActvVehAutoHld : 37|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_RHRWheelSpeedRawValidData : 24|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_RHRWheelSpeedRaw : 20|12@0+ (0.05,-30) [-30|80] "M/s"  IDC
+ SG_ IPB_RHRWheelDriveDirection : 23|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ IPB_LHRWheelSpeedRawValidData : 8|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHRWheelSpeedRaw : 4|12@0+ (0.05,-30) [-30|80] "M/s"  IDC
+ SG_ IPB_LHRWheelDriveDirection : 7|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 745 ABS_ESP_1: 8 IPB
+ SG_ IPB_ABS_ESP_1_MessageCounter : 59|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ ABS_ESP_1_ESPSwitchStatus : 60|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_SwitchOffCruiseControl : 63|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_HDCCtrlSts : 53|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_HDCFailSts : 54|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_Checksum : 47|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_VehicleSpeedVSOSig : 28|13@0+ (0.0625,0) [0|511.875] "Km/h"  IDC
+ SG_ IPB_SimulatorPressureStatus : 29|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ESP1_VehicleSpeedVSOSigValid : 30|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_SimulatorPressure : 9|10@0+ (1,0) [0|1022] "Bar"  IDC
+ SG_ IPB_ABS_ESP_1_VDCFailSts : 11|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_VDCActive : 12|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_TCSFailSts : 13|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_TCSActive : 14|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_EBDFailSts : 1|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ESP_APA_Target_Gear_Request : 4|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_ABSFailSts : 5|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_1_ABSActive : 6|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 784 ABS_ESP_2: 8 IPB
+ SG_ IPB_RHRWheelSpeed : 52|13@0+ (0.0625,0) [0|511.875] "Km/h"  IDC
+ SG_ IPB_ABS_ESP_2_Reserved4 : 54|2@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ IPB_RHRWheelSpeedValidData : 55|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHRWheelSpeed : 36|13@0+ (0.0625,0) [0|511.875] "Km/h"  IDC
+ SG_ IPB_ABS_ESP_2_Reserved3 : 38|2@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ IPB_LHRWheelSpeedValidData : 39|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_RHFWheelSpeed : 20|13@0+ (0.0625,0) [0|511.875] "Km/h"  IDC
+ SG_ IPB_ABS_ESP_2_Reserved2 : 22|2@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ IPB_RHFWheelSpeedValidData : 23|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHFWheelSpeed : 4|13@0+ (0.0625,0) [0|511.875] "Km/h"  IDC
+ SG_ IPB_ABS_ESP_2_Reserved1 : 6|2@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ IPB_LHFWheelSpeedValidData : 7|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 787 ABS_ESP_3: 8 IPB
+ SG_ IPB_ABS_ESP_3_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ IPB_ABS_ESP_3_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ IPB_ABS_ESP_3_AVHSts : 53|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IPB_ESP_VLCEngTorqReqValidData : 54|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ESP_VLCEngTorqReq : 35|12@0+ (0.5,-1000) [-1000|1000] "NM"  IDC
+ SG_ IPB_NoBrakeForce : 36|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABS_ESP_3_AVHFailSts : 39|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_RHFWheelSpeedRPM : 23|16@0+ (0.0625,0) [0|4095.875] "Rpm"  IDC
+ SG_ IPB_LHFWheelSpeedRPM : 7|16@0+ (0.0625,0) [0|4095.875] "Rpm"  IDC
+
+BO_ 790 ABS_ESP_4: 8 IPB
+ SG_ IPB_ABS_ESP_4_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ IPB_ABS_ESP_4_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ IPB_ABAavailable : 52|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ABAactive : 53|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_CDDAvailable : 54|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_CDDActive : 55|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_VLC_Available : 40|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_VLC_Active : 41|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_DCFail : 42|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_ECDTempOff : 43|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_AWBavailable : 44|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_AWBactive : 45|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_VehicleStandstill : 47|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IPB_VLC_InternalTargetAccelerati : 39|8@0+ (0.05,-7) [-7|5.75] "M/s2"  IDC
+ SG_ IPB_RHRWheelSpeedRPM : 23|16@0+ (0.0625,0) [0|4095.875] "Rpm"  IDC
+ SG_ IPB_LHRWheelSpeedRPM : 7|16@0+ (0.0625,0) [0|4095.875] "Rpm"  IDC
+
+BO_ 793 ABS_ESP_5: 8 IPB
+ SG_ IPB_ABS_ESP_5_Reserved1 : 63|8@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ IPB_LHFPulseCounter : 44|13@0+ (1,0) [0|8191] "Pulse"  IDC
+ SG_ IPB_RHFPulseCounter : 25|13@0+ (1,0) [0|8191] "Pulse"  IDC
+ SG_ IPB_RHRPulseCounterFailSts : 26|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_RHRPulseCounter : 23|13@0+ (1,0) [0|8191] "Pulse"  IDC
+ SG_ IPB_RHFPulseCounterFailSts : 8|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHFPulseCounterFailSts : 9|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHRPulseCounterFailSts : 10|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_LHRPulseCounter : 7|13@0+ (1,0) [0|8191] "Pulse"  IDC
+
+BO_ 1270 EPB_G: 2 IPB
+ SG_ IPB_EPBErrorStatus : 3|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IPB_EPBStatus : 7|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 809 ZDC_DCLC_1: 8 ZDC
+ SG_ RCTB_OnOffStFeedback : 43|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ RCW_OnOffStFeedback : 44|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ELK_Sts : 32|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ RCW_Warning : 37|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ TexInfo_02 : 24|3@0+ (1,0) [0|0] "Bit"  IDC
+ SG_ Rear_Camera_Textinfo : 27|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ RCW_Mode : 29|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ RCTB_Mode : 31|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ RCTB_RightWarning : 18|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ RCTB_LeftWarning : 20|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ DCLC_Warning : 21|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ DCLCChange_Status : 8|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ DCLCLaneChange_Type : 10|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ DCLCLaneChangeReason : 14|4@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ DCLCLaneChangePossible : 0|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ DCLCEnabled_Request : 2|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ ELKA_Active : 3|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ELKA_On_Off_Feedback : 5|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IES_Status : 7|2@0+ (1,0) [0|3] "Bit"  IDC
+
+
+
+
+CM_ SG_ 257 EMS_2_EngineStsForDCT "000:Init应该是指初始化状态，实际上这个值EMS发不出来的，CAN上都已经开始发送信号了，肯定都已经初始化完了。
+001:发动机停机状态
+010:指起动机正在拖动
+011:发动机启动完成
+100:因为故障导致跛行_PHEV:If_This_Value_Is_2、3、4_Indicated_That_The_Engine_Is_Started_Successfully._Used_To_Enable_EPS_On_Behalf_Of_HCU_(HCU_EpsOnReq)";
+CM_ SG_ 260 MotorTorqueRA "Actual_Wheel_Torque_At_RA";
+CM_ SG_ 263 APA_HCU_available "当前HCU状态是否支持APA功能";
+CM_ SG_ 263 APA_HCU_DriverIntervention "驾驶员是否干预换档";
+CM_ SG_ 263 HCU_6_ECGPOvrd "标识驾驶员扭矩高于ACC请求扭矩";
+CM_ SG_ 269 HCU_17PRNDGearActValidData "Valid_check_bit_of_the_signal__PRNDGearAct";
+CM_ SG_ 269 PRNDGearTarget "Target_PRND_Gear_As_Evaluated_By_HCU.";
+CM_ SG_ 269 PRNDGearAct "Actual_PRND_Gear_As_Evaluated_By_HCU.";
+CM_ SG_ 295 YAS_1_Checksum "0x01_XOR_0x27_XOR_Byte0_XOR_Byte1_XOR_Byte2_XOR_Byte3_XOR_Byte4_XOR_Byte5_XOR_Byte6";
+CM_ SG_ 295 YawRate "偏航角速度信号_传感器精度：0.02_deg/s/Lsbit";
+CM_ SG_ 295 LateralAcceleration "横向加速度信号
+传感器精度：0.00736m/s^2/Lsbit";
+CM_ SG_ 295 YawrateSigValidData "Signal_State_For_Yawrate";
+CM_ SG_ 295 LateralAccelerationSigValidData "If_Hasn’t_Been_Calibrated_After_Initialization_This_Signal_‘s_Value_Is_Always_10(invalid).";
+CM_ SG_ 296 YAS_2_Checksum "0x01_XOR_0x28_XOR_Byte0_XOR_Byte1_XOR_Byte2_XOR_Byte3_XOR_Byte4_XOR_Byte5_XOR_Byte6";
+CM_ SG_ 296 LongitudinalAcceleration "纵向加速度信号
+传感器精度：0.00736m/s^2/Lsbit";
+CM_ SG_ 296 LongitudinalAccelerationSig "If_Hasn’t_Been_Calibrated_After_Initialization_This_Signal_‘s_Value_Is_Always10(invalid)";
+CM_ SG_ 352 HCU_1_CRC "(SAE_J1850_CRC-8)";
+CM_ SG_ 352 MotorTorqueFA "Actual_Wheel_Torque_At_FA";
+CM_ SG_ 430 TCU_1_Checksum "((Byte0+Byte1+……+Byte6)_AND_0xFF)_XOR_0xFF";
+CM_ SG_ 430 APA_TCU_Available "当前TCU状态是否支持APA功能
+备注:APA功能增加此信号";
+CM_ SG_ 430 APA_TCU_DriverIntervention "驾驶员是否干预换档
+备注:APA功能增加此信号";
+CM_ SG_ 430 FastTorqIntReq "Reduction_By_Ignition_Angle
+DCT:用于扭矩干预和扭矩恢复，只会在换挡过程中发，非换挡过程发1000，最大值只会是驾驶员请求扭矩，当增扭介入时（有效）或者增扭降扭都不介入，降扭发1000。
+CVT:变速箱快扭限扭值，只用于限制发动机扭矩，不包括升扭请求。CVT一直在换挡，因此该值一直在-1000到1000之间。
+DCT和CVT均发不出0xFFF。";
+CM_ SG_ 768 TCU_2_Checksum "((Byte0+Byte1+……+Byte6)_AND_0xFF)_XOR_0xFF";
+CM_ SG_ 768 TargetGear "The_Gear_That_The_Gearbox_Is_Currently_Changing_To_(this_Is_Valid_When_Gearshift_In_Progress_Equals_1).
+Target_Gear是指变速箱将要达到的档位。
+Actual_Gear是指变速箱现在实际的档位
+DCT无0111_1000两个属性
+
+PHEV的DHT不使用此信号，目标档位由HCU请求";
+CM_ SG_ 768 DriverMode "CVT有正常、运动、冬季模式；4AT有正常、运动、冬季模式；AMT有正常、经济模式；
+DCT有正常、ECO模式，ECO模式通过其他模块给开关信号。";
+CM_ SG_ 768 ShiftInProgress "Shift_In_Progress:
+shows_If_A_Gear_Shift_Is
+actually_In_Progress";
+CM_ SG_ 768 GBPositoionDisplayForPEPS "DCT这个信号为换挡杆物理位置；CVT这个信号，_G中档位显示信号属性可以覆盖此信号。
+PEPS:获取P档和N档信号
+目标档位
+1000?D换挡间歇期间，档位符号闪烁，显示上一个档位。
+CVT可用到属性里的1-9gear
+和PRND。
+4AT可用到属性里的1-4gear和PRND。
+AMT可用到属性里的RND（AMT由手动变速箱更改过来的，没有增加驻车锁，所以没有P档）。
+DCT只发出0001、1011、1100、1101、1110、1111
+DHT只能发出1011、1100、1101、1110、1111";
+CM_ SG_ 768 ActualGear "Gives_The_Actual_Engaged_Gear
+实际档位_
+DCT无0111_1000两个属性
+DHT只能发出1001、1010、1011、1111";
+CM_ SG_ 805 ESP_17_VLCWhlTorqReqValidData "Valid_check_bit_of_the_signal_ESP_VLCEngTorqReq";
+CM_ SG_ 805 ESP_17_VLCWhlTorqReq "wheel_combustion_torque";
+CM_ SG_ 932 ESP_18_CCO_Active "电四驱独有";
+CM_ SG_ 1034 HCU_PTReady "Drive_Ready_Indication";
+CM_ SG_ 1282 ABS_ESP_Checksum "((Byte0+Byte1+_Byte2+Byte3+Byte4+Byte5)_AND_0xFF)_XOR_0xFF
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.3";
+CM_ SG_ 1282 CDPFailSts "建议文字显示，CDP失效";
+CM_ SG_ 1282 ABS_ESP_MessageCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 1282 CDPActive "动态制动时:仪表接收CDPActive=1_Active或RWUActive=1_Active，仪表驻车灯闪烁";
+CM_ SG_ 250 EMS_1_ECGPOvrd "标识驾驶员扭矩高于ACC请求扭矩
+Identify_Driver_Torque_Is_Higher_Than_ACC_Requested_Torque";
+CM_ SG_ 250 EMS_1_AcceleratorPosRaw "Raw_Position_Of_The_Accelerator_Pedal_(unfiltered)._Represents_Always_Raw_Pedal_Position_Without_Any_Other_Influcence_Only_Mandatory_To_Calculated_Gradient_Acceleration_Pedal.";
+CM_ SG_ 250 EMS_1_GasPedalPosition "Driver/Cruise_Control
+This_Signal_Including_Compositive_Informations_Which_Are_Actual_Gas_Pedal_Position_And_Dummy_Cruise_Control_Gas_Pedal_Position";
+CM_ SG_ 250 EMS_1_Checksum "((Byte0+Byte1+Byte3……+Byte7)_AND_0xFF)_XOR_0xFF";
+CM_ SG_ 250 EMS_1_EngineSpeed "PHEV:Simulated_Engine_Speed_Send_By_EMS_To_PEPS_The_Speed_Is_1500rpm_When_Only_The_Motor_Drives。
+Set_By_HCU_When_PEPS1_StarterSwitchFlag_Becomes_True._Reset_If_HCU_Detects_Falling_Edge_Ignition_Bit._
+_
+CLM_EIPM_(more_Than_600_To_Turn_On_The_Compressor)
+PEPS_(1200_Critical_Start)
+EPS_(400_Critical_Electric_Power_)";
+CM_ SG_ 916 EPS_2_CRC "CRC_(SAE_J1850_CRC-8)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CANFD_Data_Link_Layer_V1.0》section_2.3.2";
+CM_ SG_ 916 EPS_2_Message_Counter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CANFD_Data_Link_Layer_V1.0》section_2.3.1";
+CM_ SG_ 916 EPS_APA_CurrentSystemStatus "EPS反馈给APA功能（AVM）的当前系统状态
+0x0:不满足与APA握手条件
+0x1:满足与APA的握手条件
+0x2:与APA握手成功
+0x3:中断
+0x4:同意与APA建立握手
+0x7:EPS内部故障";
+CM_ SG_ 916 EPS_APA_FaultStatus "EPS给APA功能（AVM）反馈的故障信息";
+CM_ SG_ 916 EPS_APA_SteeringWheelAngleRes "EPS反馈给APA的转向角度信号";
+CM_ SG_ 916 EPS_APA_SteeringAngleInvalid "EPS反馈给APA的转向角度有效性信号";
+CM_ SG_ 916 EPS_EpsControlStatus "为LKS对EPS的控制信号";
+CM_ SG_ 916 EPS_TorsionBarTorqueDir "方向盘扭矩方向";
+CM_ SG_ 916 EPS_TorsionBarTorque "驾驶员输入方向盘扭矩";
+CM_ SG_ 1285 EPS_1_EPSModeSts "IHU接收到00，显示EPS禁止模式转换，接收到10，显示舒适模式，接收到11，显示运动模式";
+CM_ SG_ 1285 EPS_1_EPSSteeringAngleCalibratio "若没有标定成功或初始化，
+主动回正和软止点功能禁
+止。
+如果仪表为断码屏，该信号发
+1_时，EPS_故障灯闪烁，
+EPSFailSts_发0，无文字
+提示；
+如果仪表为点阵屏/TFT_屏，
+该信号发1_时，EPS_故障灯
+闪烁，EPSFailSts_发0，
+有文字提示EPS转角零位未标定。";
+CM_ SG_ 1285 EPS_1_EPS_AssistanceStyleSts "0x0:_sport
+0x1:_comfort
+0x2:_normal";
+CM_ SG_ 554 AVM_APA_1_CRC "CRC_(SAE_J1850_CRC-8)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CANFD_Data_Link_Layer_V1.0》section_2.3.2";
+CM_ SG_ 554 AVM_APA_1_AliveCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CANFD_Data_Link_Layer_V1.0》section_2.3.1";
+CM_ SG_ 554 TarSpd "蠕行车速";
+CM_ SG_ 554 APA_1_ReasonForDVDnotDisplyAPA "DVD无法显示APA界面的原因，需要在ICM上显示";
+CM_ SG_ 554 AVM_APA_SteeringWheelAngleReq "APA给EPS的转向角度请求信号
+0x1E78~0XE187:Invalid";
+CM_ SG_ 554 AVM_APA_EPS_Control_Request "APA请求与EPS握手的相关状态信号";
+CM_ SG_ 554 AVM_APA_SystemSts "APA系统状态信号";
+CM_ SG_ 554 APA_1_APA_Active "APA功能是否激活";
+CM_ SG_ 554 APA_1_APAFailureSts "APA系统是否故障";
+CM_ SG_ 586 AVM_APA_2_CRC "CRC_(SAE_J1850_CRC-8)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.2";
+CM_ SG_ 586 AVM_APA_2_AliveCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 586 OMPEnable_24Ah "OMP功能使能信号";
+CM_ SG_ 586 MEB_BrkgReq "MEB 减速度请求信号
+0x0:不请求减速度
+0x1:请求减速度";
+CM_ SG_ 586 AVM_APA_2_APAEPBCtrlReq "APA EPB Control Request for IPB";
+CM_ SG_ 586 AVM_APA_FailureBrakeMode "APA请求的制动模式信号
+0x0:不进行制动
+0x1:产生可恢复中断时的舒适制动
+0x2:产生不可恢复中断时的紧急制动";
+CM_ SG_ 586 AVM_APA_ESP_Target_Gear_Request "APA请求的目标档位信号";
+CM_ SG_ 586 AVM_APA_ESP_Control_Request "APA请求与ESP握手的相关状态信号
+0x0:初始化
+0x1:Standby
+0x2:APA请求与ESP握手
+0x3:当车辆停止在目标的泊车位置时，此信号发0x3
+0x5:中断";
+CM_ SG_ 586 AVM_APA_ESP_Speed_Limitation "APA对ESP请求的最大允许车速";
+CM_ SG_ 586 AVM_APA_Allow_ESP_Control_Brake "APA允许ESP控制制动
+0x0:不允许ESP控制制动
+0x3:允许ESP控制制动";
+CM_ SG_ 586 AVM_APA_ESP_Stop_Distance "APA对ESP请求的目标停车距离";
+CM_ SG_ 761 ADCC_10_CRC "CRC (SAE J1850 CRC-8)
+";
+CM_ SG_ 761 ADCC_10_MsgCntr "Rolling message counter(the maximum value of Alive counter is 15)
+";
+CM_ SG_ 761 ADCC_10AVPTarAUpprLim "AVP target acceleration Upper limit
+AVP目标加速度上限";
+CM_ SG_ 761 ADCC_10AVPTarALowrLim "AVP Target acceleration lower limit
+AVP目标加速度下限";
+CM_ SG_ 761 ADCC_10AVPTarASlopLowrLim "AVP target acceleration slope Lower Limit
+目标加速度斜率下限";
+CM_ SG_ 761 ADCC_10AVPTarASlopUpprLim "AVP target acceleration slope Upper limit
+目标加速度斜率上限";
+CM_ SG_ 761 ADCC_10AVPBrkFirst "AVP Brake First
+AVP功能制动优先";
+CM_ SG_ 761 ADCC_10AVPVehStrtReq "AVP Vehicle start Request
+AVP起步请求";
+CM_ SG_ 761 ADCC_10AVPStandstillReq "AVP Standstill Request
+刹停请求
+备注：APA_StandstillReq使用条件是：速度<1.08km/h";
+CM_ SG_ 761 ADCC_10AVPModForIPB "Inform IPB of the current parking mode";
+CM_ SG_ 761 ADCC_10AVPACmdEnable "Acceleration command enabling";
+CM_ SG_ 761 ADCC_10AVPTarA "AVP Target acceleration
+泊车目标加速度";
+CM_ SG_ 608 IPB_ABSESP_7_Checksum "((Byte0+Byte1+_Byte2+Byte3+Byte4+Byte5+Byte6)_AND_0xFF)_XOR_0xFF
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.3";
+CM_ SG_ 608 IPB_ABSESP_7_MessageCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 608 IPB_WheelBrakeForce "四轮总制动力
+0xF425~0xFFFE:Not_Used";
+CM_ SG_ 608 IPB_QDCACC "ACC_Error_Detected_By_ESP_Like_Timeout_Or_Alivecounter_Error.
+The_Error_Should_Distinguish_Reversible_And_Irreversible_Errors.";
+CM_ SG_ 641 IPB_ABSESP_8_Checksum "((Byte0+Byte1+_Byte2+Byte3+Byte4+Byte5+Byte6)_AND_0xFF)_XOR_0xFF
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.3";
+CM_ SG_ 641 IPB_ABSESP_8_MessageCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 641 IPB_ESP_APA_LC_Status "纵向控制器（ESP）握手状态信号（APA与ESP的握手请求反馈信号）
+0x0:供应商没有开启APA相关的ESP功能时，此信号发0x0
+0x1:Stanby模式
+0x4:ESP与APA握手成功
+0xA:Error";
+CM_ SG_ 641 IPB_ESP_APA_LC_FailureSts "纵向控制器（ESP）故障状态信号
+0x0:没有故障
+0x1:车辆运行受阻（如车轮陷入坑中）
+0x2:档位未切换成APA请求的目标档位
+0x3:当车辆停至目标泊车位置，ESP拉起EPB，但EPB处于释放状态
+0x7:ESP内部故障";
+CM_ SG_ 641 IPB_ESC_APA_LC_Availability "纵向控制器（ESP）是否可用";
+CM_ SG_ 641 OmpStatus_281h "OMP当前模块状态";
+CM_ SG_ 641 IPB_ABSESP_8_RCTBdecActv "RCTB_deceleration_Active_function_triggers_feedback_signals_deceleration_Active.";
+CM_ SG_ 641 IPB_ABPActive "Automatic_Brake_Pre-fill--自动预制动";
+CM_ SG_ 641 IPB_AEBdecActive "AEB_Braking_Function";
+CM_ SG_ 641 IPB_ABSESP_8_RCTBAvl "RCTB_Available";
+CM_ SG_ 641 IPB_ABSESP_8_CDDActvVehAutoHld "Active_vehicle_Autohold";
+CM_ SG_ 745 IPB_ABS_ESP_1_MessageCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 745 ABS_ESP_1_ESPSwitchStatus "1_Means_VDC_And_Engine_Traction_Control_System_(PTC)_Function_And_Brake_Traction_Control_System_(BTC)_Function_Disabled_And_Ignit_ESP_Lamp.
+0x0:ESP功能开启
+0x1:ESP功能关闭";
+CM_ SG_ 745 IPB_ABS_ESP_1_Checksum "((Byte0+Byte1+_Byte2+Byte3+Byte4+Byte6+Byte7)_AND_0xFF)_XOR_0xFF
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.3";
+CM_ SG_ 745 IPB_ABS_ESP_1_VDCActive "ESP_Lamp_On_ICM_Should_Blinking_;VDC_Intervention";
+CM_ SG_ 745 IPB_ABS_ESP_1_TCSActive "ESP_Lamp_On_ICM_Should_Blinking;_TCS_Intervention";
+CM_ SG_ 745 IPB_ESP_APA_Target_Gear_Request "APA请求的目标档位信号
+备注:APA功能增加此信号";
+CM_ SG_ 787 IPB_ABS_ESP_3_Checksum "((Byte0+Byte1+_Byte2+Byte3+Byte4+Byte5+Byte6)_AND_0xFF)_XOR_0xFF
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.3";
+CM_ SG_ 787 IPB_ABS_ESP_3_MessageCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 787 IPB_ABS_ESP_3_AVHSts "Auto_Hold功能状态
+";
+CM_ SG_ 787 IPB_ESP_VLCEngTorqReqValidData "燃烧扭矩
+ACC对发动机的扭矩请求";
+CM_ SG_ 787 IPB_ESP_VLCEngTorqReq "燃烧扭矩
+ACC对发动机的扭矩请求";
+CM_ SG_ 787 IPB_NoBrakeForce "No_Brake_Pressure_Applied
+Generally_It_Regards_Wheel_Cylinder_Pressure
+";
+CM_ SG_ 787 IPB_ABS_ESP_3_AVHFailSts "AutoHold功能失效状态";
+CM_ SG_ 790 IPB_ABS_ESP_4_Checksum "((Byte0+Byte1+_Byte2+Byte3+Byte4+Byte5+Byte6)_AND_0xFF)_XOR_0xFF
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.3";
+CM_ SG_ 790 IPB_ABS_ESP_4_MessageCounter "Rolling_Message_Counter(the_Maximum_Value_Of_Alive_Counter_Is_15)
+Note:Details_Please_Refer_To_Specification《Standard_Specification_For_CAN_Data_Link_Layer_V1.1》section_2.3.1";
+CM_ SG_ 790 IPB_VLC_Available "VLC可用";
+CM_ SG_ 790 IPB_VLC_Active "VLC激活";
+CM_ SG_ 790 IPB_DCFail "不能执行ACC的减速功能时通知FRM";
+CM_ SG_ 790 IPB_ECDTempOff "制动盘温度过高";
+CM_ SG_ 790 IPB_VehicleStandstill "车辆静止状态";
+CM_ SG_ 790 IPB_VLC_InternalTargetAccelerati "VLC内部加速度";
+CM_ SG_ 1270 IPB_EPBErrorStatus "用于EPB故障显示
+夹紧力不够时也发Error
+";
+CM_ SG_ 1270 IPB_EPBStatus "卡钳处于释放状态
+卡钳处于夹紧状态
+卡钳正处于释放过程中
+卡钳正处于夹紧过程中
+未知状态:当前卡钳处于未知状态
+ErrorApplied:
+当EPBError之前卡钳已经处于夹紧状态_用户再操作EPB(apply)开关时发101进行闪烁报警；
+当EPBError之后卡钳处于夹紧状态_发101进行闪烁报警。
+0x0:Released（电子驻车已释放）ICM做策略，只提示5s
+0x1:Applied（电子驻车已启用）ICM做策略，只提示5s
+0x2:Releasing
+0x3:Applying
+0x4:Unknown
+0x5:ErrorApplied（公共CAN无此信号，会发0x4_unknown）
+0x6:Not_Used
+0x7:Not_Used";
+BA_DEF_ BO_  "GenMsgCycleTimeFast" INT 0 65535;
+BA_DEF_ BO_  "GenMsgDelayTime" INT 0 65535;
+BA_DEF_ BO_  "GenMsgStartDelayTime" INT 0 65535;
+BA_DEF_ BO_  "GenMsgILSupport" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgNrOfRepetition" INT 0 65535;
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","StandardCAN_FD","ExtendedCAN_FD";
+BA_DEF_ BO_  "DiagState" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagRequest" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagResponse" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagFdOnly" ENUM  "No","Yes";
+BA_DEF_ BO_  "NmAsrMessage" ENUM  "No","Yes";
+BA_DEF_ SG_  "GenSigTimeoutTime" INT 0 65535;
+BA_DEF_ SG_  "Remark" STRING ;
+BA_DEF_ SG_  "GenSigSendType" ENUM  "Cyclic","OnWrite","OnWriteWithRepetition","OnChange","OnChangeWithRepetition","IfActive","IfActiveWithRepetition","NoSigSendType","CyclicAndSpontanX","NotUsed","Event","CE";
+BA_DEF_ SG_  "DEM_Invalid_Check" STRING ;
+BA_DEF_ SG_  "IsMonitor" ENUM  "*","Monitor";
+BA_DEF_ SG_  "NormValue" STRING ;
+BA_DEF_  "DBName" STRING ;
+BA_DEF_  "BusType" STRING ;
+BA_DEF_  "Manufacturer" STRING ;
+BA_DEF_ SG_  "UnitConversionFactor" FLOAT -100 100;
+BA_DEF_ SG_  "SigInvalidSetFlag" ENUM  "*","Yes";
+BA_DEF_ SG_  "Internal_type" ENUM  "*","UB","UW","UL","SB","SW","SL";
+BA_DEF_ SG_  "IsCrcSignal" ENUM  "No","Yes";
+BA_DEF_ SG_  "IsRcSignal" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgSendType" ENUM  "Cyclic","Event","CE","NotUsed","NotUsed","NotUsed","NotUsed","NotUsed","NoMsgSendType","IfActive","IfActiveWithRepetition","CyclicAndSpontanX";
+BA_DEF_ SG_  "GenSigStartValue" INT 0 2147483647;
+BA_DEF_ SG_  "GenSigInactiveValue" INT 0 2147483647;
+BA_DEF_ BO_  "MsgType" ENUM  "Normal","NM","Diag","";
+BA_DEF_ SG_  "SystemSignalLongSymbol" STRING ;
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 65535;
+BA_DEF_DEF_  "GenMsgCycleTimeFast" 0;
+BA_DEF_DEF_  "GenMsgDelayTime" 0;
+BA_DEF_DEF_  "GenMsgStartDelayTime" 0;
+BA_DEF_DEF_  "GenMsgILSupport" "Yes";
+BA_DEF_DEF_  "GenMsgNrOfRepetition" 0;
+BA_DEF_DEF_  "VFrameFormat" "StandardCAN";
+BA_DEF_DEF_  "DiagState" "No";
+BA_DEF_DEF_  "DiagRequest" "No";
+BA_DEF_DEF_  "DiagResponse" "No";
+BA_DEF_DEF_  "DiagFdOnly" "No";
+BA_DEF_DEF_  "NmAsrMessage" "No";
+BA_DEF_DEF_  "GenSigTimeoutTime" 0;
+BA_DEF_DEF_  "Remark" "";
+BA_DEF_DEF_  "GenSigSendType" "Cyclic";
+BA_DEF_DEF_  "DEM_Invalid_Check" "";
+BA_DEF_DEF_  "IsMonitor" "*";
+BA_DEF_DEF_  "NormValue" "";
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "BusType" "";
+BA_DEF_DEF_  "Manufacturer" "Vector";
+BA_DEF_DEF_  "UnitConversionFactor" 1;
+BA_DEF_DEF_  "SigInvalidSetFlag" "*";
+BA_DEF_DEF_  "Internal_type" "*";
+BA_DEF_DEF_  "IsCrcSignal" "No";
+BA_DEF_DEF_  "IsRcSignal" "No";
+BA_DEF_DEF_  "GenMsgSendType" "Cyclic";
+BA_DEF_DEF_  "GenSigStartValue" 0;
+BA_DEF_DEF_  "GenSigInactiveValue" 0;
+BA_DEF_DEF_  "MsgType" "";
+BA_DEF_DEF_  "SystemSignalLongSymbol" "";
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_ "DBName" "CANA";
+BA_ "BusType" "CAN FD";
+BA_ "VFrameFormat" BO_ 257 14;
+BA_ "MsgType" BO_ 257 0;
+BA_ "GenMsgCycleTime" BO_ 257 10;
+BA_ "SystemSignalLongSymbol" SG_ 257 EMS_2_BrakePedalStsValidDataForT "EMS_2_BrakePedalStsValidDataForTCU";
+BA_ "VFrameFormat" BO_ 260 14;
+BA_ "MsgType" BO_ 260 0;
+BA_ "GenMsgCycleTime" BO_ 260 10;
+BA_ "GenSigStartValue" SG_ 260 MotorTorqueRA 32768;
+BA_ "VFrameFormat" BO_ 263 14;
+BA_ "MsgType" BO_ 263 0;
+BA_ "GenMsgCycleTime" BO_ 263 10;
+BA_ "GenSigStartValue" SG_ 263 HCU_6_MinTorqueWheel 32767;
+BA_ "GenSigStartValue" SG_ 263 HCU_6_MaxTorqueWheel 32767;
+BA_ "VFrameFormat" BO_ 269 14;
+BA_ "MsgType" BO_ 269 0;
+BA_ "GenMsgCycleTime" BO_ 269 10;
+BA_ "VFrameFormat" BO_ 295 14;
+BA_ "MsgType" BO_ 295 0;
+BA_ "GenMsgCycleTime" BO_ 295 20;
+BA_ "IsCrcSignal" SG_ 295 YAS_1_Checksum 1;
+BA_ "GenSigStartValue" SG_ 295 YawRate 18000;
+BA_ "GenSigStartValue" SG_ 295 LateralAcceleration 2000;
+BA_ "GenSigStartValue" SG_ 295 YawrateSigValidData 3;
+BA_ "GenSigStartValue" SG_ 295 LateralAccelerationSigValidData 3;
+BA_ "VFrameFormat" BO_ 296 14;
+BA_ "MsgType" BO_ 296 0;
+BA_ "GenMsgCycleTime" BO_ 296 20;
+BA_ "IsCrcSignal" SG_ 296 YAS_2_Checksum 1;
+BA_ "GenSigStartValue" SG_ 296 LongitudinalAcceleration 2000;
+BA_ "GenSigStartValue" SG_ 296 LongitudinalAccelerationSig 3;
+BA_ "VFrameFormat" BO_ 352 14;
+BA_ "MsgType" BO_ 352 0;
+BA_ "GenMsgCycleTime" BO_ 352 10;
+BA_ "GenSigStartValue" SG_ 352 MotorTorqueFA 32768;
+BA_ "VFrameFormat" BO_ 430 14;
+BA_ "MsgType" BO_ 430 0;
+BA_ "GenMsgCycleTime" BO_ 430 10;
+BA_ "IsCrcSignal" SG_ 430 TCU_1_Checksum 1;
+BA_ "VFrameFormat" BO_ 768 14;
+BA_ "MsgType" BO_ 768 0;
+BA_ "GenMsgCycleTime" BO_ 768 10;
+BA_ "IsCrcSignal" SG_ 768 TCU_2_Checksum 1;
+BA_ "GenSigStartValue" SG_ 768 TargetGear 15;
+BA_ "GenSigStartValue" SG_ 768 GBPositoionDisplayForPEPS 15;
+BA_ "GenSigStartValue" SG_ 768 ActualGear 15;
+BA_ "VFrameFormat" BO_ 805 14;
+BA_ "MsgType" BO_ 805 0;
+BA_ "GenMsgCycleTime" BO_ 805 20;
+BA_ "GenSigStartValue" SG_ 805 ESP_17_VLCWhlTorqReqValidData 1;
+BA_ "GenSigStartValue" SG_ 805 ESP_17_VLCWhlTorqReq 32767;
+BA_ "GenMsgNrOfRepetition" BO_ 864 3;
+BA_ "GenMsgCycleTimeFast" BO_ 864 50;
+BA_ "GenMsgSendType" BO_ 864 1;
+BA_ "VFrameFormat" BO_ 864 14;
+BA_ "MsgType" BO_ 864 0;
+BA_ "GenMsgCycleTime" BO_ 864 0;
+BA_ "GenSigSendType" SG_ 864 MFS_Time_Gap_Reduce 3;
+BA_ "GenSigSendType" SG_ 864 MFS_Time_Gap_Add 3;
+BA_ "GenSigSendType" SG_ 864 MFS_SETMinus 3;
+BA_ "GenSigSendType" SG_ 864 MFS_Time_Gap 3;
+BA_ "GenSigSendType" SG_ 864 MFS_Cruise_Control 3;
+BA_ "GenSigSendType" SG_ 864 MFS_Seepd_Limit 3;
+BA_ "GenSigSendType" SG_ 864 MFS_Cancel 3;
+BA_ "GenSigSendType" SG_ 864 MFS_RESPlus 3;
+BA_ "GenSigSendType" SG_ 864 ALIVE_MFS_2 3;
+BA_ "GenSigSendType" SG_ 864 CRC 3;
+BA_ "VFrameFormat" BO_ 932 14;
+BA_ "MsgType" BO_ 932 0;
+BA_ "GenMsgCycleTime" BO_ 932 20;
+BA_ "VFrameFormat" BO_ 1034 14;
+BA_ "MsgType" BO_ 1034 0;
+BA_ "GenMsgCycleTime" BO_ 1034 100;
+BA_ "GenMsgNrOfRepetition" BO_ 1276 3;
+BA_ "GenMsgCycleTimeFast" BO_ 1276 100;
+BA_ "GenMsgSendType" BO_ 1276 1;
+BA_ "VFrameFormat" BO_ 1276 14;
+BA_ "MsgType" BO_ 1276 0;
+BA_ "GenMsgCycleTime" BO_ 1276 0;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_ELKSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_LDWLDPSnvtySet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_LDPSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_WarnModSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_LDWSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_TLISwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_TSISwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_HMASwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_IESSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_DAISwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_SCFSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_SLASwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_TJAICAExitTextInfoSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_FCWSwtSet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_FCWSnvtySet 2;
+BA_ "GenSigSendType" SG_ 1276 IHU_11_AEBSwtSet 2;
+BA_ "VFrameFormat" BO_ 1282 14;
+BA_ "MsgType" BO_ 1282 0;
+BA_ "GenMsgCycleTime" BO_ 1282 100;
+BA_ "IsCrcSignal" SG_ 1282 ABS_ESP_Checksum 1;
+BA_ "VFrameFormat" BO_ 1302 14;
+BA_ "MsgType" BO_ 1302 0;
+BA_ "GenMsgCycleTime" BO_ 1302 500;
+BA_ "GenMsgNrOfRepetition" BO_ 1360 3;
+BA_ "GenMsgCycleTimeFast" BO_ 1360 50;
+BA_ "GenMsgSendType" BO_ 1360 1;
+BA_ "VFrameFormat" BO_ 1360 14;
+BA_ "MsgType" BO_ 1360 0;
+BA_ "GenMsgCycleTime" BO_ 1360 0;
+BA_ "GenSigSendType" SG_ 1360 ATCM_AVM 1;
+BA_ "GenMsgNrOfRepetition" BO_ 1416 3;
+BA_ "GenMsgCycleTimeFast" BO_ 1416 100;
+BA_ "GenMsgSendType" BO_ 1416 1;
+BA_ "VFrameFormat" BO_ 1416 14;
+BA_ "MsgType" BO_ 1416 0;
+BA_ "GenMsgCycleTime" BO_ 1416 0;
+BA_ "GenSigSendType" SG_ 1416 RPASwitch 2;
+BA_ "GenSigSendType" SG_ 1416 FollowingTrackToReverse 2;
+BA_ "GenSigSendType" SG_ 1416 Ready2GoSwitch 2;
+BA_ "GenSigSendType" SG_ 1416 IESSwtSet 2;
+BA_ "GenSigSendType" SG_ 1416 IHU_11_TSISwtSet 2;
+BA_ "GenSigSendType" SG_ 1416 RCTB_OnOffSt 2;
+BA_ "GenSigSendType" SG_ 1416 RCW_OnOffSt 2;
+BA_ "GenSigSendType" SG_ 1416 DCLC_Switch 2;
+BA_ "GenSigSendType" SG_ 1416 ELK_Switch 2;
+BA_ "GenMsgSendType" BO_ 1894 1;
+BA_ "GenMsgILSupport" BO_ 1894 0;
+BA_ "VFrameFormat" BO_ 1894 14;
+BA_ "DiagRequest" BO_ 1894 1;
+BA_ "MsgType" BO_ 1894 0;
+BA_ "GenMsgCycleTime" BO_ 1894 0;
+BA_ "GenSigSendType" SG_ 1894 APA_Request_Frame_Type 1;
+BA_ "GenMsgSendType" BO_ 2015 1;
+BA_ "GenMsgILSupport" BO_ 2015 0;
+BA_ "VFrameFormat" BO_ 2015 14;
+BA_ "DiagState" BO_ 2015 1;
+BA_ "MsgType" BO_ 2015 0;
+BA_ "GenMsgCycleTime" BO_ 2015 0;
+BA_ "GenSigSendType" SG_ 2015 TEST_Request_Frame_Type 1;
+BA_ "VFrameFormat" BO_ 250 14;
+BA_ "MsgType" BO_ 250 0;
+BA_ "GenMsgCycleTime" BO_ 250 10;
+BA_ "SystemSignalLongSymbol" SG_ 250 EMS_1_GasPedalPositionInvalidDat "EMS_1_GasPedalPositionInvalidData";
+BA_ "IsCrcSignal" SG_ 250 EMS_1_Checksum 1;
+BA_ "VFrameFormat" BO_ 467 14;
+BA_ "MsgType" BO_ 467 0;
+BA_ "GenMsgCycleTime" BO_ 467 10;
+BA_ "IsRcSignal" SG_ 467 EPS_3_Message_Counter 1;
+BA_ "VFrameFormat" BO_ 483 14;
+BA_ "MsgType" BO_ 483 0;
+BA_ "GenMsgCycleTime" BO_ 483 10;
+BA_ "IsRcSignal" SG_ 483 EPS_4_Message_Counter 1;
+BA_ "VFrameFormat" BO_ 916 14;
+BA_ "MsgType" BO_ 916 0;
+BA_ "GenMsgCycleTime" BO_ 916 20;
+BA_ "IsRcSignal" SG_ 916 EPS_2_Message_Counter 1;
+BA_ "GenSigStartValue" SG_ 916 EPS_APA_SteeringWheelAngleRes 65535;
+BA_ "VFrameFormat" BO_ 1285 14;
+BA_ "MsgType" BO_ 1285 0;
+BA_ "GenMsgCycleTime" BO_ 1285 100;
+BA_ "GenSigStartValue" SG_ 1285 EPS_1_EPSModeSts 2;
+BA_ "SystemSignalLongSymbol" SG_ 1285 EPS_1_EPSSteeringAngleCalibratio "EPS_1_EPSSteeringAngleCalibrationSts";
+BA_ "VFrameFormat" BO_ 196 14;
+BA_ "MsgType" BO_ 196 0;
+BA_ "GenMsgCycleTime" BO_ 196 10;
+BA_ "SystemSignalLongSymbol" SG_ 196 SAS_1_SteeringAngleSpeedValidDat "SAS_1_SteeringAngleSpeedValidData";
+BA_ "VFrameFormat" BO_ 837 14;
+BA_ "MsgType" BO_ 837 0;
+BA_ "GenMsgCycleTime" BO_ 837 20;
+BA_ "GenSigStartValue" SG_ 837 RCTB_TargetDecel 32773;
+BA_ "VFrameFormat" BO_ 933 14;
+BA_ "MsgType" BO_ 933 0;
+BA_ "GenMsgCycleTime" BO_ 933 20;
+BA_ "VFrameFormat" BO_ 554 14;
+BA_ "MsgType" BO_ 554 0;
+BA_ "GenMsgCycleTime" BO_ 554 20;
+BA_ "GenSigStartValue" SG_ 554 AVM_APA_SteeringWheelAngleReq 65535;
+BA_ "VFrameFormat" BO_ 586 14;
+BA_ "MsgType" BO_ 586 0;
+BA_ "GenMsgCycleTime" BO_ 586 20;
+BA_ "VFrameFormat" BO_ 761 14;
+BA_ "MsgType" BO_ 761 0;
+BA_ "GenMsgCycleTime" BO_ 761 20;
+BA_ "GenSigStartValue" SG_ 761 ADCC_10AVPTarAUpprLim 100;
+BA_ "GenSigStartValue" SG_ 761 ADCC_10AVPTarALowrLim 100;
+BA_ "GenSigStartValue" SG_ 761 ADCC_10AVPTarASlopLowrLim 150;
+BA_ "GenSigStartValue" SG_ 761 ADCC_10AVPTarA 500;
+BA_ "GenMsgSendType" BO_ 1910 8;
+BA_ "GenMsgILSupport" BO_ 1910 0;
+BA_ "VFrameFormat" BO_ 1910 14;
+BA_ "DiagResponse" BO_ 1910 1;
+BA_ "MsgType" BO_ 1910 0;
+BA_ "GenMsgCycleTime" BO_ 1910 0;
+BA_ "GenSigSendType" SG_ 1910 APA_response_frame_type 1;
+BA_ "VFrameFormat" BO_ 608 14;
+BA_ "MsgType" BO_ 608 0;
+BA_ "GenMsgCycleTime" BO_ 608 20;
+BA_ "IsCrcSignal" SG_ 608 IPB_ABSESP_7_Checksum 1;
+BA_ "GenSigStartValue" SG_ 608 IPB_WheelBrakeForce 31250;
+BA_ "GenSigStartValue" SG_ 608 IPB_VLCFail 1;
+BA_ "GenSigStartValue" SG_ 608 IPB_RHFWheelSpeedRawValidData 1;
+BA_ "GenSigStartValue" SG_ 608 IPB_LHFWheelSpeedRawValidData 1;
+BA_ "VFrameFormat" BO_ 641 14;
+BA_ "MsgType" BO_ 641 0;
+BA_ "GenMsgCycleTime" BO_ 641 20;
+BA_ "IsCrcSignal" SG_ 641 IPB_ABSESP_8_Checksum 1;
+BA_ "GenSigStartValue" SG_ 641 IPB_RHRWheelSpeedRawValidData 1;
+BA_ "GenSigStartValue" SG_ 641 IPB_LHRWheelSpeedRawValidData 1;
+BA_ "VFrameFormat" BO_ 745 14;
+BA_ "MsgType" BO_ 745 0;
+BA_ "GenMsgCycleTime" BO_ 745 10;
+BA_ "IsCrcSignal" SG_ 745 IPB_ABS_ESP_1_Checksum 1;
+BA_ "GenSigStartValue" SG_ 745 IPB_SimulatorPressureStatus 1;
+BA_ "GenSigStartValue" SG_ 745 IPB_ESP1_VehicleSpeedVSOSigValid 1;
+BA_ "SystemSignalLongSymbol" SG_ 745 IPB_ESP1_VehicleSpeedVSOSigValid "IPB_ESP1_VehicleSpeedVSOSigValidData";
+BA_ "VFrameFormat" BO_ 784 14;
+BA_ "MsgType" BO_ 784 0;
+BA_ "GenMsgCycleTime" BO_ 784 10;
+BA_ "GenSigStartValue" SG_ 784 IPB_RHRWheelSpeedValidData 1;
+BA_ "GenSigStartValue" SG_ 784 IPB_LHRWheelSpeedValidData 1;
+BA_ "GenSigStartValue" SG_ 784 IPB_RHFWheelSpeedValidData 1;
+BA_ "GenSigStartValue" SG_ 784 IPB_LHFWheelSpeedValidData 1;
+BA_ "VFrameFormat" BO_ 787 14;
+BA_ "MsgType" BO_ 787 0;
+BA_ "GenMsgCycleTime" BO_ 787 20;
+BA_ "IsCrcSignal" SG_ 787 IPB_ABS_ESP_3_Checksum 1;
+BA_ "GenSigStartValue" SG_ 787 IPB_ESP_VLCEngTorqReqValidData 1;
+BA_ "GenSigStartValue" SG_ 787 IPB_ESP_VLCEngTorqReq 2000;
+BA_ "GenSigStartValue" SG_ 787 IPB_NoBrakeForce 1;
+BA_ "VFrameFormat" BO_ 790 14;
+BA_ "MsgType" BO_ 790 0;
+BA_ "GenMsgCycleTime" BO_ 790 20;
+BA_ "IsCrcSignal" SG_ 790 IPB_ABS_ESP_4_Checksum 1;
+BA_ "GenSigStartValue" SG_ 790 IPB_VLC_InternalTargetAccelerati 140;
+BA_ "SystemSignalLongSymbol" SG_ 790 IPB_VLC_InternalTargetAccelerati "IPB_VLC_InternalTargetAcceleration";
+BA_ "VFrameFormat" BO_ 793 14;
+BA_ "MsgType" BO_ 793 0;
+BA_ "GenMsgCycleTime" BO_ 793 20;
+BA_ "VFrameFormat" BO_ 1270 14;
+BA_ "MsgType" BO_ 1270 0;
+BA_ "GenMsgCycleTime" BO_ 1270 100;
+BA_ "GenSigStartValue" SG_ 1270 IPB_EPBStatus 4;
+BA_ "VFrameFormat" BO_ 809 14;
+BA_ "MsgType" BO_ 809 0;
+BA_ "GenMsgCycleTime" BO_ 809 50;
+VAL_ 257 EMS_2_EngineStsForDCT 0 "Init" 1 "Stop" 2 "Activation_Of_Starter_Powerstage" 3 "Engine_Running" 4 "Engine_Running_In_Limp_Home_Mode" 5 "Reserved" 6 "Reserved" 7 "Invalid" ;
+VAL_ 257 EMS_2_BrakePedalStsForTCU 0 "Not_Applied" 1 "Applied" ;
+VAL_ 257 EMS_2_BrakePedalStsValidDataForT 0 "Valid" 1 "Not_Valid" ;
+VAL_ 263 APA_HCU_available 0 "not_available" 1 "available" ;
+VAL_ 263 APA_HCU_DriverIntervention 0 "no_intervention" 1 "Driver_intervention" ;
+VAL_ 263 HCU_6_ECGPOvrd 0 "No_Override" 1 "Driver_Override" ;
+VAL_ 269 HCU_17PRNDGearActValidData 0 "Not_Valid" 1 "Valid" ;
+VAL_ 269 PRNDGearTarget 0 "Init" 1 "P" 2 "R" 3 "N" 4 "D" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 269 PRNDGearAct 0 "Init" 1 "P" 2 "R" 3 "N" 4 "D" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 295 YawrateSigValidData 0 "Valid" 1 "Reserved" 2 "Invalid" 3 "Initialize" ;
+VAL_ 295 LateralAccelerationSigValidData 0 "Valid" 1 "Reserved" 2 "Invalid" 3 "Initialize" ;
+VAL_ 296 LongitudinalAccelerationSig 0 "Valid" 1 "Reserved" 2 "Invalid" 3 "Initialize" ;
+VAL_ 430 APA_TCU_Available 0 "Not_Available" 1 "Available" ;
+VAL_ 430 APA_TCU_DriverIntervention 0 "No_Intervention" 1 "Driver_Intervention" ;
+VAL_ 768 TargetGear 0 "Reserved" 1 "1st_Gear" 2 "2nd_Gear" 3 "3rd_Gear" 4 "4th_Gear" 5 "5th_Gear" 6 "6th_Gear" 7 "7thgear_" 8 "8th_Gear" 9 "Reverse" 10 "Neutral" 11 "Park" 12 "9th_Gear_" 13 "Reserved_" 14 "Reserved_" 15 "Invalid_Limp_Home" ;
+VAL_ 768 DriverMode 0 "Normal_Mode" 1 "Sport_Mode" 2 "Econ_Mode" 3 "Winter_Mode" ;
+VAL_ 768 TargetGearValidData 0 "Not_Valid" 1 "valid" ;
+VAL_ 768 ActualGearValidData 0 "Not_Valid" 1 "Valid" ;
+VAL_ 768 ShiftInProgress 0 "Not_In_Progress" 1 "In_Progress" ;
+VAL_ 768 ShiftInProgressValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 768 GBPositoionDisplayForPEPS 0 "Reserved" 1 "M1st_Gear_Manual" 2 "M2nd_Gear" 3 "M3rd_Gear" 4 "M4th_Gear" 5 "M5th_Gear" 6 "M6th_Gear" 7 "M7th_Gear" 8 "M8th_Gear" 9 "M9th_Gear" 10 "Low" 11 "Drive" 12 "Neutral" 13 "Reverse" 14 "Park" 15 "Invalid_Limp_Home" ;
+VAL_ 768 ActualGear 0 "Reserved" 1 "1st_Gear" 2 "2nd_Gear" 3 "3rd_Gear" 4 "4th_Gear" 5 "5th_Gear" 6 "6th_Gear" 7 "7th_Gear" 8 "8th_Gear" 9 "Reverse" 10 "Neutral" 11 "Park" 12 "9th_Gear" 15 "Invalid_Limp_Home" ;
+VAL_ 805 ESP_17_VLCWhlTorqReqValidData 0 "Not_present" 1 "Fail_present_(lamp_on)" ;
+VAL_ 864 MFS_Time_Gap_Reduce 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_Time_Gap_Add 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_SETMinus 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_Time_Gap 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_Cruise_Control 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_Seepd_Limit 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_Cancel 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 864 MFS_RESPlus 0 "Notaction" 1 "Pressed" 2 "Stuck" 3 "invalid" ;
+VAL_ 932 ESP_18_CCO_Active 0 "Not_Active" 1 "Active" 2 "Stand_by" 3 "Failed" ;
+VAL_ 1034 HCU_PTReady 0 "LmpOFF" 1 "LmpON" ;
+VAL_ 1276 IHU_11_ELKSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_LDWLDPSnvtySet 0 "Not_Active" 1 "LOW" 2 "HIGH" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_LDPSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_WarnModSwtSet 0 "Not_Active" 1 "only_voice" 2 "only_shock_" 3 "voice_and_shock_" ;
+VAL_ 1276 IHU_11_LDWSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_TLISwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_TSISwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_HMASwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_IESSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_DAISwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_SCFSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_SLASwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_TJAICAExitTextInfoSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_FCWSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1276 IHU_11_FCWSnvtySet 0 "Not_Active" 1 "standard" 2 "near" 3 "far" ;
+VAL_ 1276 IHU_11_AEBSwtSet 0 "Not_Active" 1 "ON" 2 "OFF" 3 "Not_Used" ;
+VAL_ 1282 CDPFailSts 0 "Fail_Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 1282 CDPActive 0 "Not_Active" 1 "Active" ;
+VAL_ 1302 IHU_2_IHULanguageSet 0 "Not_Active" 1 "Chinese" 2 "English" 3 "French" 4 "Spanish" 5 "Russian" 6 "Arabic" 7 "Farsi" 8 "Reserved" 9 "Reserved" 10 "Reserved" 11 "Reserved" 12 "Reserved" 13 "Reserved" 14 "Reserved" 15 "Reserved" ;
+VAL_ 1360 ATCM_AVM 0 "Not_Active" 1 "Pressed" 2 "Stuck" 3 "Reserved" ;
+VAL_ 1416 RPASwitch 0 "No_Request" 1 "Request" ;
+VAL_ 1416 FollowingTrackToReverse 0 "No_Request" 1 "Request" ;
+VAL_ 1416 Ready2GoSwitch 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 1416 IESSwtSet 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 1416 IHU_11_TSISwtSet 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 1416 RCTB_OnOffSt 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 1416 RCW_OnOffSt 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 1416 DCLC_Switch 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 1416 ELK_Switch 0 "Not_Active" 1 "switch_Off" 2 "switch_On" 3 "reserved" ;
+VAL_ 250 EMS_1_ECFail 0 "No_Override" 1 "Driver_Override" ;
+VAL_ 250 EMS_1_ECGPOvrd 0 "No_Failure" 1 "Failure" ;
+VAL_ 250 EMS_1_GasPedalPositionInvalidDat 0 "Valid" 1 "Invalid" ;
+VAL_ 467 EPS_3_AgFailr 0 "No_Failure" 1 "Failure" ;
+VAL_ 467 EPS_3_StrngWhlAgValid 0 "Valid" 1 "Invalid" ;
+VAL_ 483 EPS_4_LatDrvgAvlForLvl 0 "NotAvailable" 1 "FailureDetected" 2 "Available" 3 "Reserved" ;
+VAL_ 916 EPS_APA_CurrentSystemStatus 0 "Inhibit" 1 "Available" 2 "Active" 3 "Abort" 4 "Reply_For_Control" 5 "Reserved" 6 "Reserved" 7 "Failure" ;
+VAL_ 916 EPS_APA_FaultStatus 0 "Normal_Operation" 1 "Over_Speed" 2 "Driver_Interference" 4 "Abnormal_CAN_Input" 8 "Excess_Angle_Deviation" 16 "EPS_Failure" ;
+VAL_ 916 EPS_APA_SteeringAngleInvalid 0 "Valid" 1 "Invalid" ;
+VAL_ 916 EPS_EpsControlStatus 0 "No_Request" 1 "Request_Honored" 2 "Control_Request_Not_Allowed_Temporarily_" 3 "Control_Request_Not_Allowed_Permanent" ;
+VAL_ 916 EPS_TosionBarTorqueValid 0 "Invalid" 1 "Valid" ;
+VAL_ 916 EPS_TorsionBarTorqueDir 0 "Postive_(CCW)" 1 "Negative_(CW)" ;
+VAL_ 1285 EPS_1_EPSModeSts 0 "Changing_Prohibit" 1 "Light" 2 "Comfort" 3 "Sport" ;
+VAL_ 1285 EPS_1_EPSFailSts 0 "Not_present" 1 "Fail_present" ;
+VAL_ 1285 EPS_1_EPSSteeringAngleCalibratio 0 "CalibratiOnIs_Fine_Startup" 1 "No_CalibratiOnOr_No_Initialization" ;
+VAL_ 1285 EPS_1_EPS_AssistanceStyleSts 0 "Heavy" 1 "Light" 2 "Normal" 3 "Not_used" ;
+VAL_ 196 SAS_1_SteeringAngleSpeedValidDat 0 "Valid" 1 "NotValid" ;
+VAL_ 196 SAS_1_SteeringAngleValidData 0 "Valid" 1 "NotValid" ;
+VAL_ 196 SAS_1_SASCalibrated 0 "Not_Calibrated" 1 "Calibrated" ;
+VAL_ 196 SAS_1_AngleFailure 0 "No_Failure" 1 "failure" ;
+VAL_ 837 RCTB_BrakeReq 0 "No_request" 1 "Request" ;
+VAL_ 933 PEBSObjectType 0 "No_Display" 1 "Car" 2 "VRU" 3 "Unknown" 4 "Reserved" ;
+VAL_ 933 AEBHoldRequest 0 "No_Request" 1 "Request" ;
+VAL_ 554 APA_1_ReasonForDVDnotDisplyAPA 0 "no_Reason，ICM_Display_Nothing" 1 "Speed_Is_Greater_Than_30_ICM_Display_This_Reason" 2 "Not_Used" 3 "Not_Used" ;
+VAL_ 554 AVM_APA_EPS_Control_Request 0 "No_Request" 1 "Request_EPS_Control" 2 "EPS_Control_Active" 3 "Invalid" ;
+VAL_ 554 APA_1_HzrdLiReq 0 "Not Active" 1 "Active" ;
+VAL_ 554 AVM_APA_SystemSts 0 "Off" 1 "Standby" 2 "Searching" 3 "Guidance_Active" 4 "Completed" 5 "Failure" 6 "Terminated" 7 "Invalid" ;
+VAL_ 554 APA_1_APA_Active 0 "Not_Active" 1 "Active" ;
+VAL_ 554 APA_1_APAFailureSts 0 "Not_Failure" 1 "Failure" ;
+VAL_ 586 MEB_WorkSts 0 "OFF" 1 "standby" 2 "ready" 3 "Active" 4 "fail" 5 "reserved" 6 "reserved" 7 "reserved" ;
+VAL_ 586 OMPEnable_24Ah 0 "Not Request" 1 "OMP Enable" ;
+VAL_ 586 MEB_BrkgReq 0 "No Request" 1 "Request" ;
+VAL_ 586 AVM_APA_2_APAEPBCtrlReq 0 "No Action" 1 "Clamp" 2 "Release" 3 "Reserved" ;
+VAL_ 586 AVM_APA_FailureBrakeMode 0 "Idle_No_Braking" 1 "Comfort" 2 "Emergency" 3 "Reserved" ;
+VAL_ 586 AVM_APA_ESP_Target_Gear_Request 0 "No_Request" 1 "Target_Gear_P" 2 "Target_Gear_R" 3 "Target_Gear_N" 4 "Target_Gear_D" 5 "Reserved" 6 "Reserved" 7 "Invalid" ;
+VAL_ 586 AVM_APA_ESP_Control_Request 0 "Init" 1 "Standby" 2 "Active" 3 "ManeuverFinished" 4 "Suspend" 5 "Abort" 6 "Reserved" 7 "Reserved" ;
+VAL_ 586 AVM_APA_Allow_ESP_Control_Brake 0 "No_Action" 1 "Reserved" 2 "Reserved" 3 "AutomaticPark" 4 "Reserved" 5 "Reserved" 6 "Reserved" 7 "Reserved" 8 "Reserved" 9 "Reserved" 10 "Reserved" 11 "Reserved" 12 "Reserved" 13 "Reserved" 14 "Reserved" 15 "Reserved" ;
+VAL_ 761 ADCC_10AVPBrkFirst 0 "No request" 1 "Request" ;
+VAL_ 761 ADCC_10AVPVehStrtReq 0 "No request" 1 "Request" ;
+VAL_ 761 ADCC_10AVPStandstillReq 0 "No request" 1 "Request" ;
+VAL_ 761 ADCC_10AVPModForIPB 0 "Not active" 1 "APA" 2 "RPA" 3 "AVP" ;
+VAL_ 761 ADCC_10AVPACmdEnable 0 "No Enable" 1 "Enable" ;
+VAL_ 608 IPB_VLCFail 0 "No_Error" 1 "Error" ;
+VAL_ 608 IPB_QDCACC 0 "No_Error" 1 "Reversible_Error" 2 "Irreversible_Error" 3 "Not_Defined" ;
+VAL_ 608 IPB_RHFWheelSpeedRawValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 608 IPB_RHFWheelDriveDirection 0 "Init" 1 "Forward" 2 "Backward" 3 "Stop" 4 "Invalid" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 608 IPB_LHFWheelSpeedRawValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 608 IPB_LHFWheelDriveDirection 0 "Init" 1 "Forward" 2 "Backward" 3 "Stop" 4 "Invalid" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 641 IPB_ESP_APA_LC_Status 0 "Off" 1 "Standby" 2 "Reserved" 3 "Reserved" 4 "Active_AutomaticPark" 5 "Reserved" 6 "Reserved" 7 "Reserved" 8 "Reserved" 9 "Reserved" 10 "Error" 11 "Reserved" 12 "Reserved" 13 "Reserved" 14 "Reserved" 15 "Reserved" ;
+VAL_ 641 IPB_ESP_APA_LC_FailureSts 0 "No_Error" 1 "Vehicle_Blocked" 2 "Unexpected_GearPosition" 3 "Unexpected_EPB_Action" 4 "Reserved" 5 "Unexpected_GearIntervention" 6 "Unexpected_Acceleration" 7 "Error" ;
+VAL_ 641 IPB_ESC_APA_LC_Availability 0 "Not_Available" 1 "Available" 2 "Test pending" 3 "Reserved" ;
+VAL_ 641 OmpStatus_281h 0 "Not Ready" 1 "Ready" 2 "Active" 3 "Reserved" ;
+VAL_ 641 IPB_ABSESP_8_RCTBdecActv 0 "Not_active" 1 "Active" ;
+VAL_ 641 IPB_ABPActive 0 "Not_Active" 1 "Active" ;
+VAL_ 641 IPB_ABPAvailable 0 "Not_Available" 1 "Available" ;
+VAL_ 641 IPB_AEBdecActive 0 "Not_Active" 1 "Active" ;
+VAL_ 641 IPB_AEBdecAvailable 0 "Not_Available" 1 "Available" ;
+VAL_ 641 IPB_ABSESP_8_RCTBAvl 0 "Not_available" 1 "Available" ;
+VAL_ 641 IPB_ABSESP_8_CDDActvVehAutoHld 0 "Not_active" 1 "Active" ;
+VAL_ 641 IPB_RHRWheelSpeedRawValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 641 IPB_RHRWheelDriveDirection 0 "Init" 1 "Forward" 2 "Backward" 3 "Stop" 4 "Invalid" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 641 IPB_LHRWheelSpeedRawValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 641 IPB_LHRWheelDriveDirection 0 "Init" 1 "Forward" 2 "Backward" 3 "Stop" 4 "Invalid" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 745 ABS_ESP_1_ESPSwitchStatus 0 "On" 1 "Disable" ;
+VAL_ 745 IPB_SwitchOffCruiseControl 0 "Not_Switch_Off_Cruise_Control" 1 "Switch_Off_Cruise_Control" ;
+VAL_ 745 IPB_ABS_ESP_1_HDCCtrlSts 0 "OFF" 1 "Not_Active_Braking_Lamp_On" 2 "Active_Braking_Lamp_Flash" 3 "Not_Used" ;
+VAL_ 745 IPB_ABS_ESP_1_HDCFailSts 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 745 IPB_SimulatorPressureStatus 0 "Valid" 1 "Not_Valid" ;
+VAL_ 745 IPB_ESP1_VehicleSpeedVSOSigValid 0 "Valid" 1 "Not_Valid" ;
+VAL_ 745 IPB_ABS_ESP_1_VDCFailSts 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 745 IPB_ABS_ESP_1_VDCActive 0 "Not_Active" 1 "Active" ;
+VAL_ 745 IPB_ABS_ESP_1_TCSFailSts 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 745 IPB_ABS_ESP_1_TCSActive 0 "Not_Active" 1 "Active" ;
+VAL_ 745 IPB_ABS_ESP_1_EBDFailSts 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 745 IPB_ESP_APA_Target_Gear_Request 0 "No_Request" 1 "Target_Gear_P" 2 "Target_Gear_R" 3 "Target_Gear_N" 4 "Target_Gear_D" 5 "Reserved" 6 "Reserved" 7 "Invalid" ;
+VAL_ 745 IPB_ABS_ESP_1_ABSFailSts 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 745 IPB_ABS_ESP_1_ABSActive 0 "Not_Active" 1 "Active" ;
+VAL_ 784 IPB_RHRWheelSpeedValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 784 IPB_LHRWheelSpeedValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 784 IPB_RHFWheelSpeedValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 784 IPB_LHFWheelSpeedValidData 0 "Valid" 1 "Not_Valid" ;
+VAL_ 787 IPB_ABS_ESP_3_AVHSts 0 "Off" 1 "Standby" 2 "Active" 3 "Not_Used" ;
+VAL_ 787 IPB_ESP_VLCEngTorqReqValidData 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 787 IPB_NoBrakeForce 0 "Exist_Brake_Force" 1 "No_Brake_Force" ;
+VAL_ 787 IPB_ABS_ESP_3_AVHFailSts 0 "Not_Present" 1 "Fail_Present_Lamp_On" ;
+VAL_ 790 IPB_ABAavailable 0 "Not_Available" 1 "Available" ;
+VAL_ 790 IPB_ABAactive 0 "Not_Active" 1 "Active" ;
+VAL_ 790 IPB_CDDAvailable 0 "Not_Available" 1 "Available" ;
+VAL_ 790 IPB_CDDActive 0 "Not_Active" 1 "Active" ;
+VAL_ 790 IPB_VLC_Available 0 "Not_Available" 1 "Available" ;
+VAL_ 790 IPB_VLC_Active 0 "Not_Active" 1 "Active" ;
+VAL_ 790 IPB_DCFail 0 "No_Error" 1 "Error" ;
+VAL_ 790 IPB_ECDTempOff 0 "Not_High" 1 "Temp_Too_High" ;
+VAL_ 790 IPB_AWBavailable 0 "Not_Available" 1 "Available" ;
+VAL_ 790 IPB_AWBactive 0 "Not_Active" 1 "Active" ;
+VAL_ 790 IPB_VehicleStandstill 0 "Not_Standstill" 1 "Standstill" 2 "Invalid" 3 "Reserved" ;
+VAL_ 793 IPB_RHRPulseCounterFailSts 0 "Fail_Not_Present" 1 "Fail_Present" ;
+VAL_ 793 IPB_RHFPulseCounterFailSts 0 "Fail_Not_Present" 1 "Fail_Present" ;
+VAL_ 793 IPB_LHFPulseCounterFailSts 0 "Fail_Not_Present" 1 "Fail_Present" ;
+VAL_ 793 IPB_LHRPulseCounterFailSts 0 "Fail_Not_Present" 1 "Fail_Present" ;
+VAL_ 1270 IPB_EPBErrorStatus 0 "No_Error" 1 "Error" ;
+VAL_ 1270 IPB_EPBStatus 0 "Released" 1 "Applied" 2 "Releasing" 3 "Applying" 4 "Unknown" 5 "ErrorApplied" 6 "Not_Used" 7 "Not_Used" ;
+VAL_ 809 RCTB_OnOffStFeedback 0 "OFF" 1 "ON" ;
+VAL_ 809 RCW_OnOffStFeedback 0 "OFF" 1 "ON" ;
+VAL_ 809 ELK_Sts 0 "Off" 1 "Passive" 2 "Standby" 3 "Active" 4 "Failure" 5 "Reserved" 6 "Reserved" 7 "Reserved" ;
+VAL_ 809 RCW_Warning 0 "Warming_off" 1 "Warming_level_1" 2 "Warming_level_2" ;
+VAL_ 809 Rear_Camera_Textinfo 0 "Camera_Normal" 1 "Camera_Failure" 2 "Camera_Blocked" 3 "Reserved" ;
+VAL_ 809 RCW_Mode 0 "OFF" 1 "STANDBY" 2 "ACTIVE" 3 "FAIL" ;
+VAL_ 809 RCTB_Mode 0 "OFF" 1 "STANDBY" 2 "ACTIVE" 3 "FAIL" ;
+VAL_ 809 RCTB_RightWarning 0 "WarningOff" 1 "WarningLevel1" 2 "WarningLevel2" 3 "WarningLevel3" ;
+VAL_ 809 RCTB_LeftWarning 0 "WarningOff" 1 "WarningLevel1" 2 "WarningLevel2" 3 "WarningLevel3" ;
+VAL_ 809 DCLC_Warning 0 "Off" 1 "Active" ;
+VAL_ 809 DCLCChange_Status 0 "Off" 1 "Passive" 2 "Enabled" 3 "Wait" 4 "Lane_Changing" 5 "Lane_Changed" 6 "Cancel" 7 "Failure" ;
+VAL_ 809 DCLCLaneChange_Type 0 "NoIntent" 1 "LaneChgLeft" 2 "LaneChgRight" 3 "Invalid" ;
+VAL_ 809 DCLCLaneChangeReason 0 "NoReason" 1 "AlcCondNotSatisfy" 2 "变道侧车道线类型不满足" 3 "自车车速不满足" 4 "自车道状态不满足(包括车道宽度，车道线有效长度，车道线置信度等）" 5 "报警状态抑制变道BSD，CVW等" 6 "变道转向灯关闭" 7 "横向控制未激活" 8 "刹车踏板踩下" 9 "危险警报灯打开" ;
+VAL_ 809 DCLCLaneChangePossible 0 "NotPsbl" 1 "Left" 2 "Right" 3 "Both" ;
+VAL_ 809 DCLCEnabled_Request 0 "OFF" 1 "ON" 2 "Invalid" 3 "Reserved" ;
+VAL_ 809 ELKA_Active 0 "Not_Active" 1 "Active" ;
+VAL_ 809 ELKA_On_Off_Feedback 0 "Off" 1 "On" 2 "Invalid_" 3 "Reserved" ;
+VAL_ 809 IES_Status 0 "OFF" 1 "Standby" 2 "Active" 3 "Failure" ;
+
+
+

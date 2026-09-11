@@ -11,7 +11,10 @@ from crc_checker.dbc.models import SignalInfo, MessageProtection, DBCProtectionM
 # Suffix-based naming: XXX_CRC, XXX_Counter (GAC) — added via SUFFIX_PATTERNS
 DEFAULT_PATTERNS: dict[str, str] = {
     "checksum":        r"(?i)^(checksum|check_sum|crc|e2e_crc)",
-    "rolling_counter": r"(?i)^(rolling.?counter|rolling_?cntr|rc_|live.?counter|alive.?counter)",
+    "rolling_counter": (
+        r"(?i)^(rolling.?counter|rolling_?cntr|rc_|live.?counter"
+        r"|alive.?counter|alive_)"
+    ),
 }
 
 # Additional suffix-based patterns for OEMs like GAC, Chery
@@ -20,12 +23,14 @@ SUFFIX_PATTERNS: dict[str, str] = {
         r"(?i)(_crc$|_checksum$|_e2e_crc$|_crc[0-9]*$"
         r"|_crc[0-9]+_[0-9]+[a-z]*$"
         r"|_checksum[0-9]*$"
+        r"|_crccheck$"
         r"|_chks$|_chks[0-9]*$|chks$|chks[0-9]*$)"
     ),
     "rolling_counter": (
         r"(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$"
         r"|_msgcntr$|_msgcntr[0-9]*$"
         r"|_messagecounter$|_messagecounter[0-9]*$"
+        r"|_message_counter$|_message_counter[0-9]*$"
         r"|_alivecounter$|_alivecnt$"
         r"|_cntr$|_cntr[0-9]*$|cntr$|cntr[0-9]*$"
         r"|_rollgcntr$|_rollgcntr[0-9]*$"
@@ -52,14 +57,17 @@ class SignalResolver:
 
     def __init__(self, patterns: dict[str, str] | None = None,
                  use_suffix: bool = False):
-        self._custom_patterns = patterns
         self._use_suffix = use_suffix
-        if patterns:
-            self._checksum_re = re.compile(patterns.get("checksum", ""))
-            self._rc_re = re.compile(patterns.get("rolling_counter", ""))
-        else:
-            self._checksum_re = re.compile(DEFAULT_PATTERNS["checksum"])
-            self._rc_re = re.compile(DEFAULT_PATTERNS["rolling_counter"])
+        # Custom patterns are per-key: supplying only "rolling_counter" must
+        # keep the default checksum detection (and vice versa). A missing key
+        # used to compile an empty regex that matched EVERY signal.
+        patterns = patterns or {}
+        self._custom_checksum = patterns.get("checksum") or None
+        self._custom_rc = patterns.get("rolling_counter") or None
+        self._checksum_re = re.compile(
+            self._custom_checksum or DEFAULT_PATTERNS["checksum"])
+        self._rc_re = re.compile(
+            self._custom_rc or DEFAULT_PATTERNS["rolling_counter"])
 
     def is_checksum_signal(self, signal_name: str) -> bool:
         """Check if a signal name matches checksum/CRC pattern.
@@ -69,7 +77,7 @@ class SignalResolver:
         DBCs (e.g. GWM ADAS2 with both ``Checksum_RSDS_R_5`` and
         ``RSDS_L_SGU1_Checksum8``) are fully detected.
         """
-        if self._custom_patterns:
+        if self._custom_checksum:
             return bool(self._checksum_re.search(signal_name))
         if self._checksum_re.match(signal_name):
             return True
@@ -85,7 +93,7 @@ class SignalResolver:
         suffix-based (``*_Counter``, ``*_RollingCounterN``) naming
         conventions so that mixed-naming DBCs are fully detected.
         """
-        if self._custom_patterns:
+        if self._custom_rc:
             return bool(self._rc_re.search(signal_name))
         if self._rc_re.match(signal_name):
             return True
@@ -152,7 +160,8 @@ class SignalResolver:
         # also be stripped (with the leading underscore variants).
         suffix_match = re.search(
             r'(?:_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter|'
-            r'MsgCntr|MessageCounter|AliveCounter|AliveCnt)|'
+            r'MsgCntr|MessageCounter|Message_Counter|AliveCounter|AliveCnt|'
+            r'CRCCheck)|'
             r'(?:Chks|Cntr))([0-9]*)(_[0-9]+[a-z]*)?$',
             signal_name, re.IGNORECASE
         )
@@ -237,9 +246,34 @@ class SignalResolver:
                 groups[suffix].rolling_counter_signal = rc
 
             group_list = list(groups.values())
+            group_list = self._merge_single_unpaired(group_list)
             # Set the count for each group so auto-detect can decide segment vs full
             for g in group_list:
                 g.frame_protection_count = len(group_list)
             prot_map.messages[frame_id] = group_list
 
         return prot_map
+
+    @staticmethod
+    def _merge_single_unpaired(
+            group_list: list[MessageProtection]) -> list[MessageProtection]:
+        """Pair a lone checksum group with a lone RC group in the same frame.
+
+        Suffix extraction pairs checksum and RC signals by their shared name
+        prefix, but some OEMs use unrelated names (t1lfl1 IHU_MFS_2: checksum
+        ``CRC`` + counter ``ALIVE_MFS_2``). When a frame ends up with exactly
+        one checksum-only group and one RC-only group, they belong together.
+        """
+        if len(group_list) != 2:
+            return group_list
+        cs_only = [g for g in group_list
+                   if g.checksum_signal and not g.rolling_counter_signal]
+        rc_only = [g for g in group_list
+                   if g.rolling_counter_signal and not g.checksum_signal]
+        if len(cs_only) == 1 and len(rc_only) == 1:
+            target = cs_only[0]
+            target.rolling_counter_signal = rc_only[0].rolling_counter_signal
+            if not target.pair_suffix:
+                target.pair_suffix = rc_only[0].pair_suffix
+            return [target]
+        return group_list

@@ -1,0 +1,31 @@
+{
+  "dbc": "dbc",
+  "dbc_merge": true,
+  "traces": ["trace"],
+  "crc": {
+    "preset": "CRC8/SAE-J1850",
+    "auto_classify": true,
+    "overrides": {
+      "0x287": "SUM8/XOR-FF"
+    }
+  },
+  "range": {
+    "mode": "exclude_crc"
+  },
+  "signals": {
+    "checksum_pattern": null,
+    "rc_pattern": null
+  },
+  "filter": {
+    "frame_ids": null,
+    "max_frames": 6000
+  },
+  "output": {
+    "format": "html",
+    "file": "report.html",
+    "only_failures": false
+  },
+  "rc": {
+    "max_valid": null
+  }
+}

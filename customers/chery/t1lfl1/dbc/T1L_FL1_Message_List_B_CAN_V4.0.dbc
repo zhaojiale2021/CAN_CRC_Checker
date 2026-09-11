@@ -1,0 +1,626 @@
+VERSION ""
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: BSD CEM CGW CLM ICM IDC TRM Tester
+
+
+BO_ 1097 SRR_1: 8 BSD
+ SG_ SRR_1_RCTAWarningRight : 14|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ SRR_1_RCTAWarningLeft : 15|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 913 CEM_BCM_1: 8 CEM
+ SG_ CEM_1_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ CEM_1_AutoHighSpeedRequest : 52|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_RainDetected : 53|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_WiperSts : 47|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ CEM_1_HMASW : 32|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_RearFogLightSts : 34|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_ReverseGearSts : 35|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_FrontFogLightSts : 37|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_HighBeamSWSts : 38|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_FlashSWSts : 39|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_DriverDoorSts : 24|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_PsngrDoorSts : 25|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_HoodSts : 26|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_RHRDoorSts : 28|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_LHRdoorSts : 29|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_TrunkSts : 30|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_DriverDoorStsQbit : 31|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_DirectionIndRight : 16|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_DirectionIndLeft : 17|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_HazardLightSW : 18|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_AutoLightSW : 19|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_Checksum : 15|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ CEM_1_HighBeamSts : 2|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_LowBeamSts : 3|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_DRLSts : 4|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ CEM_1_KeySts : 6|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ CEM_1_ParkLightOnWarning : 7|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 1042 CEM_PEPS_2: 8 CEM
+ SG_ PEPS_PowerMode : 6|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 1307 CEM_TPMS: 8 CEM
+ SG_ CEM_5_TirePressureSystemFailSts : 7|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 1421 CEM_BCM_4: 8 CEM
+ SG_ CEM_4_RR_WIN_Position : 26|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ CEM_4_FR_WIN_Position : 18|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ CEM_4_RL_WIN_Position : 21|3@0+ (1,0) [0|7] "Bit"  IDC
+ SG_ CEM_4_FL_WIN_Position : 14|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 1476 CEM_6: 8 CEM
+ SG_ CEM_MirrorFold_SwitchSts : 40|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 775 FCM_2: 8 CGW
+ SG_ FCM_2_TrailorModeSts : 10|2@0+ (1,0) [0|3] ""  IDC
+
+BO_ 800 ABM_1_G: 4 CGW
+ SG_ ABM_1_CrashOutputSts : 31|8@0+ (1,0) [0|255] "Bit"  IDC
+
+BO_ 1058 IHU_21: 8 CGW
+ SG_ IHU_ICMBrightnessManualAdj : 15|4@0+ (1,0) [0|15] "Bit"  IDC
+
+BO_ 1067 OBC_3_G: 8 CGW
+ SG_ OBC_CC_ConnectSts : 18|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 1083 BMS_5: 8 CGW
+ SG_ BMSH_PackRemainEnergy : 25|10@0+ (0.1,0) [0|100] "KwH"  IDC
+
+BO_ 1107 IHU_7: 8 CGW
+ SG_ IHU_7_CurrentTimeYear : 52|8@0+ (1,2000) [2000|2255] "Year"  IDC
+ SG_ IHU_7_CurrentTimeMonth : 40|4@0+ (1,0) [0|12] "Month"  IDC
+ SG_ IHU_7_CurrentTimeDay : 45|5@0+ (1,0) [1|31] "Day"  IDC
+ SG_ IHU_7_CurrentTimeSecond : 17|6@0+ (1,0) [0|59] "Second"  IDC
+ SG_ IHU_7_CurrentTimeMinute : 15|8@0+ (1,0) [0|59] "Minute"  IDC
+ SG_ IHU_7_CurrentTimeHour : 7|8@0+ (1,0) [0|23] "Hour"  IDC
+
+BO_ 1114 IHU_APA_3: 8 CGW
+ SG_ IHU_APA_3_AVMSwt : 50|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IHU_APA_3_TouchEvt : 53|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ IHU_APA_3_KeySts : 40|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IHU_APA_3_I_isplayAVMOff : 32|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ IHU_APA_3_NaviBtnPressInput_0000 : 23|16@0+ (1,0) [0|65535] "Bit"  IDC
+ SG_ IHU_APA_3_NaviBtnPressInputValue : 7|16@0+ (1,0) [0|65535] "Bit"  IDC
+
+BO_ 1303 IHU_3: 8 CGW
+ SG_ IHU_APA_OP_SW : 0|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 1309 IHU_8: 8 CGW
+ SG_ IHU_8_MEB_Switch : 54|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ SET_PAS_Switch : 23|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 1335 IHU_9: 8 CGW
+ SG_ IHU_9_DriveMode : 27|3@0+ (1,0) [0|7] "Bit"  IDC
+
+BO_ 1336 IHU_APA_1: 8 CGW
+ SG_ LPN_Info7 : 54|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info8 : 45|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info6 : 36|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info5 : 27|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info4 : 18|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info3 : 9|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info2 : 0|7@0+ (1,0) [0|127] "Bit"  IDC
+ SG_ LPN_Info1 : 7|7@0+ (1,0) [0|127] "Bit"  IDC
+
+BO_ 874 DWD_1: 8 CGW
+ SG_ DWD_Distance : 20|5@0+ (1,0) [0|31] "Bit"  IDC
+ SG_ DWD_SoundIndcn : 13|2@0+ (1,0) [0|3] "Bit"  IDC
+ SG_ LSensorFailSts : 14|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ RSensorFailSts : 15|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ DWD_WorkSts : 1|2@0+ (1,0) [1|3] "Bit"  IDC
+ SG_ DWD_TextDisp : 5|4@0+ (1,0) [0|15] "Bit"  IDC
+
+BO_ 1333 CLM_2: 8 CLM
+ SG_ CLM_2_ExternalTemperatureRaw : 55|8@0+ (0.5,-40) [-40|85] "Nm"  IDC
+ SG_ CLM_2_ExternalTemperatureFailSts : 33|2@0+ (1,0) [0|3] "Bit"  IDC
+
+BO_ 647 ICM_5: 8 ICM
+ SG_ ICM_5_Checksum : 63|8@0+ (1,0) [0|255] "Bit"  IDC
+ SG_ ICM_5_MessageCounter : 51|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ ICM_5_ACC_Kilometre_Mile : 39|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ICM_5_DriverSeatBeltSwitchQbit : 24|1@0+ (1,0) [0|1] "Bit"  IDC
+ SG_ ICM_5_DriverSeatBeltSwitch : 25|1@0+ (1,0) [0|1] "Bit"  IDC
+
+BO_ 1072 ICM_1: 8 ICM
+ SG_ ICM_1_TotalOdometer_Km : 43|20@0+ (1,0) [0|999999] "Km"  IDC
+ SG_ ICM_1_MessageCounter : 31|4@0+ (1,0) [0|15] "Bit"  IDC
+ SG_ ICM_1_DisplayVehicleSpeed : 4|13@0+ (0.0625,0) [0|511.875] "Km/h"  IDC
+
+BO_ 1328 ICM_4: 8 ICM
+ SG_ ICM_4_DistenceToEmpty_Km : 17|10@0+ (1,0) [0|1022] "Km"  IDC
+
+BO_ 1050 AVM_APA_3: 8 IDC
+ SG_ APA_AVM_3_Parking_Space_Search_S : 27|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ APA_AVM_3_Exterior_rearview_mirr : 28|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ APA_AVM_3_SystemSts_Body_1 : 18|3@0+ (1,0) [0|7] "bit" Vector__XXX
+ SG_ APA_ParkingchimeVoice : 21|3@0+ (1,0) [0|7] "bit" Vector__XXX
+ SG_ APA_AVM_3_AVMFeedbackSts_RemoteM : 22|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ APA_AVM_3_AVM_FactoryMode : 23|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ APA_AVM_3_Reserved_ViewStsRsp : 10|2@0+ (1,0) [0|3] "bit" Vector__XXX
+ SG_ APA_AVM_SpeedSet : 15|3@0+ (1,0) [0|7] "bit" Vector__XXX
+ SG_ AVM_3_DisplaySts : 0|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ APA_Func_Recommend : 1|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ MEBSet_Feedback : 2|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ AVM_float : 3|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ APA_Parking_Voice_Remind : 7|4@0+ (1,0) [0|15] "bit" Vector__XXX
+
+BO_ 1088 CEM_RADAR_1: 8 IDC
+ SG_ APA_RAD1_LHMFRadarSensorDistance : 60|5@0+ (5,25) [25|160] "Cm" Vector__XXX
+ SG_ APA_RAD1_RadarWorkSts : 61|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ APA_RAD1_RadarDetectSts : 63|2@0+ (1,0) [0|3] "Bit" Vector__XXX
+ SG_ APA_RAD1_RHMFRadarSensorDistance : 52|5@0+ (5,25) [25|160] "Cm" Vector__XXX
+ SG_ APA_RAD1_AudibleBeepRate : 55|3@0+ (1,0) [0|7] "Bit" Vector__XXX
+ SG_ APA_RAD1_RHFRadarSensorDistance : 44|5@0+ (5,25) [25|160] "Cm" Vector__XXX
+ SG_ RAD1_Pas_Switch : 45|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ APA_RAD1_LHFRadarSensorDistance : 36|5@0+ (5,25) [25|160] "Cm" Vector__XXX
+ SG_ APA_RAD1_RHRRadarSensorDistance : 29|6@0+ (5,25) [25|180] "Cm" Vector__XXX
+ SG_ APA_RAD1_LHMRRadarSensorDistance : 21|6@0+ (5,25) [25|180] "Cm" Vector__XXX
+ SG_ APA_RAD1_RHMRRadarSensorDistance : 13|6@0+ (5,25) [25|180] "Cm" Vector__XXX
+ SG_ APA_RAD1_LHRRadarSensorDistance : 5|6@0+ (5,25) [25|180] "Cm" Vector__XXX
+
+BO_ 1141 APA_RADAR_2: 8 IDC
+ SG_ RAD2_LHSFRadarSensorDistance : 30|7@0+ (5,30) [30|500] "Cm" Vector__XXX
+ SG_ RAD2_RHSFRadarSensorDistance : 23|7@0+ (5,30) [30|500] "Cm" Vector__XXX
+ SG_ RAD2_LHSRRadarSensorDistance : 14|7@0+ (5,30) [30|500] "Cm" Vector__XXX
+ SG_ RAD2_RHSRRadarSensorDistance : 7|7@0+ (5,30) [30|500] "Cm" Vector__XXX
+
+BO_ 1223 APA_PDC_2: 8 IDC
+ SG_ PDC_2_SensorSts_RRS : 12|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_RRC : 13|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_RRM : 14|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_RLM : 15|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_FLS : 0|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_FLC : 1|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_FLM : 2|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_FRM : 3|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_FRC : 4|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_FRS : 5|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_RLS : 6|1@0+ (1,0) [0|1] "bit" Vector__XXX
+ SG_ PDC_2_SensorSts_RLC : 7|1@0+ (1,0) [0|1] "bit" Vector__XXX
+
+BO_ 1288 AVM_APA_2: 8 IDC
+ SG_ AVMFaultStatusCameraFront : 3|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ AVMFaultStatusCameraLeft : 4|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ AVMFaultStatusCameraRear : 5|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ AVMFaultStatusCameraRight : 6|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+ SG_ AVMStatusFault : 7|1@0+ (1,0) [0|1] "Bit" Vector__XXX
+
+BO_ 1542 NWM_APA: 8 IDC
+ SG_ usrData5_APA : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ usrData4_APA : 55|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ usrData3_APA : 47|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ usrData2_APA : 39|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ IGNITION_WAKEUP_APA : 24|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ RESET_WAKEUP_APA : 25|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ NETWORK_WAKEUP_APA : 26|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ECUSPEC_WAKEUP_APA : 27|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ NETWORK_AWAKE_APA : 28|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ IGNITION_AWAKE_APA : 29|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DIAGNOSTIC_AWAKE_APA : 30|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ECUSPEC_AWAKE_APA : 31|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ usrData0_APA : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ RMR_APA : 8|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ NMm_APA_Reserved1 : 15|7@0+ (1,0) [0|127] "" Vector__XXX
+ SG_ srcNodeID_APA : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1487 TRM_1: 8 TRM
+ SG_ TRM_1_Checksum : 63|8@0+ (1,0) [0|255] ""  IDC
+ SG_ TRM_1_RollingCounter : 51|4@0+ (1,0) [0|15] ""  IDC
+ SG_ TRM_1_MotorHomeConnectSts : 6|1@0+ (1,0) [0|1] ""  IDC
+
+BO_ 1302 IHU_2: 8 CGW
+ SG_ IHU_Sets_Day_night_Switch : 59|2@0+ (1,0) [0|3] "Bit"  IDC
+
+
+
+
+CM_ SG_ 1097 SRR_1_RCTAWarningLeft "当判断左侧车辆与倒车车辆有碰撞危险时报警，与盲区无关，与报警TTC和距离有关。TTC是Time_To_Collision发生碰撞的时间。";
+CM_ SG_ 913 CEM_1_MessageCounter "Rolling_Message_Counter";
+CM_ SG_ 913 CEM_1_AutoHighSpeedRequest "让高速雨刮电机工作";
+CM_ SG_ 913 CEM_1_RainDetected "检测到有无雨量";
+CM_ SG_ 913 CEM_1_HMASW "Intelligent_Headlamp_Control_Switch_From_BCM?";
+CM_ SG_ 913 CEM_1_RearFogLightSts "后雾灯";
+CM_ SG_ 913 CEM_1_ReverseGearSts "倒挡状态";
+CM_ SG_ 913 CEM_1_DirectionIndRight "当左/右转向灯闪烁时一直发1，转向灯熄灭时一直发0.";
+CM_ SG_ 913 CEM_1_HazardLightSW "危险灯开关，按下（打开）发1；再按下（关闭）发0，默认发0";
+CM_ SG_ 913 CEM_1_AutoLightSW "AUTO灯开关，拨到该位置（打开）发1，不拨到该位置（关闭）发0，默认发0";
+CM_ SG_ 913 CEM_1_Checksum "((Byte0+Byte2+……+Byte7)_AND0xFF)_XOR_0xFF";
+CM_ SG_ 913 CEM_1_HighBeamSts "HighBeamFlash_Function_Uses_this_Signal.";
+CM_ SG_ 913 CEM_1_LowBeamSts "近光灯信号";
+CM_ SG_ 913 CEM_1_DRLSts "日行灯信号";
+CM_ SG_ 1421 CEM_4_RR_WIN_Position "BCM_接收到大屏或者手机APP远程读取车辆信息命令后，将车窗位置状态发送给TBOX接收";
+CM_ SG_ 1421 CEM_4_FR_WIN_Position "BCM_接收到大屏或者手机APP远程读取车辆信息命令后，将车窗位置状态发送给TBOX接收";
+CM_ SG_ 1421 CEM_4_RL_WIN_Position "BCM_接收到大屏或者手机APP远程读取车辆信息命令后，将车窗位置状态发送给TBOX接收";
+CM_ SG_ 1421 CEM_4_FL_WIN_Position "BCM_接收到大屏或者手机APP远程读取车辆信息命令后，将车窗位置状态发送给TBOX接收";
+CM_ SG_ 800 ABM_1_CrashOutputSts "Crash信号是按照bit表示状态的:
+若同时有多个方向发生碰撞，则代表各方向的各个碰撞标志位均会被置1.例如左碰叠加右碰，那么输出的信号是00001100";
+CM_ SG_ 1067 OBC_CC_ConnectSts "CC_connect_states";
+CM_ SG_ 1083 BMSH_PackRemainEnergy "电池系统剩余电量";
+CM_ SG_ 1107 IHU_7_CurrentTimeYear "年";
+CM_ SG_ 1107 IHU_7_CurrentTimeMonth "月";
+CM_ SG_ 1107 IHU_7_CurrentTimeDay "日";
+CM_ SG_ 1107 IHU_7_CurrentTimeSecond "秒";
+CM_ SG_ 1107 IHU_7_CurrentTimeMinute "分";
+CM_ SG_ 1114 IHU_APA_3_AVMSwt "IHU请求AVM画面打开";
+CM_ SG_ 1114 IHU_APA_3_TouchEvt "触屏状态";
+CM_ SG_ 1114 IHU_APA_3_KeySts "APA开关是否按下";
+CM_ SG_ 1114 IHU_APA_3_I_isplayAVMOff "IHU请求AVM画面关闭";
+CM_ SG_ 1114 IHU_APA_3_NaviBtnPressInput_0000 "触屏Y轴";
+CM_ SG_ 1114 IHU_APA_3_NaviBtnPressInputValue "触屏X轴";
+CM_ SG_ 1303 IHU_APA_OP_SW "APA在大屏上的软开关(从0x54D调整过来)";
+CM_ SG_ 1309 SET_PAS_Switch "前雷达开关
+";
+CM_ SG_ 874 DWD_Distance "报警距离分段";
+CM_ SG_ 874 DWD_SoundIndcn "报警声音提示";
+CM_ SG_ 874 LSensorFailSts "左探头工作状态";
+CM_ SG_ 874 RSensorFailSts "右探头工作状态";
+CM_ SG_ 874 DWD_WorkSts "涉水雷达工作状态";
+CM_ SG_ 874 DWD_TextDisp "报警提示内容";
+CM_ SG_ 1333 CLM_2_ExternalTemperatureRaw "Raw_External_Temperature_
+Invalid:When_External_Temperature_Is_Fail_The_Signal_Value_Is_0xFF._
+国六项目EMS接收";
+CM_ SG_ 1072 ICM_1_MessageCounter "Rolling_Message_Counter";
+CM_ SG_ 1072 ICM_1_DisplayVehicleSpeed "Reserved";
+CM_ SG_ 1050 APA_AVM_3_Parking_Space_Search_S "AVM工作模式";
+CM_ SG_ 1050 APA_AVM_3_Exterior_rearview_mirr "后视镜调节开关";
+CM_ SG_ 1050 APA_ParkingchimeVoice "泊车报警音提示信号";
+CM_ SG_ 1050 APA_AVM_3_AVMFeedbackSts_RemoteM "远程状态下_AVM工作状态";
+CM_ SG_ 1050 APA_AVM_3_AVM_FactoryMode "AVM工作模式";
+CM_ SG_ 1050 APA_AVM_3_Reserved_ViewStsRsp "视图状态反馈信号（标清AVM使用）";
+CM_ SG_ 1050 APA_AVM_SpeedSet "AVM进入车速门限值设置";
+CM_ SG_ 1288 AVMFaultStatusCameraFront "前摄像头故障/正常";
+CM_ SG_ 1288 AVMFaultStatusCameraLeft "左摄像头故障/正常";
+CM_ SG_ 1288 AVMFaultStatusCameraRear "后摄像头故障/正常";
+CM_ SG_ 1288 AVMFaultStatusCameraRight "右摄像头故障/正常";
+CM_ SG_ 1288 AVMStatusFault "AVM系统故障/正常";
+CM_ SG_ 1487 TRM_1_Checksum "((Byte0+Byte1+Byte2+Byte3+Byte4+Byte5+Byte6)_AND_0xFF)_XOR_0xFF";
+CM_ SG_ 1487 TRM_1_MotorHomeConnectSts "房车连接状态";
+CM_ SG_ 1302 IHU_Sets_Day_night_Switch "设置白天夜晚主题模式";
+BA_DEF_ BO_  "GenMsgCycleTimeFast" INT 0 65535;
+BA_DEF_ BO_  "GenMsgDelayTime" INT 0 65535;
+BA_DEF_ BO_  "GenMsgStartDelayTime" INT 0 65535;
+BA_DEF_ BO_  "GenMsgILSupport" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgNrOfRepetition" INT 0 65535;
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","StandardCAN_FD","ExtendedCAN_FD";
+BA_DEF_ BO_  "DiagState" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagRequest" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagResponse" ENUM  "No","Yes";
+BA_DEF_ BO_  "DiagFdOnly" ENUM  "No","Yes";
+BA_DEF_ BO_  "NmAsrMessage" ENUM  "No","Yes";
+BA_DEF_ SG_  "GenSigTimeoutTime" INT 0 65535;
+BA_DEF_ SG_  "Remark" STRING ;
+BA_DEF_ SG_  "GenSigSendType" ENUM  "Cyclic","OnWrite","OnWriteWithRepetition","OnChange","OnChangeWithRepetition","IfActive","IfActiveWithRepetition","NoSigSendType","CyclicAndSpontanX","NotUsed","Event","CE";
+BA_DEF_ SG_  "DEM_Invalid_Check" STRING ;
+BA_DEF_ SG_  "IsMonitor" ENUM  "*","Monitor";
+BA_DEF_ SG_  "NormValue" STRING ;
+BA_DEF_  "DBName" STRING ;
+BA_DEF_  "BusType" STRING ;
+BA_DEF_  "Manufacturer" STRING ;
+BA_DEF_ SG_  "UnitConversionFactor" FLOAT -100 100;
+BA_DEF_ SG_  "SigInvalidSetFlag" ENUM  "*","Yes";
+BA_DEF_ SG_  "Internal_type" ENUM  "*","UB","UW","UL","SB","SW","SL";
+BA_DEF_ SG_  "IsCrcSignal" ENUM  "No","Yes";
+BA_DEF_ SG_  "IsRcSignal" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgSendType" ENUM  "Cyclic","Event","CE","NotUsed","NotUsed","NotUsed","NotUsed","NotUsed","NoMsgSendType","IfActive","IfActiveWithRepetition","CyclicAndSpontanX";
+BA_DEF_ SG_  "GenSigStartValue" INT 0 2147483647;
+BA_DEF_ SG_  "GenSigInactiveValue" INT 0 2147483647;
+BA_DEF_ BO_  "MsgType" ENUM  "Normal","NM","Diag","";
+BA_DEF_ BU_  "NmAsrNode" ENUM  "No","Yes";
+BA_DEF_ BU_  "NmAsrNodeIdentifier" HEX 0 255;
+BA_DEF_ BU_  "NmAsrCanMsgCycleOffset" INT 0 65535;
+BA_DEF_ BU_  "NmAsrCanMsgReducedTime" INT 1 65535;
+BA_DEF_  "NmType" STRING ;
+BA_DEF_  "NmAsrMessageCount" INT 1 256;
+BA_DEF_  "NmAsrBaseAddress" HEX 0 2047;
+BA_DEF_  "NmAsrTimeoutTime" INT 1 65535;
+BA_DEF_  "NmAsrWaitBusSleepTime" INT 1 65535;
+BA_DEF_  "NmAsrCanMsgCycleTime" INT 1 65535;
+BA_DEF_  "NmAsrRepeatMessageTime" INT 1 65535;
+BA_DEF_ SG_  "SystemSignalLongSymbol" STRING ;
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 65535;
+BA_DEF_DEF_  "GenMsgCycleTimeFast" 0;
+BA_DEF_DEF_  "GenMsgDelayTime" 0;
+BA_DEF_DEF_  "GenMsgStartDelayTime" 0;
+BA_DEF_DEF_  "GenMsgILSupport" "Yes";
+BA_DEF_DEF_  "GenMsgNrOfRepetition" 0;
+BA_DEF_DEF_  "VFrameFormat" "StandardCAN";
+BA_DEF_DEF_  "DiagState" "No";
+BA_DEF_DEF_  "DiagRequest" "No";
+BA_DEF_DEF_  "DiagResponse" "No";
+BA_DEF_DEF_  "DiagFdOnly" "No";
+BA_DEF_DEF_  "NmAsrMessage" "No";
+BA_DEF_DEF_  "GenSigTimeoutTime" 0;
+BA_DEF_DEF_  "Remark" "";
+BA_DEF_DEF_  "GenSigSendType" "Cyclic";
+BA_DEF_DEF_  "DEM_Invalid_Check" "";
+BA_DEF_DEF_  "IsMonitor" "*";
+BA_DEF_DEF_  "NormValue" "";
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "BusType" "";
+BA_DEF_DEF_  "Manufacturer" "Vector";
+BA_DEF_DEF_  "UnitConversionFactor" 1;
+BA_DEF_DEF_  "SigInvalidSetFlag" "*";
+BA_DEF_DEF_  "Internal_type" "*";
+BA_DEF_DEF_  "IsCrcSignal" "No";
+BA_DEF_DEF_  "IsRcSignal" "No";
+BA_DEF_DEF_  "GenMsgSendType" "Cyclic";
+BA_DEF_DEF_  "GenSigStartValue" 0;
+BA_DEF_DEF_  "GenSigInactiveValue" 0;
+BA_DEF_DEF_  "MsgType" "";
+BA_DEF_DEF_  "NmAsrNode" "No";
+BA_DEF_DEF_  "NmAsrNodeIdentifier" 0;
+BA_DEF_DEF_  "NmAsrCanMsgCycleOffset" 0;
+BA_DEF_DEF_  "NmAsrCanMsgReducedTime" 50;
+BA_DEF_DEF_  "NmType" "NmAsr";
+BA_DEF_DEF_  "NmAsrMessageCount" 64;
+BA_DEF_DEF_  "NmAsrBaseAddress" 1024;
+BA_DEF_DEF_  "NmAsrTimeoutTime" 1000;
+BA_DEF_DEF_  "NmAsrWaitBusSleepTime" 750;
+BA_DEF_DEF_  "NmAsrCanMsgCycleTime" 100;
+BA_DEF_DEF_  "NmAsrRepeatMessageTime" 400;
+BA_DEF_DEF_  "SystemSignalLongSymbol" "";
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_ "DBName" "CANB";
+BA_ "BusType" "CAN";
+BA_ "NmAsrBaseAddress" 1536;
+BA_ "NmAsrMessageCount" 128;
+BA_ "NmAsrTimeoutTime" 2500;
+BA_ "NmAsrWaitBusSleepTime" 1500;
+BA_ "NmAsrRepeatMessageTime" 3000;
+BA_ "NmAsrCanMsgCycleTime" 1000;
+BA_ "NmAsrNode" BU_ IDC 1;
+BA_ "NmAsrNodeIdentifier" BU_ IDC 6;
+BA_ "MsgType" BO_ 1097 0;
+BA_ "GenMsgCycleTime" BO_ 1097 100;
+BA_ "MsgType" BO_ 913 0;
+BA_ "GenMsgCycleTime" BO_ 913 20;
+BA_ "IsCrcSignal" SG_ 913 CEM_1_Checksum 1;
+BA_ "MsgType" BO_ 1042 0;
+BA_ "GenMsgCycleTime" BO_ 1042 100;
+BA_ "MsgType" BO_ 1307 0;
+BA_ "GenMsgCycleTime" BO_ 1307 500;
+BA_ "MsgType" BO_ 1421 0;
+BA_ "GenMsgCycleTime" BO_ 1421 500;
+BA_ "MsgType" BO_ 1476 0;
+BA_ "GenMsgCycleTime" BO_ 1476 1000;
+BA_ "MsgType" BO_ 775 0;
+BA_ "GenMsgCycleTime" BO_ 775 50;
+BA_ "GenMsgNrOfRepetition" BO_ 800 6;
+BA_ "GenMsgCycleTimeFast" BO_ 800 20;
+BA_ "GenMsgSendType" BO_ 800 2;
+BA_ "MsgType" BO_ 800 0;
+BA_ "GenMsgCycleTime" BO_ 800 500;
+BA_ "GenSigSendType" SG_ 800 ABM_1_CrashOutputSts 2;
+BA_ "MsgType" BO_ 1058 0;
+BA_ "GenMsgCycleTime" BO_ 1058 100;
+BA_ "GenSigStartValue" SG_ 1058 IHU_ICMBrightnessManualAdj 8;
+BA_ "MsgType" BO_ 1067 0;
+BA_ "GenMsgCycleTime" BO_ 1067 100;
+BA_ "MsgType" BO_ 1083 0;
+BA_ "GenMsgCycleTime" BO_ 1083 100;
+BA_ "MsgType" BO_ 1107 0;
+BA_ "GenMsgCycleTime" BO_ 1107 500;
+BA_ "GenSigStartValue" SG_ 1107 IHU_7_CurrentTimeMonth 1;
+BA_ "GenMsgNrOfRepetition" BO_ 1114 3;
+BA_ "GenMsgCycleTimeFast" BO_ 1114 20;
+BA_ "GenMsgSendType" BO_ 1114 1;
+BA_ "MsgType" BO_ 1114 0;
+BA_ "GenMsgCycleTime" BO_ 1114 0;
+BA_ "GenSigStartValue" SG_ 1114 IHU_APA_3_NaviBtnPressInput_0000 65535;
+BA_ "SystemSignalLongSymbol" SG_ 1114 IHU_APA_3_NaviBtnPressInput_0000 "IHU_APA_3_NaviBtnPressInputValueY";
+BA_ "GenSigStartValue" SG_ 1114 IHU_APA_3_NaviBtnPressInputValue 65535;
+BA_ "SystemSignalLongSymbol" SG_ 1114 IHU_APA_3_NaviBtnPressInputValue "IHU_APA_3_NaviBtnPressInputValueX";
+BA_ "GenMsgNrOfRepetition" BO_ 1303 3;
+BA_ "GenMsgCycleTimeFast" BO_ 1303 100;
+BA_ "GenMsgSendType" BO_ 1303 2;
+BA_ "MsgType" BO_ 1303 0;
+BA_ "GenMsgCycleTime" BO_ 1303 1000;
+BA_ "GenSigSendType" SG_ 1303 IHU_APA_OP_SW 2;
+BA_ "GenMsgNrOfRepetition" BO_ 1309 3;
+BA_ "GenMsgCycleTimeFast" BO_ 1309 100;
+BA_ "GenMsgSendType" BO_ 1309 1;
+BA_ "MsgType" BO_ 1309 0;
+BA_ "GenMsgCycleTime" BO_ 1309 0;
+BA_ "GenSigSendType" SG_ 1309 IHU_8_MEB_Switch 2;
+BA_ "GenSigSendType" SG_ 1309 SET_PAS_Switch 2;
+BA_ "MsgType" BO_ 1335 0;
+BA_ "GenMsgCycleTime" BO_ 1335 100;
+BA_ "MsgType" BO_ 1336 0;
+BA_ "GenMsgCycleTime" BO_ 1336 500;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info7 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info8 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info6 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info5 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info4 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info3 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info2 127;
+BA_ "GenSigStartValue" SG_ 1336 LPN_Info1 127;
+BA_ "MsgType" BO_ 874 0;
+BA_ "GenMsgCycleTime" BO_ 874 100;
+BA_ "MsgType" BO_ 1333 0;
+BA_ "GenMsgCycleTime" BO_ 1333 100;
+BA_ "GenSigStartValue" SG_ 1333 CLM_2_ExternalTemperatureRaw 80;
+BA_ "SystemSignalLongSymbol" SG_ 1333 CLM_2_ExternalTemperatureFailSts "CLM_2_ExternalTemperatureFailSts_GS";
+BA_ "MsgType" BO_ 647 0;
+BA_ "GenMsgCycleTime" BO_ 647 20;
+BA_ "IsCrcSignal" SG_ 647 ICM_5_Checksum 1;
+BA_ "MsgType" BO_ 1072 0;
+BA_ "GenMsgCycleTime" BO_ 1072 20;
+BA_ "MsgType" BO_ 1328 0;
+BA_ "GenMsgCycleTime" BO_ 1328 500;
+BA_ "MsgType" BO_ 1050 0;
+BA_ "GenMsgCycleTime" BO_ 1050 100;
+BA_ "SystemSignalLongSymbol" SG_ 1050 APA_AVM_3_Parking_Space_Search_S "APA_AVM_3_Parking_Space_Search_Sts";
+BA_ "SystemSignalLongSymbol" SG_ 1050 APA_AVM_3_Exterior_rearview_mirr "APA_AVM_3_Exterior_rearview_mirror_adjustment_Sts";
+BA_ "SystemSignalLongSymbol" SG_ 1050 APA_AVM_3_AVMFeedbackSts_RemoteM "APA_AVM_3_AVMFeedbackSts_RemoteMode";
+BA_ "MsgType" BO_ 1088 0;
+BA_ "GenMsgCycleTime" BO_ 1088 100;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_LHMFRadarSensorDistance 30;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_RHMFRadarSensorDistance 30;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_RHFRadarSensorDistance 30;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_LHFRadarSensorDistance 30;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_RHRRadarSensorDistance 62;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_LHMRRadarSensorDistance 62;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_RHMRRadarSensorDistance 62;
+BA_ "GenSigStartValue" SG_ 1088 APA_RAD1_LHRRadarSensorDistance 62;
+BA_ "MsgType" BO_ 1141 0;
+BA_ "GenMsgCycleTime" BO_ 1141 100;
+BA_ "GenSigStartValue" SG_ 1141 RAD2_LHSFRadarSensorDistance 126;
+BA_ "GenSigStartValue" SG_ 1141 RAD2_RHSFRadarSensorDistance 126;
+BA_ "GenSigStartValue" SG_ 1141 RAD2_LHSRRadarSensorDistance 126;
+BA_ "GenSigStartValue" SG_ 1141 RAD2_RHSRRadarSensorDistance 126;
+BA_ "MsgType" BO_ 1223 0;
+BA_ "GenMsgCycleTime" BO_ 1223 100;
+BA_ "GenMsgCycleTimeFast" BO_ 1288 2;
+BA_ "MsgType" BO_ 1288 0;
+BA_ "GenMsgCycleTime" BO_ 1288 500;
+BA_ "GenMsgILSupport" BO_ 1542 0;
+BA_ "NmAsrMessage" BO_ 1542 1;
+BA_ "MsgType" BO_ 1542 0;
+BA_ "GenMsgCycleTime" BO_ 1542 1000;
+BA_ "MsgType" BO_ 1487 0;
+BA_ "GenMsgCycleTime" BO_ 1487 100;
+BA_ "IsCrcSignal" SG_ 1487 TRM_1_Checksum 1;
+BA_ "IsRcSignal" SG_ 1487 TRM_1_RollingCounter 1;
+BA_ "MsgType" BO_ 1302 0;
+BA_ "GenMsgCycleTime" BO_ 1302 500;
+VAL_ 1097 SRR_1_RCTAWarningRight 0 "No_Warning" 1 "Warning" ;
+VAL_ 1097 SRR_1_RCTAWarningLeft 0 "No_Warning" 1 "Warning" ;
+VAL_ 913 CEM_1_MessageCounter 0 "Range_Low" 15 "Range_High" ;
+VAL_ 913 CEM_1_AutoHighSpeedRequest 0 "False" 1 "True" ;
+VAL_ 913 CEM_1_RainDetected 0 "False" 1 "True" ;
+VAL_ 913 CEM_1_WiperSts 0 "OFF" 1 "Auto_Or_Intermittent" 2 "ContinuousSlow" 3 "ContinuousFast" ;
+VAL_ 913 CEM_1_HMASW 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_RearFogLightSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_ReverseGearSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_FrontFogLightSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_HighBeamSWSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_FlashSWSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_DriverDoorSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_PsngrDoorSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_HoodSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_RHRDoorSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_LHRdoorSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_TrunkSts 0 "Close" 1 "Open" ;
+VAL_ 913 CEM_1_DriverDoorStsQbit 0 "valid" 1 "invalid" ;
+VAL_ 913 CEM_1_DirectionIndRight 0 "Not_Active" 1 "Active" ;
+VAL_ 913 CEM_1_DirectionIndLeft 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_HazardLightSW 0 "Not_Active" 1 "Active" ;
+VAL_ 913 CEM_1_AutoLightSW 0 "Not_Active" 1 "Active" ;
+VAL_ 913 CEM_1_HighBeamSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_LowBeamSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_DRLSts 0 "Off" 1 "Active" ;
+VAL_ 913 CEM_1_KeySts 0 "OFF" 1 "ACC" 2 "ON" 3 "CRANK_+_ON" ;
+VAL_ 913 CEM_1_ParkLightOnWarning 0 "Off" 1 "Active" ;
+VAL_ 1042 PEPS_PowerMode 0 "Off" 1 "ACC" 2 "ON" 3 "START" ;
+VAL_ 1307 CEM_5_TirePressureSystemFailSts 0 "Fail_Not_Present" 1 "Fail_Present" ;
+VAL_ 1421 CEM_4_RR_WIN_Position 0 "Startup_Default" 1 "Closed_Top" 2 "Open_Bottom" 3 "80%-Close_80%To_Top" 4 "Open-80%Bottom_To_80%" ;
+VAL_ 1421 CEM_4_FR_WIN_Position 0 "Startup_Default" 1 "Closed_Top" 2 "Open_Bottom" 3 "80%-Close_80%To_Top" 4 "Open-80%Bottom_To_80%" ;
+VAL_ 1421 CEM_4_RL_WIN_Position 0 "Startup_Default" 1 "Closed_Top" 2 "Open_Bottom_" 3 "80%-Close_80%To_Top" 4 "Open-80%Bottom_To_80%" ;
+VAL_ 1421 CEM_4_FL_WIN_Position 0 "Startup_Default" 1 "Closed_Top" 2 "Open_Bottom" 3 "80%-Close_80%To_Top" 4 "Open-80%Bottom_To_80%" ;
+VAL_ 1476 CEM_MirrorFold_SwitchSts 0 "Not_Active" 1 "Active" ;
+VAL_ 775 FCM_2_TrailorModeSts 0 "Not Active" 1 "Active" 2 "Reserved" 3 "Reserved" ;
+VAL_ 800 ABM_1_CrashOutputSts 0 "No_Crash" 1 "Belt_Crash" 2 "Front_Crash" 4 "Left_Side_Crash" 8 "Right_Side_Crash" 16 "Rear_Crash" ;
+VAL_ 1058 IHU_ICMBrightnessManualAdj 0 "Invalid" 1 "1" 2 "2" 3 "3(夜晚）" 4 "4" 5 "5" 6 "6" 7 "7" 8 "8（白天）" 9 "9" 10 "10" 11 "Reserved" 12 "Reserved" 13 "Reserved" 14 "Reserved" 15 "Reserved" ;
+VAL_ 1067 OBC_CC_ConnectSts 0 "Not_Connected" 1 "Charge_Connected" 2 "V2L" 3 "Error" 4 "Partial_Connected" 5 "Reservd" 6 "Reservd" 7 "Reservd" ;
+VAL_ 1114 IHU_APA_3_AVMSwt 0 "Not active(Invalid)" 1 "Active" ;
+VAL_ 1114 IHU_APA_3_TouchEvt 0 "Not active(Invalid)" 1 "Press down" 2 "Moving" 3 "Lift Up" ;
+VAL_ 1114 IHU_APA_3_KeySts 0 "Not active(Invalid)" 1 "Active" ;
+VAL_ 1114 IHU_APA_3_I_isplayAVMOff 0 "Not active(Invalid)" 1 "Active" ;
+VAL_ 1303 IHU_APA_OP_SW 0 "No_Req" 1 "OpenAPA" 2 "CloseAPA" 3 "Startup/Close_" ;
+VAL_ 1309 IHU_8_MEB_Switch 0 "OFF" 1 "ON" ;
+VAL_ 1309 SET_PAS_Switch 0 "Initial_Startup" 1 "Switch_Off" 2 "Switch_On" 3 "Not_Used" ;
+VAL_ 1335 IHU_9_DriveMode 0 "ECO" 1 "NORMAL" 2 "SPORT" 3 "SNOW" 4 "MUD" 5 "ROCK" 6 "Reserved" 7 "Reserved" ;
+VAL_ 874 DWD_Distance 0 "No_object" 1 "Object_in_zone_1,_0~5cm" 2 "Object_in_zone_2,_6~10cm" 3 "Object_in_zone_3,_11~15cm" 4 "Object_in_zone_4,_16~20cm" 5 "Object_in_zone_5,_21~25cm" 6 "Object_in_zone_6,_26~30cm" 7 "Object_in_zone_7,_31~35cm" 8 "Object_in_zone_8,_36~40cm" 9 "Object_in_zone_9,_41~45cm" 10 "Object_in_zone_10,_46~50cm" 11 "Object_in_zone_11,_51~55cm" 12 "Object_in_zone_12,_56~60cm" 13 "Object_in_zone_13,_61~65cm" 14 "Object_in_zone_14,_66~70cm" 15 "Object_in_zone_15,_71~75cm" 16 "Object_in_zone_16,_76~80cm" 17 "Object_in_zone_17,_81~85cm" 18 "Object_in_zone_18,_86~90cm" 19 "Object_in_zone_19,_91~95cm" 20 "Object_in_zone_20,_96~100cm" 21 "Object_in_zone_21,_101~105cm" 22 "Object_in_zone_22,_106~110cm" 23 "Object_in_zone_23,_111~115cm" 24 "Object_in_zone_24,_116~120cm" 25 "Object_in_zone_25,_121~125cm" 26 "Object_in_zone_26,_126~130cm" 27 "Object_in_zone_27,_131~135cm" 28 "Object_in_zone_28,_136~140cm" 29 "Object_in_zone_29,_141~145cm" 30 "Object_in_zone_30,_146~150cm" ;
+VAL_ 874 DWD_SoundIndcn 0 "No_warning" 1 "Long_beep" 2 "3Hz" 3 "1.5Hz" ;
+VAL_ 874 LSensorFailSts 0 "Sensor_normal" 1 "Sensor_fault" ;
+VAL_ 874 RSensorFailSts 0 "Sensor_normal" 1 "Sensor_fault" ;
+VAL_ 874 DWD_WorkSts 0 "Disable" 1 "Standby" 2 "Active" 3 "Failure" ;
+VAL_ 874 DWD_TextDisp 0 "No_Request" 1 "Speed_exceed_15km/h" 2 "Speed_exceed_5km/h" 3 "Controller_pedal_undeploy" 4 "Slope_exceed_10°" 5 "Driving_mode_is_snow、mud、sand" 6 "Keep_low_speed" 7 "Out_rearview_mirror_undeploy" 8 "Doors_are_open" 9 "Trunk_are_open" 10 "System_is_fail" 11 "System_is_not_available" 12 "sys_exit" 13 "Reserved" 14 "Reserved" 15 "Reserved" ;
+VAL_ 1333 CLM_2_ExternalTemperatureFailSts 0 "Fail_Not_Present" 1 "Short_Ground" 2 "Short_Power_Open_Circuit" 3 "Reserved" ;
+VAL_ 647 ICM_5_MessageCounter 0 "Range_Low" 15 "Range_High" ;
+VAL_ 647 ICM_5_ACC_Kilometre_Mile 0 "kilometer" 1 "mile" ;
+VAL_ 647 ICM_5_DriverSeatBeltSwitchQbit 0 "valid" 1 "Invalid" ;
+VAL_ 647 ICM_5_DriverSeatBeltSwitch 0 "Fasten" 1 "Unfasten" ;
+VAL_ 1072 ICM_1_MessageCounter 0 "Range_Low" 15 "Range_High" ;
+VAL_ 1050 APA_AVM_3_Parking_Space_Search_S 0 "Normal_Mode" 1 "Factory_Mode" ;
+VAL_ 1050 APA_AVM_3_Exterior_rearview_mirr 0 "OFF" 1 "ON" ;
+VAL_ 1050 APA_AVM_3_SystemSts_Body_1 0 "OFF" 1 "Standby" 2 "Searching" 3 "Guidance active" 4 "Completed" 5 "Failure" 6 "Terminated" 7 "Invalid" ;
+VAL_ 1050 APA_ParkingchimeVoice 0 "Not Request" 1 "ParkingchimeVoice1" 2 "ParkingchimeVoice2" 3 "ParkingchimeVoice3" 4 "ParkingchimeVoice4" 5 "ParkingchimeVoice5" 6 "Reserved" 7 "Reserved" ;
+VAL_ 1050 APA_AVM_3_AVMFeedbackSts_RemoteM 0 "Off" 1 "On" ;
+VAL_ 1050 APA_AVM_3_AVM_FactoryMode 0 "Normal_Mode" 1 "Factory_Mode" ;
+VAL_ 1050 APA_AVM_3_Reserved_ViewStsRsp 0 "Front" 1 "Rear" 2 "Left" 3 "Right" ;
+VAL_ 1050 APA_AVM_SpeedSet 0 "SpeedLimit 15km/h" 1 "SpeedLimit 20km/h" 2 "SpeedLimit 25km/h" 3 "SpeedLimit 30km/h" 4 "SpeedLimit 35km/h" 5 "SpeedLimit 40km/h" 6 "Reserved" 7 "Reserved" ;
+VAL_ 1050 AVM_3_DisplaySts 0 "Off" 1 "On" ;
+VAL_ 1050 APA_Func_Recommend 0 "No Request" 1 "Request" ;
+VAL_ 1050 MEBSet_Feedback 0 "Off" 1 "On" ;
+VAL_ 1050 AVM_float 0 "float off" 1 "float on" ;
+VAL_ 1050 APA_Parking_Voice_Remind 0 "failure tips for environment" 1 "Slot Found" 2 "Req Stop" 3 "Req Press Brake pedal && press Start Button" 4 "Req Slow speed" 5 "Req Parking start guidance" 6 "Req Apa Pause" 7 "Req Apa Resume" 8 "Req Apa Completed" 9 "Req Apa Quit && TOR" 10 "Req MRA Start Guidance" 11 "Req MRA Paused" 12 "Req MRA Resume" 13 "Req MRA Completed" 14 "Req MRA Quit && TOR" 15 "Vehicle Control Fail" ;
+VAL_ 1088 APA_RAD1_RadarWorkSts 0 "Not_Active" 1 "Active" ;
+VAL_ 1088 APA_RAD1_RadarDetectSts 0 "No_Detecting" 1 "Front_Radar_Detecting" 2 "Rear_Radar_Detecting" 3 "Not_Used" ;
+VAL_ 1088 APA_RAD1_AudibleBeepRate 0 "Off" 1 "On" 2 "4Hz" 3 "2Hz" 4 "1Hz" 5 "Not_Used" 6 "Not_Used" 7 "Not_Used" ;
+VAL_ 1088 RAD1_Pas_Switch 0 "Switch_Off" 1 "Switch_On" ;
+VAL_ 1223 PDC_2_SensorSts_RRS 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_RRC 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_RRM 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_RLM 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_FLS 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_FLC 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_FLM 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_FRM 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_FRC 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_FRS 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_RLS 0 "Normal" 1 "Failure" ;
+VAL_ 1223 PDC_2_SensorSts_RLC 0 "Normal" 1 "Failure" ;
+VAL_ 1288 AVMFaultStatusCameraFront 0 "Normal" 1 "Failure" ;
+VAL_ 1288 AVMFaultStatusCameraLeft 0 "Normal" 1 "Failure" ;
+VAL_ 1288 AVMFaultStatusCameraRear 0 "Not_Active" 1 "Active" ;
+VAL_ 1288 AVMFaultStatusCameraRight 0 "Not_Failure" 1 "Failure" ;
+VAL_ 1288 AVMStatusFault 0 "Not_Failure" 1 "Failure" ;
+VAL_ 1542 IGNITION_WAKEUP_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 RESET_WAKEUP_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 NETWORK_WAKEUP_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 ECUSPEC_WAKEUP_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 NETWORK_AWAKE_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 IGNITION_AWAKE_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 DIAGNOSTIC_AWAKE_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 ECUSPEC_AWAKE_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1542 RMR_APA 0 "Inactive" 1 "Active" ;
+VAL_ 1487 TRM_1_MotorHomeConnectSts 0 "Not_active" 1 "Active" ;
+VAL_ 1302 IHU_Sets_Day_night_Switch 0 "Not_Active" 1 "daytime" 2 "night" 3 "Reserved" ;
+
+
+

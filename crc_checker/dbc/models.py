@@ -121,6 +121,42 @@ class DBCProtectionMap:
                     applied += 1
         return applied
 
+    def apply_crc_overrides(self, overrides: dict) -> int:
+        """Apply config-driven per-message CRC algorithm overrides.
+
+        Keys may be frame IDs (``"0x287"``, ``287``) or frame names
+        (``"ICM_5"``); values are preset names (see
+        ``crc_checker.crc.presets.get_preset``). Applied after comment
+        auto-classification so explicit overrides always win.
+
+        Returns:
+            Number of protection groups that received an override.
+        """
+        # pylint: disable=import-outside-toplevel
+        from crc_checker.crc.presets import get_preset
+
+        by_id: dict[int, CRCParams] = {}
+        by_name: dict[str, CRCParams] = {}
+        for key, preset in (overrides or {}).items():
+            params = get_preset(preset)  # raises KeyError for unknown presets
+            if isinstance(key, int):
+                by_id[key] = params
+                continue
+            key_str = str(key)
+            try:
+                by_id[int(key_str, 0)] = params  # "0x287" or "647"
+            except ValueError:
+                by_name[key_str] = params
+
+        applied = 0
+        for prot_list in self.messages.values():
+            for prot in prot_list:
+                params = by_id.get(prot.frame_id) or by_name.get(prot.frame_name)
+                if params is not None:
+                    prot.crc_params = params
+                    applied += 1
+        return applied
+
     def apply_crc_range(self, crc_range: CRCRange):
         """Apply the same CRC range to all protection groups."""
         for prot_list in self.messages.values():
@@ -373,6 +409,15 @@ class ChannelProtectionMap:
             applied += pm.apply_comment_classification(default_params)
         if self._fallback:
             applied += self._fallback.apply_comment_classification(default_params)
+        return applied
+
+    def apply_crc_overrides(self, overrides: dict) -> int:
+        """Apply per-message CRC overrides to all channel maps."""
+        applied = 0
+        for pm in self._maps.values():
+            applied += pm.apply_crc_overrides(overrides)
+        if self._fallback:
+            applied += self._fallback.apply_crc_overrides(overrides)
         return applied
 
     def apply_crc_range(self, crc_range):

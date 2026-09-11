@@ -357,6 +357,14 @@ def run_cmd(config_path, verbose):
         protection_map = dbc_maps[0]
         if verbose:
             click.echo(f"Using DBC: {dbc_maps[0].dbc_paths[0]}")
+    elif cfg.dbc_merge:
+        # Merge all DBCs into one map (t1lfl1: B_CAN/C1_CAN IDs appear on
+        # every trace channel, so per-channel selection would drop a DBC)
+        protection_map = dbc_maps[0]
+        for other in dbc_maps[1:]:
+            protection_map.merge(other)
+        if verbose:
+            click.echo(f"Merged {len(dbc_maps)} DBCs into one protection map")
     else:
         # Per-channel DBC selection
         trace_paths = cfg.get_trace_paths()
@@ -431,6 +439,13 @@ def run_cmd(config_path, verbose):
         n = protection_map.apply_comment_classification(crc_params)
         if verbose and n > 0:
             click.echo(f"CRC auto-classify (DBC comments): {n} groups")
+
+    # Explicit per-message overrides win over everything above (e.g. t1lfl1
+    # ICM_5 has no algorithm comment but the firmware uses SUM8/XOR-FF)
+    if cfg.crc_overrides:
+        n = protection_map.apply_crc_overrides(cfg.crc_overrides)
+        if verbose:
+            click.echo(f"CRC overrides applied: {n} groups")
 
     if cfg.rc_max_valid is not None:
         protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
