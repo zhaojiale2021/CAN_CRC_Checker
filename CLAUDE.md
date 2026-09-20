@@ -35,7 +35,8 @@ crc-check preprocess-dataid --xlsx d.xlsx -o d.json   # Preprocess DataID
 # Build + package
 build.bat                  # Build standalone exe
 package.bat                # Package all customers → release/*.zip
-package.bat gac/t75        # Package GAC T75 only
+package.bat gac/eea40      # Package GAC EEA4.0 only
+package.bat gac/radar      # Package GAC radar buses only
 ./package.sh               # Linux: package all
 ./package.sh chery/t1jfl3  # Linux: package Chery only
 ```
@@ -50,11 +51,12 @@ customers/
 │   │   ├── dbc/           # DBC files + DataID xlsx/json
 │   │   └── trace/         # BLF trace files
 │   └── b06-5/             # GWM J6M B06-5 (CRC8/SAE-J1850-ZERO)
-├── gac/
-│   └── t75/               # GAC Trumpchi T75 (E2E Profile 5 + Profile 1A)
-│       ├── config.json, run.bat, run.sh
-│       ├── dbc/           # DBC files + DataID xlsx/json
-│       └── trace/
+├── gac/                   # 按平台组织（DBC/DataID 表按平台发布，算法与 DataID 数值全项目一致）
+│   ├── eea40/             # GAC EEA4.0 平台 (t75/t996d/v20) — Profile 5 + Profile 1
+│   ├── eea30-hev/         # GAC EEA3.0 混动平台 (t09/t68/t88)
+│   ├── eea30-bev/         # GAC EEA3.0 纯电AB 平台 (s52/s52-e046，DataID 表是 .xls)
+│   ├── radar/             # GAC 雷达私有总线 (FR/FLR/FRR/RLR/RRR，P01 30 字节段)
+│   └── README.md          # 平台↔项目对照、通用性结论、新平台接入步骤
 ├── chery/
 │   ├── t1jfl3/            # Chery T1J FL3 (E2E Profile 1A + DataID)
 │   ├── fx12fl/            # Chery FX12 FL (J1850 CRC-8 / SUM8/XOR-FF / XOR8/SEED)
@@ -70,13 +72,15 @@ To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `ru
 
 ### Core modules
 
-- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms, plus fx12fl non-CRC checksums (`sum_xor`, `xor_seed`). `presets.py` holds 13 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8, **SUM8**, **SUM8/XOR-FF**, **XOR8/SEED**. `classify.py` auto-classifies per-message algorithms from DBC comments (fx12fl: J1850 CRC-8 / sum-XOR 0xFF / byte-wise XOR with seed; b81vs: Profile 1A + DataID / plain SUM8 / skip). `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
+- **`crc_checker/crc/`** — Parameterized CRC engine using lookup-table method. `engine.py` computes CRC8/16/32 with both reflected and non-reflected algorithms, plus fx12fl non-CRC checksums (`sum_xor`, `xor_seed`). `presets.py` holds 13 built-in presets: CRC8/AUTOSAR, CRC8/SAE-J1850, CRC8/SAE-J1850-ZERO, CRC8/H2F, CRC16/ARC, CRC16/MODBUS, **CRC16/CCITT (E2E Profile 5)**, CRC32/AUTOSAR, CRC32/ETHERNET, XOR8, **SUM8**, **SUM8/XOR-FF**, **XOR8/SEED**. `classify.py` auto-classifies per-message algorithms from DBC comments (fx12fl: J1850 CRC-8 / sum-XOR 0xFF / byte-wise XOR with seed; b81vs: Profile 1A + DataID / plain SUM8 / skip; GAC `E2E Profile 5` → `p05`, handled by the profile table instead of a preset). `profiles.py` defines the E2E profile table (see below). `models.py` defines `CRCParams` (immutable/frozen) and `CRCRange` (mode + byte range + DataID config + byte_swap).
 
-- **`crc_checker/dbc/`** — `parser.py` wraps `canmatrix` to load DBC files. `resolver.py` uses regex matching for Checksum/RC signal pairs. Supports both **prefix-based** naming (`Checksum_*`, `CRC_*`) and **suffix-based** naming (`*_CRC`, `*_Counter`) via auto-detection (`detect_naming_convention()`). `models.py` defines `DBCProtectionMap`, `ChannelProtectionMap` (per-channel DBC assignment), `MessageProtection` (with `crc_profile` for algorithm overrides).
+- **`crc_checker/crc/profiles.py`** — `E2EProfile` table: per-profile algorithm, DataID position/byte order, byte swap and CRC range. Built-ins: `p01` (CRC8/SAE-J1850-ZERO, DataID prepend, range inherited) and `p05` (CRC16/CCITT, append, byte swap, `custom_range 0..56`). `load_profiles()` merges `crc.profiles` from config.json; `profile_key_from_width()` implements the firmware rule (2 B → P5, 1 B → P1). Applied per protection group by `DBCProtectionMap.apply_profiles()`, so one bus can mix P5 and P1 with different DataID layouts.
+
+- **`crc_checker/dbc/`** — `parser.py` wraps `canmatrix` to load DBC files. `resolver.py` uses regex matching for Checksum/RC signal pairs. Supports both **prefix-based** naming (`Checksum_*`, `CRC_*`) and **suffix-based** naming (`*_CRC`, `*_Counter`) via auto-detection (`detect_naming_convention()`); indexed instances (`SRS_1_CRC_1` / `SRS_1_CRC_2`, `_Counter_<n>`) stay separate groups (GAC CCU_SRS_1 carries two E2E instances). Radar sensor frames are matched too: a trailing bus marker is stripped (`SGU1_Msg_CheckSum_Can03` → `SGU1_Msg_CheckSum`) and `*_BlockCounter` is explicitly not a rolling counter (only `*_Msg_AliveCounter` counts frames). `models.py` defines `DBCProtectionMap`, `ChannelProtectionMap` (per-channel DBC assignment), `MessageProtection` (with `crc_profile` hint + resolved `e2e_profile`), plus `apply_profiles()` / `apply_range_overrides()` / `apply_skip()`.
 
 - **`crc_checker/trace/`** — `reader.py` wraps `python-can.LogReader` with iterator pattern. `CanFrame` dataclass: timestamp, arbitration_id, dlc, data (bytes), is_fd, is_extended, channel.
 
-- **`crc_checker/dataid/`** — Parses OEM-specific Excel files for DataID mappings. `parser.py` reads Excel with `ColumnMapping` config. Built-in mappings: `greatwall_j6m` (GWM hi_lo_two_cols), `gac_eea4` (GAC single_16bit), `generic_abc`, `simple_8bit`. Falls back to zipfile-based parser when openpyxl fails. DataID JSON fast-path via `dataid.json` for subsequent runs. `DataIDMap` stores optional `crc_profile` per entry for algorithm overrides.
+- **`crc_checker/dataid/`** — Parses OEM-specific Excel files for DataID mappings. `parser.py` reads Excel with `ColumnMapping` config. Built-in mappings: `greatwall_j6m` (GWM hi_lo_two_cols), `gac_eea4` (GAC single_16bit), `generic_abc`, `simple_8bit`. Falls back to zipfile-based parser when openpyxl fails, and reads legacy `.xls` (BIFF) workbooks via `xlrd` (GAC EEA3.0纯电平台). DataID rows are registered under the message name **and** under the CRC signal name found in the Remark column (`SRS_1_CRC2`), so messages with several E2E instances keep one DataID each; `DataIDMap.get_normalized()` matches names ignoring underscores/case. DataID JSON fast-path via `dataid.json` for subsequent runs. `DataIDMap` stores optional `crc_profile` per entry for algorithm overrides.
 
 - **`crc_checker/bit_utils.py`** — Extracts/zeros signal bits from CAN payload. Handles Intel (LE) and Motorola (BE) via `_extract_motorola()` / `_extract_intel()`. Motorola extraction handles multi-byte signals (>8 bits) with correct cross-byte boundary logic.
 
@@ -98,9 +102,13 @@ Key config sections (see `config.py` `CONFIG_SCHEMA_DOC` for full reference):
 |---------|-------|-------------|
 | `crc` | `preset` | CRC preset name (e.g. `CRC16/CCITT`, `CRC8/SAE-J1850-ZERO`) |
 | | `byte_swap` | Swap computed CRC bytes before compare (Profile 5: `true`) |
+| | `profiles` | Per-profile overrides: `preset`, `dataid_position`, `byte_swap`, `range` (GAC: `p01` gets `custom_range 0..-1`) |
+| | `profile_by_width` | Pick profile from the CRC signal width (2 B → P5, 1 B → P1) |
+| | `range_overrides` | Per-message/signal range: `{"SRS_1_CRC_2": {"mode": "custom_range", "start_byte": 13, "end_byte": 32}}` |
+| | `skip` | Frame ids/names/signal names left unverified (`["SYNC_FC_CRC"]`) |
 | `range` | `mode` | `exclude_crc` / `full_payload` / `custom_range` |
 | | `start_byte`, `end_byte` | For `custom_range` (Profile 5 64B: `0, 56`) |
-| `dataid` | `xlsx` / `json` | Excel path / Preprocessed JSON (fast load) |
+| `dataid` | `xlsx` / `json` | Excel path (`.xlsx` or legacy `.xls`) / Preprocessed JSON (fast load) |
 | | `mapping` | `greatwall_j6m` / `gac_eea4` / custom JSON |
 | | `position` | `prepend` (GWM, Profile 1) / `append` (Profile 5) |
 | | `byte_order` | `lo_hi` (default) / `hi_lo` |
@@ -112,8 +120,14 @@ Key config sections (see `config.py` `CONFIG_SCHEMA_DOC` for full reference):
 
 | Profile | CRC Algorithm | DataID Position | CRC Width | Byte Swap | Example Config |
 |---------|--------------|-----------------|-----------|-----------|----------------|
-| **Profile 5** | CRC16/CCITT | append lo_hi | 16-bit | yes | `customers/gac/t75/` |
-| **Profile 1** | CRC8/SAE-J1850-ZERO | prepend lo_hi | 8-bit | no | `customers/gwm/` |
+| **Profile 5** | CRC16/CCITT | append lo_hi | 16-bit | yes | `customers/gac/eea40/` |
+| **Profile 1** | CRC8/SAE-J1850-ZERO | prepend lo_hi | 8-bit | no | `customers/gwm/`, GAC 8-bit messages (counter 0..14) |
+
+Profile selection (GAC): `crc.profile_by_width: true` picks the profile from the CRC
+signal width — the firmware rule (2 B → P5, 1 B → P1, see mcu_app_j6 `31bd82bcf`).
+Per-group `crc_range` then carries the DataID layout, so P5 (append) and P1 (prepend)
+coexist on one bus. GAC extras: `crc.range_overrides` (CCU_SRS_1 second segment
+13..32) and `crc.skip` (CCU_TimeSync `SYNC_FC_CRC` is not E2E).
 
 ### Key data flow
 
@@ -133,4 +147,4 @@ Key config sections (see `config.py` `CONFIG_SCHEMA_DOC` for full reference):
 
 ### Testing
 
-72 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, and protection map merge logic.
+124 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), DataID serialization, DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, and GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming).

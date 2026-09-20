@@ -3,19 +3,27 @@
   "traces": ["trace"],
   "crc": {
     "preset": "CRC16/CCITT",
-    "byte_swap": true
+    "byte_swap": true,
+    "profile_by_width": true,
+    "profiles": {
+      "p01": {
+        "preset": "CRC8/SAE-J1850-ZERO",
+        "dataid_position": "prepend",
+        "byte_swap": false,
+        "counter_max_valid": 14,
+        "range": { "mode": "custom_range", "start_byte": 0, "end_byte": 30 }
+      }
+    },
+    "skip": ["SYNC_FC_CRC"]
   },
   "range": {
     "mode": "custom_range",
     "start_byte": 0,
-    "end_byte": 56
+    "end_byte": 30
   },
   "dataid": {
-    "xlsx": "dbc/EEA4.0 E2E DataID ConfigurationV1.9.xlsx",
     "json": "dbc/dataid.json",
-    "sheet": "Data ID Config",
-    "mapping": "gac_eea4",
-    "position": "append",
+    "position": "prepend",
     "byte_order": "lo_hi"
   },
   "signals": {

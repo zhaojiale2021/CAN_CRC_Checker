@@ -1,0 +1,765 @@
+{
+  "format": "dataid_map_v2",
+  "source": "customers/gac/eea40/dbc/EEA4.0 E2E DataID ConfigurationV1.9.xlsx",
+  "mapping": "gac_eea4",
+  "sheets": [
+    "Data ID Config"
+  ],
+  "entries": [
+    {
+      "frame_id": "0x004",
+      "dataid": "0x0369",
+      "signal_name": "ZCUL_LIN6_1",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x011",
+      "dataid": "0x0129",
+      "signal_name": "CCU_LIN2_1",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x018",
+      "dataid": "0x011F",
+      "signal_name": "ZF_LIN3_1",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x029",
+      "dataid": "0x0025",
+      "signal_name": "RLS_1",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x02A",
+      "dataid": "0x0133",
+      "signal_name": "PADS_1",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x02B",
+      "dataid": "0x0127",
+      "signal_name": "PADS_2",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x038",
+      "dataid": "0x0024",
+      "signal_name": "HOD_1",
+      "profile": "Profile 1A"
+    },
+    {
+      "frame_id": "0x0AF",
+      "dataid": "0x0669",
+      "signal_name": "ADC_9"
+    },
+    {
+      "frame_id": "0x120",
+      "dataid": "0x0113",
+      "signal_name": "CCU_3"
+    },
+    {
+      "frame_id": "0x121",
+      "dataid": "0x0112",
+      "signal_name": "CCU_4"
+    },
+    {
+      "frame_id": "0x122",
+      "dataid": "0x011B",
+      "signal_name": "CCU_PowerOn"
+    },
+    {
+      "frame_id": "0x123",
+      "dataid": "0x0111",
+      "signal_name": "CCU_6"
+    },
+    {
+      "frame_id": "0x156",
+      "dataid": "0x011D",
+      "signal_name": "ZCUR_8"
+    },
+    {
+      "frame_id": "0x15F",
+      "dataid": "0x0706",
+      "signal_name": "IDC_2"
+    },
+    {
+      "frame_id": "0x160",
+      "dataid": "0x0409",
+      "signal_name": "BCS_2_C"
+    },
+    {
+      "frame_id": "0x167",
+      "dataid": "0x0431",
+      "signal_name": "BCS_1_B"
+    },
+    {
+      "frame_id": "0x168",
+      "dataid": "0x0432",
+      "signal_name": "BCS_6_C"
+    },
+    {
+      "frame_id": "0x169",
+      "dataid": "0x0634",
+      "signal_name": "ADC_4_B"
+    },
+    {
+      "frame_id": "0x16A",
+      "dataid": "0x0415",
+      "signal_name": "EPS_1_B"
+    },
+    {
+      "frame_id": "0x16B",
+      "dataid": "0x0405",
+      "signal_name": "EPS_1_C"
+    },
+    {
+      "frame_id": "0x16D",
+      "dataid": "0x0661",
+      "signal_name": "ADC_19"
+    },
+    {
+      "frame_id": "0x16E",
+      "dataid": "0x0662",
+      "signal_name": "ADC_20"
+    },
+    {
+      "frame_id": "0x173",
+      "dataid": "0x0635",
+      "signal_name": "ADC_13_B"
+    },
+    {
+      "frame_id": "0x176",
+      "dataid": "0x067A",
+      "signal_name": "FAPA_1"
+    },
+    {
+      "frame_id": "0x178",
+      "dataid": "0x0331",
+      "signal_name": "PCU_1"
+    },
+    {
+      "frame_id": "0x17A",
+      "dataid": "0x03A8",
+      "signal_name": "BMS_1"
+    },
+    {
+      "frame_id": "0x17C",
+      "dataid": "0x0362",
+      "signal_name": "DCUF_1"
+    },
+    {
+      "frame_id": "0x17E",
+      "dataid": "0x0117",
+      "signal_name": "ZCUL_11"
+    },
+    {
+      "frame_id": "0x17F",
+      "dataid": "0x0139",
+      "signal_name": "ZCUR_15"
+    },
+    {
+      "frame_id": "0x180",
+      "dataid": "0x0339",
+      "signal_name": "EOP_1"
+    },
+    {
+      "frame_id": "0x183",
+      "dataid": "0x065B",
+      "signal_name": "ADC_4_New"
+    },
+    {
+      "frame_id": "0x184",
+      "dataid": "0x0511",
+      "signal_name": "TCU_1"
+    },
+    {
+      "frame_id": "0x185",
+      "dataid": "0x0653",
+      "signal_name": "ADC_4_B_New"
+    },
+    {
+      "frame_id": "0x187",
+      "dataid": "0x0365",
+      "signal_name": "DCUR_1"
+    },
+    {
+      "frame_id": "0x18D",
+      "dataid": "0x0368",
+      "signal_name": "CCU_GwMsg_1_New"
+    },
+    {
+      "frame_id": "0x18E",
+      "dataid": "0x0526",
+      "signal_name": "EMS_1"
+    },
+    {
+      "frame_id": "0x18F",
+      "dataid": "0x042B",
+      "signal_name": "CCU_GSM_1"
+    },
+    {
+      "frame_id": "0x190",
+      "dataid": "0x011C",
+      "signal_name": "MFS_1"
+    },
+    {
+      "frame_id": "0x191",
+      "dataid": "0x043E",
+      "signal_name": "ZCUR_GSO_1"
+    },
+    {
+      "frame_id": "0x193",
+      "dataid": "0x0630",
+      "signal_name": "ADC_1"
+    },
+    {
+      "frame_id": "0x199",
+      "dataid": "0x031D",
+      "signal_name": "CCU_VCU_1"
+    },
+    {
+      "frame_id": "0x19A",
+      "dataid": "0x03AE",
+      "signal_name": "GCU_1"
+    },
+    {
+      "frame_id": "0x19B",
+      "dataid": "0x0638",
+      "signal_name": "ADC_2"
+    },
+    {
+      "frame_id": "0x19E",
+      "dataid": "0x0340",
+      "signal_name": "CCU_VCU_10"
+    },
+    {
+      "frame_id": "0x1A1",
+      "dataid": "0x0328",
+      "signal_name": "CCU_VCU_13"
+    },
+    {
+      "frame_id": "0x1A2",
+      "dataid": "0x0389",
+      "signal_name": "CCU_VCU_2"
+    },
+    {
+      "frame_id": "0x1A3",
+      "dataid": "0x0648",
+      "signal_name": "ADC_4"
+    },
+    {
+      "frame_id": "0x1A5",
+      "dataid": "0x053B",
+      "signal_name": "CCU_GVS_2"
+    },
+    {
+      "frame_id": "0x1A7",
+      "dataid": "0x0121",
+      "signal_name": "VMC_1"
+    },
+    {
+      "frame_id": "0x1AE",
+      "dataid": "0x0404",
+      "signal_name": "SRS_1"
+    },
+    {
+      "frame_id": "0x1AE",
+      "dataid": "0x0404",
+      "signal_name": "SRS_1_CRC1"
+    },
+    {
+      "frame_id": "0x1AF",
+      "dataid": "0x0360",
+      "signal_name": "CCU_VCU_8"
+    },
+    {
+      "frame_id": "0x1B0",
+      "dataid": "0x0410",
+      "signal_name": "ICC_1"
+    },
+    {
+      "frame_id": "0x1B1",
+      "dataid": "0x0552",
+      "signal_name": "CCU_GVS_3"
+    },
+    {
+      "frame_id": "0x1B3",
+      "dataid": "0x0428",
+      "signal_name": "RAS_1"
+    },
+    {
+      "frame_id": "0x1B6",
+      "dataid": "0x054C",
+      "signal_name": "ZCUL_10"
+    },
+    {
+      "frame_id": "0x1B9",
+      "dataid": "0x0413",
+      "signal_name": "IDM_1"
+    },
+    {
+      "frame_id": "0x1BA",
+      "dataid": "0x0555",
+      "signal_name": "EMS_EWP_1"
+    },
+    {
+      "frame_id": "0x1BB",
+      "dataid": "0x0515",
+      "signal_name": "CCU_GVS_5"
+    },
+    {
+      "frame_id": "0x1BD",
+      "dataid": "0x0546",
+      "signal_name": "EMS_2"
+    },
+    {
+      "frame_id": "0x1BE",
+      "dataid": "0x0421",
+      "signal_name": "RBM_1_C"
+    },
+    {
+      "frame_id": "0x1C1",
+      "dataid": "0x0400",
+      "signal_name": "BCS_9_B"
+    },
+    {
+      "frame_id": "0x1C2",
+      "dataid": "0x0408",
+      "signal_name": "RBM_1_B"
+    },
+    {
+      "frame_id": "0x1CB",
+      "dataid": "0x043A",
+      "signal_name": "ECS_2"
+    },
+    {
+      "frame_id": "0x1DB",
+      "dataid": "0x0705",
+      "signal_name": "IDC_4"
+    },
+    {
+      "frame_id": "0x1DD",
+      "dataid": "0x0367",
+      "signal_name": "ZCUL_13"
+    },
+    {
+      "frame_id": "0x201",
+      "dataid": "0x0501",
+      "signal_name": "IDUR_1"
+    },
+    {
+      "frame_id": "0x204",
+      "dataid": "0x0318",
+      "signal_name": "CCU_VCU_9"
+    },
+    {
+      "frame_id": "0x208",
+      "dataid": "0x042C",
+      "signal_name": "CCU_SRS_3_P",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x210",
+      "dataid": "0x041B",
+      "signal_name": "BCS_ESP_1"
+    },
+    {
+      "frame_id": "0x211",
+      "dataid": "0x041A",
+      "signal_name": "EBB_1"
+    },
+    {
+      "frame_id": "0x212",
+      "dataid": "0x041C",
+      "signal_name": "BCS_ESP_2"
+    },
+    {
+      "frame_id": "0x213",
+      "dataid": "0x041D",
+      "signal_name": "EBB_3"
+    },
+    {
+      "frame_id": "0x225",
+      "dataid": "0x0666",
+      "signal_name": "ADC_12"
+    },
+    {
+      "frame_id": "0x22D",
+      "dataid": "0x0335",
+      "signal_name": "CCU_VCU_3"
+    },
+    {
+      "frame_id": "0x22F",
+      "dataid": "0x012E",
+      "signal_name": "CCU_4_New"
+    },
+    {
+      "frame_id": "0x237",
+      "dataid": "0x0524",
+      "signal_name": "EMCM_1"
+    },
+    {
+      "frame_id": "0x251",
+      "dataid": "0x042E",
+      "signal_name": "CCU_ICE_1",
+      "profile": "Profile Variant 1A"
+    },
+    {
+      "frame_id": "0x253",
+      "dataid": "0x0110",
+      "signal_name": "ZCUR_9"
+    },
+    {
+      "frame_id": "0x254",
+      "dataid": "0x0118",
+      "signal_name": "ZCUR_10"
+    },
+    {
+      "frame_id": "0x255",
+      "dataid": "0x0116",
+      "signal_name": "ZCUL_6"
+    },
+    {
+      "frame_id": "0x263",
+      "dataid": "0x0411",
+      "signal_name": "BCS_3_C"
+    },
+    {
+      "frame_id": "0x267",
+      "dataid": "0x0401",
+      "signal_name": "BCS_1_C"
+    },
+    {
+      "frame_id": "0x268",
+      "dataid": "0x011A",
+      "signal_name": "CCU_1"
+    },
+    {
+      "frame_id": "0x268",
+      "dataid": "0x011A",
+      "signal_name": "CCU_1_CRC1"
+    },
+    {
+      "frame_id": "0x26A",
+      "dataid": "0x0419",
+      "signal_name": "EPB_1"
+    },
+    {
+      "frame_id": "0x26B",
+      "dataid": "0x0429",
+      "signal_name": "EPB_2"
+    },
+    {
+      "frame_id": "0x26C",
+      "dataid": "0x0153",
+      "signal_name": "CCU_PADS_2"
+    },
+    {
+      "frame_id": "0x270",
+      "dataid": "0x0114",
+      "signal_name": "ZCUR_1"
+    },
+    {
+      "frame_id": "0x278",
+      "dataid": "0x0145",
+      "signal_name": "ZCUL_2"
+    },
+    {
+      "frame_id": "0x280",
+      "dataid": "0x0123",
+      "signal_name": "ZCUL_8"
+    },
+    {
+      "frame_id": "0x288",
+      "dataid": "0x0115",
+      "signal_name": "CCU_ZCU_5"
+    },
+    {
+      "frame_id": "0x293",
+      "dataid": "0x0650",
+      "signal_name": "ADC_5"
+    },
+    {
+      "frame_id": "0x29B",
+      "dataid": "0x0660",
+      "signal_name": "ADC_7"
+    },
+    {
+      "frame_id": "0x2B8",
+      "dataid": "0x015F",
+      "signal_name": "SBM_5"
+    },
+    {
+      "frame_id": "0x2BF",
+      "dataid": "0x031C",
+      "signal_name": "CPC_1"
+    },
+    {
+      "frame_id": "0x2C0",
+      "dataid": "0x0319",
+      "signal_name": "IPS_1"
+    },
+    {
+      "frame_id": "0x2C2",
+      "dataid": "0x031E",
+      "signal_name": "OBC_1"
+    },
+    {
+      "frame_id": "0x2C3",
+      "dataid": "0x0305",
+      "signal_name": "DCDC2_1"
+    },
+    {
+      "frame_id": "0x2D8",
+      "dataid": "0x0439",
+      "signal_name": "ECS_1"
+    },
+    {
+      "frame_id": "0x2D9",
+      "dataid": "0x0536",
+      "signal_name": "EDL_1"
+    },
+    {
+      "frame_id": "0x2DC",
+      "dataid": "0x0530",
+      "signal_name": "CCU_GVS_4"
+    },
+    {
+      "frame_id": "0x2E3",
+      "dataid": "0x0702",
+      "signal_name": "IDC_IID_1"
+    },
+    {
+      "frame_id": "0x2FD",
+      "dataid": "0x0366",
+      "signal_name": "EMS_3_New"
+    },
+    {
+      "frame_id": "0x303",
+      "dataid": "0x040D",
+      "signal_name": "EPS_2_B\nEPS_2_C"
+    },
+    {
+      "frame_id": "0x304",
+      "dataid": "0x0136",
+      "signal_name": "PLGM_1"
+    },
+    {
+      "frame_id": "0x308",
+      "dataid": "0x002C",
+      "signal_name": "ZCUL_3"
+    },
+    {
+      "frame_id": "0x309",
+      "dataid": "0x0147",
+      "signal_name": "ZCUR_4"
+    },
+    {
+      "frame_id": "0x30A",
+      "dataid": "0x0120",
+      "signal_name": "ZCUR_11"
+    },
+    {
+      "frame_id": "0x30B",
+      "dataid": "0x011E",
+      "signal_name": "ZCUL_7"
+    },
+    {
+      "frame_id": "0x30F",
+      "dataid": "0x064B",
+      "signal_name": "ADC_3_New"
+    },
+    {
+      "frame_id": "0x311",
+      "dataid": "0x0534",
+      "signal_name": "TCU_2"
+    },
+    {
+      "frame_id": "0x313",
+      "dataid": "0x0424",
+      "signal_name": "RLBMS_1"
+    },
+    {
+      "frame_id": "0x315",
+      "dataid": "0x0373",
+      "signal_name": "BMS_2"
+    },
+    {
+      "frame_id": "0x317",
+      "dataid": "0x01D1",
+      "signal_name": "ZCUL_12"
+    },
+    {
+      "frame_id": "0x319",
+      "dataid": "0x0122",
+      "signal_name": "LBMS_1"
+    },
+    {
+      "frame_id": "0x31A",
+      "dataid": "0x012C",
+      "signal_name": "LBMSAD_1"
+    },
+    {
+      "frame_id": "0x31D",
+      "dataid": "0x0152",
+      "signal_name": "TRM_1"
+    },
+    {
+      "frame_id": "0x31F",
+      "dataid": "0x012B",
+      "signal_name": "ZCUR_13"
+    },
+    {
+      "frame_id": "0x333",
+      "dataid": "0x038D",
+      "signal_name": "OPC_1"
+    },
+    {
+      "frame_id": "0x33F",
+      "dataid": "0x0364",
+      "signal_name": "CCU_VCU_4_New"
+    },
+    {
+      "frame_id": "0x343",
+      "dataid": "0x06A3",
+      "signal_name": "ADC_11"
+    },
+    {
+      "frame_id": "0x359",
+      "dataid": "0x0363",
+      "signal_name": "DCUF_2"
+    },
+    {
+      "frame_id": "0x35C",
+      "dataid": "0x036C",
+      "signal_name": "CCU_VCU_7"
+    },
+    {
+      "frame_id": "0x35E",
+      "dataid": "0x0382",
+      "signal_name": "GCU_2"
+    },
+    {
+      "frame_id": "0x361",
+      "dataid": "0x0144",
+      "signal_name": "CCU_7"
+    },
+    {
+      "frame_id": "0x362",
+      "dataid": "0x0307",
+      "signal_name": "DCUR_2"
+    },
+    {
+      "frame_id": "0x368",
+      "dataid": "0x0321",
+      "signal_name": "IPS_2"
+    },
+    {
+      "frame_id": "0x36A",
+      "dataid": "0x031F",
+      "signal_name": "OBC_2"
+    },
+    {
+      "frame_id": "0x36C",
+      "dataid": "0x030D",
+      "signal_name": "DCDC2_2"
+    },
+    {
+      "frame_id": "0x36F",
+      "dataid": "0x0704",
+      "signal_name": "IDC_3"
+    },
+    {
+      "frame_id": "0x393",
+      "dataid": "0x0640",
+      "signal_name": "ADC_3"
+    },
+    {
+      "frame_id": "0x39B",
+      "dataid": "0x0658",
+      "signal_name": "ADC_6"
+    },
+    {
+      "frame_id": "0x3A3",
+      "dataid": "0x039A",
+      "signal_name": "BMS_3"
+    },
+    {
+      "frame_id": "0x3A4",
+      "dataid": "0x066A",
+      "signal_name": "RRR_1"
+    },
+    {
+      "frame_id": "0x3AB",
+      "dataid": "0x040C",
+      "signal_name": "SRS_2"
+    },
+    {
+      "frame_id": "0x3AD",
+      "dataid": "0x0633",
+      "signal_name": "ADC_10"
+    },
+    {
+      "frame_id": "0x3B3",
+      "dataid": "0x0668",
+      "signal_name": "ADC_8"
+    },
+    {
+      "frame_id": "0x3BD",
+      "dataid": "0x0024",
+      "signal_name": "ZCUL_HOD_1",
+      "profile": "Profile 1A"
+    },
+    {
+      "frame_id": "0x3C0",
+      "dataid": "0x0503",
+      "signal_name": "TMS_4"
+    },
+    {
+      "frame_id": "0x3C6",
+      "dataid": "0x0502",
+      "signal_name": "IDUR_2"
+    },
+    {
+      "frame_id": "0x3C7",
+      "dataid": "0x0703",
+      "signal_name": "IDC_DMS_1"
+    },
+    {
+      "frame_id": "0x3CC",
+      "dataid": "0x0310",
+      "signal_name": "LPC2_1"
+    },
+    {
+      "frame_id": "0x3DB",
+      "dataid": "0x066B",
+      "signal_name": "RLR_1"
+    },
+    {
+      "frame_id": "0x3E6",
+      "dataid": "0x034F",
+      "signal_name": "CCU_VCU_5"
+    },
+    {
+      "frame_id": "0x40A",
+      "dataid": "0x03A3",
+      "signal_name": "CCU_VCU_6"
+    },
+    {
+      "frame_id": "0x437",
+      "dataid": "0x0344",
+      "signal_name": "CCU_VCU_11"
+    },
+    {
+      "frame_id": "0x44E",
+      "dataid": "0x0346",
+      "signal_name": "CCU_VCU_12"
+    },
+    {
+      "frame_id": "0x2D00008",
+      "dataid": "0x0701",
+      "signal_name": "TEL_4"
+    }
+  ]
+}

@@ -21,8 +21,9 @@ DEFAULT_PATTERNS: dict[str, str] = {
 SUFFIX_PATTERNS: dict[str, str] = {
     "checksum": (
         r"(?i)(_crc$|_checksum$|_e2e_crc$|_crc[0-9]*$"
+        r"|_crc_[0-9]+$|_e2e_crc_[0-9]+$"
         r"|_crc[0-9]+_[0-9]+[a-z]*$"
-        r"|_checksum[0-9]*$"
+        r"|_checksum[0-9]*$|_checksum_[0-9]+$"
         r"|_crccheck$"
         r"|_chks$|_chks[0-9]*$|chks$|chks[0-9]*$)"
     ),
@@ -31,7 +32,7 @@ SUFFIX_PATTERNS: dict[str, str] = {
         r"|_msgcntr$|_msgcntr[0-9]*$"
         r"|_messagecounter$|_messagecounter[0-9]*$"
         r"|_message_counter$|_message_counter[0-9]*$"
-        r"|_alivecounter$|_alivecnt$"
+        r"|_alivecounter[0-9]*$|_alivecnt[0-9]*$"
         r"|_cntr$|_cntr[0-9]*$|cntr$|cntr[0-9]*$"
         r"|_rollgcntr$|_rollgcntr[0-9]*$"
         r"|_rollgcntr[0-9]+_[0-9]+[a-z]*$"
@@ -39,6 +40,12 @@ SUFFIX_PATTERNS: dict[str, str] = {
         r"|_rollingcounter[0-9]*$)"
     ),
 }
+
+# ADAS radar frames (SGU/FR/FLR/RLR/RRR sensor protocols) put the source bus in
+# the signal name: "SGU1_Msg_CheckSum_Can03" next to "SGU1_Msg_AliveCounter_Can03".
+# The trailing bus marker is stripped before pattern matching so the checksum and
+# its counter pair up (and so the $ anchors below still work).
+_BUS_SUFFIX_RE = re.compile(r'_Can[0-9]+$', re.IGNORECASE)
 
 
 class SignalResolver:
@@ -69,6 +76,11 @@ class SignalResolver:
         self._rc_re = re.compile(
             self._custom_rc or DEFAULT_PATTERNS["rolling_counter"])
 
+    @staticmethod
+    def strip_bus_suffix(signal_name: str) -> str:
+        """Drop a trailing radar bus marker ("_Can03") from a signal name."""
+        return _BUS_SUFFIX_RE.sub('', signal_name)
+
     def is_checksum_signal(self, signal_name: str) -> bool:
         """Check if a signal name matches checksum/CRC pattern.
 
@@ -79,6 +91,7 @@ class SignalResolver:
         """
         if self._custom_checksum:
             return bool(self._checksum_re.search(signal_name))
+        signal_name = self.strip_bus_suffix(signal_name)
         if self._checksum_re.match(signal_name):
             return True
         # Always check suffix patterns as well (not gated by use_suffix).
@@ -92,9 +105,16 @@ class SignalResolver:
         Checks both prefix-based (``RollingCounter_*``, ``RC_*``) and
         suffix-based (``*_Counter``, ``*_RollingCounterN``) naming
         conventions so that mixed-naming DBCs are fully detected.
+
+        ``*_BlockCounter`` is deliberately *not* a rolling counter: radar/ADAS
+        frames carry a block counter (per data block) next to the alive counter,
+        and only the alive counter counts frames.
         """
         if self._custom_rc:
             return bool(self._rc_re.search(signal_name))
+        signal_name = self.strip_bus_suffix(signal_name)
+        if re.search(r'block_?counter', signal_name, re.IGNORECASE):
+            return False
         if self._rc_re.match(signal_name):
             return True
         # Always check suffix patterns as well (not gated by use_suffix).
@@ -145,8 +165,11 @@ class SignalResolver:
         Suffix-based naming (GAC-style):
           "CCU_1_CRC" → "CCU_1"
           "CCU_1_Counter" → "CCU_1"
-          "CCU_1_CRC_1" → "CCU_1"  (variant with index)
+          "CCU_1_CRC_1" → "CCU_1_1"  (second E2E instance, index kept)
+          "CCU_1_CRC_2" → "CCU_1_2"
+          "SGU1_Msg_CheckSum_Can03" → "SGU1_Msg"  (radar bus marker stripped)
         """
+        signal_name = SignalResolver.strip_bus_suffix(signal_name)
         # Remove common prefixes (GWM-style / BAIC checksum<ID> naming)
         for prefix in ["Checksum_", "Checksum", "CheckSum_", "CheckSum", "CRC_", "CRC",
                        "E2E_CRC_",
@@ -169,8 +192,13 @@ class SignalResolver:
             prefix = signal_name[:suffix_match.start()]
             # Append CRC index if present (e.g. APA_CRC1 → APA_1, APA_CRC2 → APA_2)
             crc_index = suffix_match.group(2)
-            if crc_index:
-                prefix = f"{prefix}_{crc_index}"
+            # Index separated by an underscore (GAC "SRS_1_CRC_2") keeps the two
+            # E2E instances of one message apart — otherwise CRC_1 and CRC_2
+            # collapse into a single group and the later signal wins.
+            instance = (suffix_match.group(3) or "").lstrip("_")
+            index = crc_index or instance
+            if index:
+                prefix = f"{prefix}_{index}"
             return prefix
 
         # Fallback: take part between first and last underscore

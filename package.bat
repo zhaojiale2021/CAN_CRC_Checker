@@ -4,7 +4,8 @@ REM  CAN CRC Checker - Package customer release
 REM
 REM  Usage:
 REM    package.bat              Package all customers
-REM    package.bat gac/t75      Package GAC T75 only
+REM    package.bat gac/eea40    Package GAC EEA4.0 only
+REM    package.bat gac/radar    Package GAC radar buses only
 REM    package.bat gwm/de09g    Package GWM DE09G only
 REM    package.bat chery/t1jfl3 Package Chery T1JFL3 only
 REM    package.bat chery/fx12fl Package Chery FX12FL only
@@ -37,7 +38,10 @@ REM Clean release
 if exist "%RELEASE_DIR%" rmdir /s /q "%RELEASE_DIR%"
 
 if "%TARGET%"=="" (
-    call :package gac\t75
+    call :package gac\eea40
+    call :package gac\eea30-hev
+    call :package gac\eea30-bev
+    call :package gac\radar
     call :package gwm\de09g
     call :package gwm\b06-5
     call :package chery\t1jfl3

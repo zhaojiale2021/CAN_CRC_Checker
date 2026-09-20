@@ -1,0 +1,885 @@
+{
+  "format": "dataid_map_v2",
+  "source": "mcu_app_j6 cpj_gac/net_cfg/v20/inc/net_cfg/NetE2E_Cfg.hpp (radar buses CAN2-CAN5)",
+  "mapping": "radar (firmware constants)",
+  "sheets": [
+    "radar"
+  ],
+  "entries": [
+    {
+      "frame_id": "0x026",
+      "dataid": "0x0826",
+      "signal_name": "ADC_SOC_Status"
+    },
+    {
+      "frame_id": "0x160",
+      "dataid": "0x0032",
+      "signal_name": "BCS_2_A"
+    },
+    {
+      "frame_id": "0x161",
+      "dataid": "0x000B",
+      "signal_name": "BCS_1_A"
+    },
+    {
+      "frame_id": "0x16B",
+      "dataid": "0x0020",
+      "signal_name": "EPS_1"
+    },
+    {
+      "frame_id": "0x18A",
+      "dataid": "0x0012",
+      "signal_name": "BCS_3_A"
+    },
+    {
+      "frame_id": "0x201",
+      "dataid": "0x0800",
+      "signal_name": "FLR_SensorState"
+    },
+    {
+      "frame_id": "0x201",
+      "dataid": "0x0800",
+      "signal_name": "FR_SensorState"
+    },
+    {
+      "frame_id": "0x201",
+      "dataid": "0x0800",
+      "signal_name": "RLR_SensorState"
+    },
+    {
+      "frame_id": "0x201",
+      "dataid": "0x0800",
+      "signal_name": "RRR_SensorState"
+    },
+    {
+      "frame_id": "0x202",
+      "dataid": "0x0801",
+      "signal_name": "FLR_Obj_01"
+    },
+    {
+      "frame_id": "0x202",
+      "dataid": "0x0801",
+      "signal_name": "FR_Obj_01"
+    },
+    {
+      "frame_id": "0x202",
+      "dataid": "0x0801",
+      "signal_name": "RLR_Obj_01"
+    },
+    {
+      "frame_id": "0x202",
+      "dataid": "0x0801",
+      "signal_name": "RRR_Obj_01"
+    },
+    {
+      "frame_id": "0x203",
+      "dataid": "0x0802",
+      "signal_name": "FLR_Obj_02"
+    },
+    {
+      "frame_id": "0x203",
+      "dataid": "0x0802",
+      "signal_name": "FR_Obj_02"
+    },
+    {
+      "frame_id": "0x203",
+      "dataid": "0x0802",
+      "signal_name": "RLR_Obj_02"
+    },
+    {
+      "frame_id": "0x203",
+      "dataid": "0x0802",
+      "signal_name": "RRR_Obj_02"
+    },
+    {
+      "frame_id": "0x204",
+      "dataid": "0x0803",
+      "signal_name": "FLR_Obj_03"
+    },
+    {
+      "frame_id": "0x204",
+      "dataid": "0x0803",
+      "signal_name": "FR_Obj_03"
+    },
+    {
+      "frame_id": "0x204",
+      "dataid": "0x0803",
+      "signal_name": "RLR_Obj_03"
+    },
+    {
+      "frame_id": "0x204",
+      "dataid": "0x0803",
+      "signal_name": "RRR_Obj_03"
+    },
+    {
+      "frame_id": "0x205",
+      "dataid": "0x0804",
+      "signal_name": "FLR_Obj_04"
+    },
+    {
+      "frame_id": "0x205",
+      "dataid": "0x0804",
+      "signal_name": "FR_Obj_04"
+    },
+    {
+      "frame_id": "0x205",
+      "dataid": "0x0804",
+      "signal_name": "RLR_Obj_04"
+    },
+    {
+      "frame_id": "0x205",
+      "dataid": "0x0804",
+      "signal_name": "RRR_Obj_04"
+    },
+    {
+      "frame_id": "0x206",
+      "dataid": "0x0805",
+      "signal_name": "FLR_Obj_05"
+    },
+    {
+      "frame_id": "0x206",
+      "dataid": "0x0805",
+      "signal_name": "FR_Obj_05"
+    },
+    {
+      "frame_id": "0x206",
+      "dataid": "0x0805",
+      "signal_name": "RLR_Obj_05"
+    },
+    {
+      "frame_id": "0x206",
+      "dataid": "0x0805",
+      "signal_name": "RRR_Obj_05"
+    },
+    {
+      "frame_id": "0x207",
+      "dataid": "0x0806",
+      "signal_name": "FLR_Obj_06"
+    },
+    {
+      "frame_id": "0x207",
+      "dataid": "0x0806",
+      "signal_name": "FR_Obj_06"
+    },
+    {
+      "frame_id": "0x207",
+      "dataid": "0x0806",
+      "signal_name": "RLR_Obj_06"
+    },
+    {
+      "frame_id": "0x207",
+      "dataid": "0x0806",
+      "signal_name": "RRR_Obj_06"
+    },
+    {
+      "frame_id": "0x208",
+      "dataid": "0x0807",
+      "signal_name": "FLR_Obj_07"
+    },
+    {
+      "frame_id": "0x208",
+      "dataid": "0x0807",
+      "signal_name": "FR_Obj_07"
+    },
+    {
+      "frame_id": "0x208",
+      "dataid": "0x0807",
+      "signal_name": "RLR_Obj_07"
+    },
+    {
+      "frame_id": "0x208",
+      "dataid": "0x0807",
+      "signal_name": "RRR_Obj_07"
+    },
+    {
+      "frame_id": "0x209",
+      "dataid": "0x0808",
+      "signal_name": "FLR_Obj_08"
+    },
+    {
+      "frame_id": "0x209",
+      "dataid": "0x0808",
+      "signal_name": "FR_Obj_08"
+    },
+    {
+      "frame_id": "0x209",
+      "dataid": "0x0808",
+      "signal_name": "RLR_Obj_08"
+    },
+    {
+      "frame_id": "0x209",
+      "dataid": "0x0808",
+      "signal_name": "RRR_Obj_08"
+    },
+    {
+      "frame_id": "0x20A",
+      "dataid": "0x0809",
+      "signal_name": "FLR_Obj_09"
+    },
+    {
+      "frame_id": "0x20A",
+      "dataid": "0x0809",
+      "signal_name": "FR_Obj_09"
+    },
+    {
+      "frame_id": "0x20A",
+      "dataid": "0x0809",
+      "signal_name": "RLR_Obj_09"
+    },
+    {
+      "frame_id": "0x20A",
+      "dataid": "0x0809",
+      "signal_name": "RRR_Obj_09"
+    },
+    {
+      "frame_id": "0x20B",
+      "dataid": "0x080A",
+      "signal_name": "FLR_Obj_10"
+    },
+    {
+      "frame_id": "0x20B",
+      "dataid": "0x080A",
+      "signal_name": "FR_Obj_10"
+    },
+    {
+      "frame_id": "0x20B",
+      "dataid": "0x080A",
+      "signal_name": "RLR_Obj_10"
+    },
+    {
+      "frame_id": "0x20B",
+      "dataid": "0x080A",
+      "signal_name": "RRR_Obj_10"
+    },
+    {
+      "frame_id": "0x20C",
+      "dataid": "0x080B",
+      "signal_name": "FLR_Obj_11"
+    },
+    {
+      "frame_id": "0x20C",
+      "dataid": "0x080B",
+      "signal_name": "FR_Obj_11"
+    },
+    {
+      "frame_id": "0x20C",
+      "dataid": "0x080B",
+      "signal_name": "RLR_Obj_11"
+    },
+    {
+      "frame_id": "0x20C",
+      "dataid": "0x080B",
+      "signal_name": "RRR_Obj_11"
+    },
+    {
+      "frame_id": "0x20D",
+      "dataid": "0x080C",
+      "signal_name": "FLR_Obj_12"
+    },
+    {
+      "frame_id": "0x20D",
+      "dataid": "0x080C",
+      "signal_name": "FR_Obj_12"
+    },
+    {
+      "frame_id": "0x20D",
+      "dataid": "0x080C",
+      "signal_name": "RLR_Obj_12"
+    },
+    {
+      "frame_id": "0x20D",
+      "dataid": "0x080C",
+      "signal_name": "RRR_Obj_12"
+    },
+    {
+      "frame_id": "0x20E",
+      "dataid": "0x080D",
+      "signal_name": "FLR_Obj_13"
+    },
+    {
+      "frame_id": "0x20E",
+      "dataid": "0x080D",
+      "signal_name": "FR_Obj_13"
+    },
+    {
+      "frame_id": "0x20E",
+      "dataid": "0x080D",
+      "signal_name": "RLR_Obj_13"
+    },
+    {
+      "frame_id": "0x20E",
+      "dataid": "0x080D",
+      "signal_name": "RRR_Obj_13"
+    },
+    {
+      "frame_id": "0x20F",
+      "dataid": "0x080E",
+      "signal_name": "FLR_Obj_14"
+    },
+    {
+      "frame_id": "0x20F",
+      "dataid": "0x080E",
+      "signal_name": "FR_Obj_14"
+    },
+    {
+      "frame_id": "0x20F",
+      "dataid": "0x080E",
+      "signal_name": "RLR_Obj_14"
+    },
+    {
+      "frame_id": "0x20F",
+      "dataid": "0x080E",
+      "signal_name": "RRR_Obj_14"
+    },
+    {
+      "frame_id": "0x210",
+      "dataid": "0x080F",
+      "signal_name": "FLR_Obj_15"
+    },
+    {
+      "frame_id": "0x210",
+      "dataid": "0x080F",
+      "signal_name": "FR_Obj_15"
+    },
+    {
+      "frame_id": "0x210",
+      "dataid": "0x080F",
+      "signal_name": "RLR_Obj_15"
+    },
+    {
+      "frame_id": "0x210",
+      "dataid": "0x080F",
+      "signal_name": "RRR_Obj_15"
+    },
+    {
+      "frame_id": "0x211",
+      "dataid": "0x0810",
+      "signal_name": "FLR_Obj_16"
+    },
+    {
+      "frame_id": "0x211",
+      "dataid": "0x0810",
+      "signal_name": "FR_Obj_16"
+    },
+    {
+      "frame_id": "0x211",
+      "dataid": "0x0810",
+      "signal_name": "RLR_Obj_16"
+    },
+    {
+      "frame_id": "0x211",
+      "dataid": "0x0810",
+      "signal_name": "RRR_Obj_16"
+    },
+    {
+      "frame_id": "0x212",
+      "dataid": "0x0811",
+      "signal_name": "FLR_Obj_17"
+    },
+    {
+      "frame_id": "0x212",
+      "dataid": "0x0811",
+      "signal_name": "FR_Obj_17"
+    },
+    {
+      "frame_id": "0x212",
+      "dataid": "0x0811",
+      "signal_name": "RLR_Obj_17"
+    },
+    {
+      "frame_id": "0x212",
+      "dataid": "0x0811",
+      "signal_name": "RRR_Obj_17"
+    },
+    {
+      "frame_id": "0x213",
+      "dataid": "0x0812",
+      "signal_name": "FLR_Obj_18"
+    },
+    {
+      "frame_id": "0x213",
+      "dataid": "0x0812",
+      "signal_name": "FR_Obj_18"
+    },
+    {
+      "frame_id": "0x213",
+      "dataid": "0x0812",
+      "signal_name": "RLR_Obj_18"
+    },
+    {
+      "frame_id": "0x213",
+      "dataid": "0x0812",
+      "signal_name": "RRR_Obj_18"
+    },
+    {
+      "frame_id": "0x214",
+      "dataid": "0x0813",
+      "signal_name": "FLR_Obj_19"
+    },
+    {
+      "frame_id": "0x214",
+      "dataid": "0x0813",
+      "signal_name": "FR_Obj_19"
+    },
+    {
+      "frame_id": "0x214",
+      "dataid": "0x0813",
+      "signal_name": "RLR_Obj_19"
+    },
+    {
+      "frame_id": "0x214",
+      "dataid": "0x0813",
+      "signal_name": "RRR_Obj_19"
+    },
+    {
+      "frame_id": "0x215",
+      "dataid": "0x0814",
+      "signal_name": "FLR_Obj_20"
+    },
+    {
+      "frame_id": "0x215",
+      "dataid": "0x0814",
+      "signal_name": "FR_Obj_20"
+    },
+    {
+      "frame_id": "0x215",
+      "dataid": "0x0814",
+      "signal_name": "RLR_Obj_20"
+    },
+    {
+      "frame_id": "0x215",
+      "dataid": "0x0814",
+      "signal_name": "RRR_Obj_20"
+    },
+    {
+      "frame_id": "0x216",
+      "dataid": "0x0815",
+      "signal_name": "FLR_Obj_21"
+    },
+    {
+      "frame_id": "0x216",
+      "dataid": "0x0815",
+      "signal_name": "FR_Obj_21"
+    },
+    {
+      "frame_id": "0x216",
+      "dataid": "0x0815",
+      "signal_name": "RLR_Obj_21"
+    },
+    {
+      "frame_id": "0x216",
+      "dataid": "0x0815",
+      "signal_name": "RRR_Obj_21"
+    },
+    {
+      "frame_id": "0x217",
+      "dataid": "0x0816",
+      "signal_name": "FLR_Obj_22"
+    },
+    {
+      "frame_id": "0x217",
+      "dataid": "0x0816",
+      "signal_name": "FR_Obj_22"
+    },
+    {
+      "frame_id": "0x217",
+      "dataid": "0x0816",
+      "signal_name": "RLR_Obj_22"
+    },
+    {
+      "frame_id": "0x217",
+      "dataid": "0x0816",
+      "signal_name": "RRR_Obj_22"
+    },
+    {
+      "frame_id": "0x218",
+      "dataid": "0x0817",
+      "signal_name": "FLR_Obj_23"
+    },
+    {
+      "frame_id": "0x218",
+      "dataid": "0x0817",
+      "signal_name": "FR_Obj_23"
+    },
+    {
+      "frame_id": "0x218",
+      "dataid": "0x0817",
+      "signal_name": "RLR_Obj_23"
+    },
+    {
+      "frame_id": "0x218",
+      "dataid": "0x0817",
+      "signal_name": "RRR_Obj_23"
+    },
+    {
+      "frame_id": "0x219",
+      "dataid": "0x0818",
+      "signal_name": "FLR_Obj_24"
+    },
+    {
+      "frame_id": "0x219",
+      "dataid": "0x0818",
+      "signal_name": "FR_Obj_24"
+    },
+    {
+      "frame_id": "0x219",
+      "dataid": "0x0818",
+      "signal_name": "RLR_Obj_24"
+    },
+    {
+      "frame_id": "0x219",
+      "dataid": "0x0818",
+      "signal_name": "RRR_Obj_24"
+    },
+    {
+      "frame_id": "0x21A",
+      "dataid": "0x0819",
+      "signal_name": "FLR_Obj_25"
+    },
+    {
+      "frame_id": "0x21A",
+      "dataid": "0x0819",
+      "signal_name": "FR_Obj_25"
+    },
+    {
+      "frame_id": "0x21A",
+      "dataid": "0x0819",
+      "signal_name": "RLR_Obj_25"
+    },
+    {
+      "frame_id": "0x21A",
+      "dataid": "0x0819",
+      "signal_name": "RRR_Obj_25"
+    },
+    {
+      "frame_id": "0x21B",
+      "dataid": "0x081A",
+      "signal_name": "FLR_Obj_26"
+    },
+    {
+      "frame_id": "0x21B",
+      "dataid": "0x081A",
+      "signal_name": "FR_Obj_26"
+    },
+    {
+      "frame_id": "0x21B",
+      "dataid": "0x081A",
+      "signal_name": "RLR_Obj_26"
+    },
+    {
+      "frame_id": "0x21B",
+      "dataid": "0x081A",
+      "signal_name": "RRR_Obj_26"
+    },
+    {
+      "frame_id": "0x21C",
+      "dataid": "0x081B",
+      "signal_name": "FLR_Obj_27"
+    },
+    {
+      "frame_id": "0x21C",
+      "dataid": "0x081B",
+      "signal_name": "FR_Obj_27"
+    },
+    {
+      "frame_id": "0x21C",
+      "dataid": "0x081B",
+      "signal_name": "RLR_Obj_27"
+    },
+    {
+      "frame_id": "0x21C",
+      "dataid": "0x081B",
+      "signal_name": "RRR_Obj_27"
+    },
+    {
+      "frame_id": "0x21D",
+      "dataid": "0x081C",
+      "signal_name": "FLR_Obj_28"
+    },
+    {
+      "frame_id": "0x21D",
+      "dataid": "0x081C",
+      "signal_name": "FR_Obj_28"
+    },
+    {
+      "frame_id": "0x21D",
+      "dataid": "0x081C",
+      "signal_name": "RLR_Obj_28"
+    },
+    {
+      "frame_id": "0x21D",
+      "dataid": "0x081C",
+      "signal_name": "RRR_Obj_28"
+    },
+    {
+      "frame_id": "0x21E",
+      "dataid": "0x081D",
+      "signal_name": "FLR_Obj_29"
+    },
+    {
+      "frame_id": "0x21E",
+      "dataid": "0x081D",
+      "signal_name": "FR_Obj_29"
+    },
+    {
+      "frame_id": "0x21E",
+      "dataid": "0x081D",
+      "signal_name": "RLR_Obj_29"
+    },
+    {
+      "frame_id": "0x21E",
+      "dataid": "0x081D",
+      "signal_name": "RRR_Obj_29"
+    },
+    {
+      "frame_id": "0x21F",
+      "dataid": "0x081E",
+      "signal_name": "FLR_Obj_30"
+    },
+    {
+      "frame_id": "0x21F",
+      "dataid": "0x081E",
+      "signal_name": "FR_Obj_30"
+    },
+    {
+      "frame_id": "0x21F",
+      "dataid": "0x081E",
+      "signal_name": "RLR_Obj_30"
+    },
+    {
+      "frame_id": "0x21F",
+      "dataid": "0x081E",
+      "signal_name": "RRR_Obj_30"
+    },
+    {
+      "frame_id": "0x220",
+      "dataid": "0x081F",
+      "signal_name": "FLR_Obj_31"
+    },
+    {
+      "frame_id": "0x220",
+      "dataid": "0x081F",
+      "signal_name": "FR_Obj_31"
+    },
+    {
+      "frame_id": "0x220",
+      "dataid": "0x081F",
+      "signal_name": "RLR_Obj_31"
+    },
+    {
+      "frame_id": "0x220",
+      "dataid": "0x081F",
+      "signal_name": "RRR_Obj_31"
+    },
+    {
+      "frame_id": "0x221",
+      "dataid": "0x0820",
+      "signal_name": "FLR_Obj_32"
+    },
+    {
+      "frame_id": "0x221",
+      "dataid": "0x0820",
+      "signal_name": "FR_Obj_32"
+    },
+    {
+      "frame_id": "0x221",
+      "dataid": "0x0820",
+      "signal_name": "RLR_Obj_32"
+    },
+    {
+      "frame_id": "0x221",
+      "dataid": "0x0820",
+      "signal_name": "RRR_Obj_32"
+    },
+    {
+      "frame_id": "0x222",
+      "dataid": "0x0821",
+      "signal_name": "FLR_RadarInfo"
+    },
+    {
+      "frame_id": "0x222",
+      "dataid": "0x0821",
+      "signal_name": "FR_RadarInfo"
+    },
+    {
+      "frame_id": "0x222",
+      "dataid": "0x0821",
+      "signal_name": "RLR_RadarInfo"
+    },
+    {
+      "frame_id": "0x222",
+      "dataid": "0x0821",
+      "signal_name": "RRR_RadarInfo"
+    },
+    {
+      "frame_id": "0x301",
+      "dataid": "0x0800",
+      "signal_name": "FRR_SensorState"
+    },
+    {
+      "frame_id": "0x302",
+      "dataid": "0x0801",
+      "signal_name": "FRR_Obj_01"
+    },
+    {
+      "frame_id": "0x303",
+      "dataid": "0x0802",
+      "signal_name": "FRR_Obj_02"
+    },
+    {
+      "frame_id": "0x304",
+      "dataid": "0x0803",
+      "signal_name": "FRR_Obj_03"
+    },
+    {
+      "frame_id": "0x305",
+      "dataid": "0x0804",
+      "signal_name": "FRR_Obj_04"
+    },
+    {
+      "frame_id": "0x306",
+      "dataid": "0x0805",
+      "signal_name": "FRR_Obj_05"
+    },
+    {
+      "frame_id": "0x307",
+      "dataid": "0x0806",
+      "signal_name": "FRR_Obj_06"
+    },
+    {
+      "frame_id": "0x308",
+      "dataid": "0x0807",
+      "signal_name": "FRR_Obj_07"
+    },
+    {
+      "frame_id": "0x309",
+      "dataid": "0x0808",
+      "signal_name": "FRR_Obj_08"
+    },
+    {
+      "frame_id": "0x30A",
+      "dataid": "0x0809",
+      "signal_name": "FRR_Obj_09"
+    },
+    {
+      "frame_id": "0x30B",
+      "dataid": "0x080A",
+      "signal_name": "FRR_Obj_10"
+    },
+    {
+      "frame_id": "0x30C",
+      "dataid": "0x080B",
+      "signal_name": "FRR_Obj_11"
+    },
+    {
+      "frame_id": "0x30D",
+      "dataid": "0x080C",
+      "signal_name": "FRR_Obj_12"
+    },
+    {
+      "frame_id": "0x30E",
+      "dataid": "0x080D",
+      "signal_name": "FRR_Obj_13"
+    },
+    {
+      "frame_id": "0x30F",
+      "dataid": "0x080E",
+      "signal_name": "FRR_Obj_14"
+    },
+    {
+      "frame_id": "0x310",
+      "dataid": "0x080F",
+      "signal_name": "FRR_Obj_15"
+    },
+    {
+      "frame_id": "0x311",
+      "dataid": "0x0810",
+      "signal_name": "FRR_Obj_16"
+    },
+    {
+      "frame_id": "0x312",
+      "dataid": "0x0811",
+      "signal_name": "FRR_Obj_17"
+    },
+    {
+      "frame_id": "0x313",
+      "dataid": "0x0812",
+      "signal_name": "FRR_Obj_18"
+    },
+    {
+      "frame_id": "0x314",
+      "dataid": "0x0813",
+      "signal_name": "FRR_Obj_19"
+    },
+    {
+      "frame_id": "0x315",
+      "dataid": "0x0814",
+      "signal_name": "FRR_Obj_20"
+    },
+    {
+      "frame_id": "0x316",
+      "dataid": "0x0815",
+      "signal_name": "FRR_Obj_21"
+    },
+    {
+      "frame_id": "0x317",
+      "dataid": "0x0816",
+      "signal_name": "FRR_Obj_22"
+    },
+    {
+      "frame_id": "0x318",
+      "dataid": "0x0817",
+      "signal_name": "FRR_Obj_23"
+    },
+    {
+      "frame_id": "0x319",
+      "dataid": "0x0818",
+      "signal_name": "FRR_Obj_24"
+    },
+    {
+      "frame_id": "0x31A",
+      "dataid": "0x0819",
+      "signal_name": "FRR_Obj_25"
+    },
+    {
+      "frame_id": "0x31B",
+      "dataid": "0x081A",
+      "signal_name": "FRR_Obj_26"
+    },
+    {
+      "frame_id": "0x31C",
+      "dataid": "0x081B",
+      "signal_name": "FRR_Obj_27"
+    },
+    {
+      "frame_id": "0x31D",
+      "dataid": "0x081C",
+      "signal_name": "FRR_Obj_28"
+    },
+    {
+      "frame_id": "0x31E",
+      "dataid": "0x081D",
+      "signal_name": "FRR_Obj_29"
+    },
+    {
+      "frame_id": "0x31F",
+      "dataid": "0x081E",
+      "signal_name": "FRR_Obj_30"
+    },
+    {
+      "frame_id": "0x320",
+      "dataid": "0x081F",
+      "signal_name": "FRR_Obj_31"
+    },
+    {
+      "frame_id": "0x321",
+      "dataid": "0x0820",
+      "signal_name": "FRR_Obj_32"
+    },
+    {
+      "frame_id": "0x322",
+      "dataid": "0x0821",
+      "signal_name": "FRR_RadarInfo"
+    }
+  ]
+}

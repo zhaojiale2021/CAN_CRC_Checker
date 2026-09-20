@@ -392,12 +392,18 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
   Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 </div>
 <div class="summary-cards">
-  <div class="card"><div class="label">Frames</div><div class="value">{report.total_frames}</div></div>
-  <div class="card"><div class="label">Total Verdicts</div><div class="value">{report.total_verdicts}</div></div>
-  <div class="card pass"><div class="label">CRC Pass</div><div class="value">{crc_pass}/{crc_total}</div></div>
-  <div class="card"><div class="label">CRC Rate</div><div class="value">{crc_rate:.1%}</div></div>
-  <div class="card pass"><div class="label">RC Pass</div><div class="value">{rc_pass}/{rc_total}</div></div>
-  <div class="card"><div class="label">RC Rate</div><div class="value">{rc_rate:.1%}</div></div>
+  <div class="card"><div class="label">Frames</div>
+    <div class="value">{report.total_frames}</div></div>
+  <div class="card"><div class="label">Total Verdicts</div>
+    <div class="value">{report.total_verdicts}</div></div>
+  <div class="card pass"><div class="label">CRC Pass</div>
+    <div class="value">{crc_pass}/{crc_total}</div></div>
+  <div class="card"><div class="label">CRC Rate</div>
+    <div class="value">{crc_rate:.1%}</div></div>
+  <div class="card pass"><div class="label">RC Pass</div>
+    <div class="value">{rc_pass}/{rc_total}</div></div>
+  <div class="card"><div class="label">RC Rate</div>
+    <div class="value">{rc_rate:.1%}</div></div>
 </div>
 
 <div class="filter-bar">

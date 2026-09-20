@@ -46,15 +46,10 @@ from crc_checker.dataid.parser import (
 
 
 def _get_xlsx_sheet_names(xlsx_path: str) -> list[str]:
-    """Get sheet names from an .xlsx file using zipfile (avoids openpyxl bugs)."""
+    """Get sheet names from an .xlsx/.xls file (avoids openpyxl bugs)."""
     # pylint: disable=import-outside-toplevel
-    import zipfile
-    import xml.etree.ElementTree as ET
-    ns = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-    # pylint: disable=consider-using-with
-    with zipfile.ZipFile(xlsx_path) as zf:
-        wb_tree = ET.parse(zf.open('xl/workbook.xml'))
-        return [s.get('name', '') for s in wb_tree.findall('.//s:sheet', ns)]
+    from crc_checker.dataid.parser import get_sheet_names
+    return get_sheet_names(xlsx_path)
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +72,10 @@ class RunConfig:
     crc_byte_swap: bool = False                 # Byte-swap computed CRC (Profile 5 LE→BE)
     crc_auto_classify: bool = False             # fx12fl: per-message algo from DBC comments
     crc_overrides: dict[str, str] = field(default_factory=dict)  # frame id/name → preset
+    crc_profiles: dict = field(default_factory=dict)  # profile key → field overrides
+    crc_profile_by_width: bool = False          # select profile from CRC signal width
+    crc_range_overrides: dict = field(default_factory=dict)  # frame/signal → range dict
+    crc_skip: list = field(default_factory=list)  # frame ids/names/signals to skip
     range_mode: str = "exclude_crc"             # full_payload | exclude_crc | custom_range
     range_start: int = 0
     range_end: int = -1
@@ -261,6 +260,62 @@ class RunConfig:
         )
 
 
+def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
+    """Apply every CRC-related section of a RunConfig to a protection map.
+
+    Shared by the ``run`` CLI command and by tests/tools so both drive the
+    protection map in the same order. Order matters:
+
+    1. global params + range (the baseline for every group),
+    2. E2E profiles (per-group algorithm/range/DataID layout),
+    3. per-message range overrides (GAC second E2E segment),
+    4. skip list (signals that only look protected),
+    5. DBC-comment auto-classification, then explicit per-message overrides.
+
+    Returns:
+        Counts per step, for verbose logging (keys: profiles, range_overrides,
+        skip, auto_classify, overrides).
+    """
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.crc.profiles import load_profiles
+
+    counts = {"profiles": 0, "range_overrides": 0, "skip": 0,
+              "auto_classify": 0, "overrides": 0}
+
+    crc_params = cfg.build_crc_params()
+    if crc_params:
+        protection_map.apply_crc_params(crc_params)
+        # Legacy profile handling (Profile 1 → CRC8/SAE-J1850-ZERO) kept for
+        # configs that predate crc.profiles
+        protection_map.apply_profile_crc_params(crc_params)
+    protection_map.apply_crc_range(cfg.build_crc_range())
+
+    if cfg.crc_profiles or cfg.crc_profile_by_width:
+        counts["profiles"] = protection_map.apply_profiles(
+            load_profiles(cfg.crc_profiles),
+            select_by_width=cfg.crc_profile_by_width)
+
+    if cfg.crc_range_overrides:
+        counts["range_overrides"] = protection_map.apply_range_overrides(
+            cfg.crc_range_overrides)
+
+    if cfg.crc_skip:
+        counts["skip"] = protection_map.apply_skip(cfg.crc_skip)
+
+    # fx12fl: per-message algorithm from DBC comments (overrides the defaults above)
+    if cfg.crc_auto_classify:
+        counts["auto_classify"] = protection_map.apply_comment_classification(crc_params)
+
+    # Explicit per-message overrides win over everything above
+    if cfg.crc_overrides:
+        counts["overrides"] = protection_map.apply_crc_overrides(cfg.crc_overrides)
+
+    if cfg.rc_max_valid is not None:
+        protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
+
+    return counts
+
+
 # ---------------------------------------------------------------------------
 # JSON schema (for validation / documentation)
 # ---------------------------------------------------------------------------
@@ -276,12 +331,34 @@ CONFIG_SCHEMA_DOC = """
   // === CRC Algorithm (optional — RC-only if omitted) ===
   "crc": {
     "preset": "CRC8/AUTOSAR"            // Use a built-in preset
+    // "byte_swap": true                // Profile 5: swap computed CRC bytes
     // "auto_classify": true            // fx12fl: per-message algo from DBC comments
     //                                   // (J1850 CRC-8 / SUM8/XOR-FF / XOR8/SEED)
     // "overrides": {                   // per-message algorithm override; keys
     //   "0x287": "SUM8/XOR-FF",        // are frame IDs ("0x287"/647) or frame
     //   "ICM_5": "SUM8/XOR-FF"         // names, applied after auto_classify
     // },
+    // "profile_by_width": true,        // GAC: E2E profile from the CRC signal
+    //                                   // width (2 bytes -> Profile 5, 1 -> Profile 1)
+    // "profiles": {                    // per-profile overrides; unlisted fields keep
+    //   "p01": {                       // the built-in value
+    //     "preset": "CRC8/SAE-J1850-ZERO",   // CRC preset name
+    //     "dataid_position": "prepend",      // append | prepend
+    //     "dataid_byte_order": "lo_hi",      // lo_hi | hi_lo
+    //     "byte_swap": false,                // swap computed CRC bytes
+    //     "counter_max_valid": 14,           // RC valid range 0..14 (15 = invalid)
+    //     "range": { "mode": "custom_range", // "" (inherit config range) |
+    //                "start_byte": 0, "end_byte": -1 }   // exclude_crc | custom_range
+    //   },
+    //   "p05": { "preset": "CRC16/CCITT", "byte_swap": true,
+    //            "range": { "mode": "custom_range", "start_byte": 0, "end_byte": 56 } }
+    // },
+    // "range_overrides": {             // per-message/signal CRC range, e.g. the
+    //   "SRS_1_CRC_2": {               // second E2E instance of CCU_SRS_1
+    //     "mode": "custom_range", "start_byte": 13, "end_byte": 32
+    //   }
+    // },
+    // "skip": ["SYNC_FC_CRC"],         // frame ids/names/signals left unverified
     // OR custom:
     // "custom": {
     //   "width": 8,
@@ -303,9 +380,13 @@ CONFIG_SCHEMA_DOC = """
 
   // === DataID (E2E) ===
   "dataid": {
-    "xlsx": "path/to/dataid.xlsx",
+    "xlsx": "path/to/dataid.xlsx",       // .xlsx or legacy .xls
+    "json": "path/to/dataid.json",       // preprocessed (fast path, wins over xlsx)
     "sheet": "DBC_V2.5 ADAS1",           // blank = auto-detect
-    "mapping": "greatwall_j6m"           // builtin name or JSON string
+    "mapping": "greatwall_j6m",          // builtin name or JSON string
+    "position": "prepend",               // prepend (GWM/Profile 1) | append (Profile 5)
+    "byte_order": "lo_hi",               // lo_hi | hi_lo
+    "default": null                      // DataID for unmatched groups (e.g. 0)
   },
 
   // === Filter ===
@@ -399,6 +480,15 @@ def load_config(config_path: str) -> RunConfig:
         # Per-message algorithm overrides (frame id/name → preset), applied
         # after auto-classification so they always win.
         cfg.crc_overrides = crc.get("overrides") or {}
+        # E2E profile table (GAC: mixes Profile 5 and Profile 1 on one bus).
+        # "profile_by_width" selects the profile from the CRC signal width the
+        # way the firmware does (2-byte CRC → Profile 5, 1-byte → Profile 1).
+        cfg.crc_profiles = crc.get("profiles") or {}
+        cfg.crc_profile_by_width = crc.get("profile_by_width", False)
+        # Per-message CRC range overrides (frame id/name/signal → range dict).
+        cfg.crc_range_overrides = crc.get("range_overrides") or {}
+        # Protection groups to leave unverified (frame ids/names/signal names).
+        cfg.crc_skip = crc.get("skip") or []
 
     # Range
     rng = data.get("range", {})
@@ -468,6 +558,26 @@ def generate_example_config(output_path: str):
         "crc": {
             "_comment": "Use 'preset' for built-in, or 'custom' for custom algorithm.",
             "preset": "CRC8/AUTOSAR",
+            "byte_swap": False,
+            "profile_by_width": False,
+            "_profiles_comment": (
+                "Optional per-profile overrides; unlisted fields keep the built-in value. "
+                "Profile keys: p01 (Profile 1: CRC8/SAE-J1850-ZERO, DataID prepend, "
+                "counter 0..14), p05 (Profile 5: CRC16/CCITT, DataID append, byte_swap, "
+                "range 0..56). Example: "
+                "{\"p01\": {\"preset\": \"CRC8/SAE-J1850-ZERO\", "
+                "\"dataid_position\": \"prepend\", \"byte_swap\": false, "
+                "\"counter_max_valid\": 14, "
+                "\"range\": {\"mode\": \"custom_range\", \"start_byte\": 0, \"end_byte\": -1}}}"
+            ),
+            "profiles": {},
+            "_range_overrides_comment": (
+                "Per-message/signal CRC range, keyed by frame id/name or checksum signal "
+                "name. Example: {\"SRS_1_CRC_2\": {\"mode\": \"custom_range\", "
+                "\"start_byte\": 13, \"end_byte\": 32}}"
+            ),
+            "range_overrides": {},
+            "skip": [],
             "overrides": {}
         },
         "range": {

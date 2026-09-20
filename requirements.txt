@@ -4,6 +4,7 @@ canmatrix>=1.1
 click>=8.1
 bitstruct>=8.19
 openpyxl>=3.0
+xlrd>=2.0
 
 # Development
 pytest>=8

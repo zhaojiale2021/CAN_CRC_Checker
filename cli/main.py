@@ -8,6 +8,7 @@ import click
 
 from crc_checker.crc.models import CRCParams, CRCRange
 from crc_checker.crc.presets import get_preset, list_presets
+from crc_checker.config import apply_crc_config
 from crc_checker.dbc.parser import parse_dbc
 from crc_checker.trace.reader import TraceReader
 from crc_checker.verify.engine import VerifyEngine
@@ -166,7 +167,8 @@ def cli():
               help="Sheet name in the DataID Excel (default: auto-detect)")
 @click.option("--dataid-mapping", default=None,
               help="Column mapping: builtin name "
-                   "(greatwall_j6m, generic_abc, simple_8bit) or JSON string")
+                   "(greatwall_j6m, gac_eea4, chery_t1jfl3, generic_abc, "
+                   "simple_8bit) or JSON string")
 @click.option("--frame-ids", default=None,
               help="Comma-separated CAN IDs to filter (e.g. 0x323,0x299)")
 @click.option("--output", "output_fmt", default="table",
@@ -318,12 +320,10 @@ def run_cmd(config_path, verbose):
         elif cfg.dataid_xlsx:
             click.echo(f"DataID xlsx: {cfg.dataid_xlsx}")
 
-    crc_params = cfg.build_crc_params()
-
     # fx12fl: auto-classify needs a fallback algorithm when the config omits one
-    if cfg.crc_auto_classify and crc_params is None:
-        crc_params = get_preset("CRC8/SAE-J1850")
-    crc_range = cfg.build_crc_range()
+    if cfg.crc_auto_classify and not cfg.crc_preset and not cfg.crc_custom:
+        cfg.crc_preset = "CRC8/SAE-J1850"
+    crc_params = cfg.build_crc_params()
 
     if not crc_params:
         click.echo("Warning: No CRC algorithm configured. RC-only verification.", err=True)
@@ -428,27 +428,20 @@ def run_cmd(config_path, verbose):
         if verbose and n > 0:
             click.echo(f"DataID default (0x{cfg.dataid_default:04X}): {n} groups")
 
-    if crc_params:
-        protection_map.apply_crc_params(crc_params)
-        # Apply profile-based CRC overrides (Profile 1 → CRC8/SAE-J1850-ZERO)
-        protection_map.apply_profile_crc_params(crc_params)
-    protection_map.apply_crc_range(crc_range)
-
-    # fx12fl: per-message algorithm from DBC comments (overrides the defaults above)
-    if cfg.crc_auto_classify:
-        n = protection_map.apply_comment_classification(crc_params)
-        if verbose and n > 0:
-            click.echo(f"CRC auto-classify (DBC comments): {n} groups")
-
-    # Explicit per-message overrides win over everything above (e.g. t1lfl1
-    # ICM_5 has no algorithm comment but the firmware uses SUM8/XOR-FF)
-    if cfg.crc_overrides:
-        n = protection_map.apply_crc_overrides(cfg.crc_overrides)
-        if verbose:
-            click.echo(f"CRC overrides applied: {n} groups")
-
-    if cfg.rc_max_valid is not None:
-        protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
+    # CRC params / range / E2E profiles / overrides / skip list — see
+    # crc_checker.config.apply_crc_config for the exact order of application.
+    counts = apply_crc_config(cfg, protection_map)
+    if verbose:
+        if counts["profiles"]:
+            click.echo(f"E2E profiles applied: {counts['profiles']} groups")
+        if counts["range_overrides"]:
+            click.echo(f"CRC range overrides applied: {counts['range_overrides']} groups")
+        if counts["skip"]:
+            click.echo(f"CRC skip list removed: {counts['skip']} groups")
+        if counts["auto_classify"]:
+            click.echo(f"CRC auto-classify (DBC comments): {counts['auto_classify']} groups")
+        if counts["overrides"]:
+            click.echo(f"CRC overrides applied: {counts['overrides']} groups")
 
     trace_paths = cfg.get_trace_paths()
     if verbose:
@@ -471,7 +464,8 @@ def run_cmd(config_path, verbose):
 @click.option("--sheet", "sheets", multiple=True, default=None,
               help="Sheet name(s) to parse (repeatable; default: all sheets)")
 @click.option("--mapping", default="greatwall_j6m",
-              help="Column mapping: builtin name or JSON string")
+              help="Column mapping: builtin name (greatwall_j6m, gac_eea4, "
+                   "chery_t1jfl3, generic_abc, simple_8bit) or JSON string")
 @click.option("--output", "-o", required=True, type=click.Path(),
               help="Output JSON file path")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")

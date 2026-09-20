@@ -31,10 +31,10 @@ _LITERAL_HEX = re.compile(r'0[xX][0-9A-Fa-f]+')
 _DATAID_RE = re.compile(r'DataID\s*[：:=]?\s*0[xX]([0-9A-Fa-f]+)', re.IGNORECASE)
 
 
-def classify_crc_algo(comment: str) -> str:
+def classify_crc_algo(comment: str) -> str:  # pylint: disable=too-many-return-statements
     """Classify a checksum signal's algorithm from its DBC comment.
 
-    Returns one of "crc8" | "sum_xor" | "xor_seed" | "p01" | "skip"
+    Returns one of "crc8" | "sum_xor" | "xor_seed" | "p01" | "p05" | "skip"
     ('' if not classified).
     """
     desc = comment or ''
@@ -48,6 +48,13 @@ def classify_crc_algo(comment: str) -> str:
     # b81vs Profile 1A (E2E): description mentions Profile 1A + DataID
     if 'PROFILE' in desc_u and '1A' in desc_u:
         return 'p01'
+
+    # AUTOSAR E2E Profile 5 (GAC DBCs: "E2E Profile 5 CRC"): the description
+    # names a profile, not a CRC polynomial. The algorithm/range/DataID layout
+    # come from the profile table (crc/profiles.py), so this must not fall
+    # through to the generic "CRC" → crc8 branch below.
+    if 'PROFILE' in desc_u and re.search(r'PROFILE[^0-9]{0,12}5', desc_u):
+        return 'p05'
 
     # Chery multi-project comment: "HH12_PT_26款项目:((Byte0+...+Byte6) AND
     # 0xFF) XOR 0xFF\nEEA4.01其他项目:SAE J1850 CRC-8" — the first branch is a
@@ -102,8 +109,10 @@ def build_crc_params_from_comment(comment: str,
     algo = classify_crc_algo(comment)
     if not algo:
         return None
-    if algo == 'skip':
+    if algo in ('skip', 'p05'):
         # b81vs: algorithm described in an external file — caller keeps default.
+        # p05: the comment names an E2E profile; params come from
+        # DBCProtectionMap.apply_profiles (crc/profiles.py).
         return None
     if algo == 'sum_xor':
         # All crc_calculatecrcxor implementations (iNetE2E_Can.cpp, b70ks

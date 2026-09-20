@@ -1,0 +1,53 @@
+{
+  "dbc": "dbc",
+  "traces": ["trace"],
+  "crc": {
+    "preset": "CRC16/CCITT",
+    "byte_swap": true,
+    "profile_by_width": true,
+    "profiles": {
+      "p01": {
+        "preset": "CRC8/SAE-J1850-ZERO",
+        "dataid_position": "prepend",
+        "byte_swap": false,
+        "counter_max_valid": 14,
+        "range": { "mode": "custom_range", "start_byte": 0, "end_byte": -1 }
+      }
+    },
+    "range_overrides": {
+      "SRS_1_CRC_1": { "mode": "custom_range", "start_byte": 0, "end_byte": 13 },
+      "SRS_1_CRC_2": { "mode": "custom_range", "start_byte": 13, "end_byte": 32 },
+      "UINM_PADS_1_CRC": { "mode": "custom_range", "start_byte": 0, "end_byte": 8 }
+    },
+    "skip": ["SYNC_FC_CRC"]
+  },
+  "range": {
+    "mode": "custom_range",
+    "start_byte": 0,
+    "end_byte": 56
+  },
+  "dataid": {
+    "xlsx": "dbc/EEA3.0混动系列_E2E DataID Configuration_V1.32.xlsx",
+    "json": "dbc/dataid.json",
+    "sheet": "Data ID Config",
+    "mapping": "gac_eea4",
+    "position": "append",
+    "byte_order": "lo_hi"
+  },
+  "signals": {
+    "checksum_pattern": null,
+    "rc_pattern": null
+  },
+  "filter": {
+    "frame_ids": null,
+    "max_frames": 2000
+  },
+  "output": {
+    "format": "html",
+    "file": "report.html",
+    "only_failures": false
+  },
+  "rc": {
+    "max_valid": null
+  }
+}

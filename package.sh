@@ -4,7 +4,10 @@
 #
 #  Usage:
 #    ./package.sh              Package all customers
-#    ./package.sh gac/t75      Package GAC T75 only
+#    ./package.sh gac/eea40    Package GAC EEA4.0 only
+#    ./package.sh gac/eea30-hev Package GAC EEA3.0 hybrid only
+#    ./package.sh gac/eea30-bev Package GAC EEA3.0 BEV only
+#    ./package.sh gac/radar    Package GAC radar buses only
 #    ./package.sh gwm/de09g    Package GWM DE09G only
 #    ./package.sh chery/t1jfl3 Package Chery T1JFL3 only
 #    ./package.sh chery/fx12fl Package Chery FX12FL only
@@ -15,7 +18,10 @@ set -e
 
 RELEASE_DIR="release"
 ALL_CUSTOMERS=(
-    "gac/t75"
+    "gac/eea40"
+    "gac/eea30-hev"
+    "gac/eea30-bev"
+    "gac/radar"
     "gwm/de09g"
     "gwm/b06-5"
     "chery/t1jfl3"

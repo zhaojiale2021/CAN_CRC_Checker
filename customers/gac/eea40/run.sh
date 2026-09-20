@@ -1,5 +1,5 @@
 #!/bin/bash
-# GWM CAN CRC Checker
+# GAC EEA4.0 platform CAN CRC Checker
 # Usage: ./run.sh [config.json]   (default: config.json)
 
 cd "$(dirname "$0")"
@@ -10,5 +10,11 @@ if [ ! -f "$CONFIG" ]; then
     exit 1
 fi
 
-echo "GWM CAN CRC Check: $CONFIG"
-./crc-check.exe run -c "$CONFIG" -v
+if [ -x ./crc-check ]; then
+    BIN=./crc-check
+else
+    BIN=./crc-check.exe
+fi
+
+echo "GAC EEA4.0 CAN CRC Check: $CONFIG"
+"$BIN" run -c "$CONFIG" -v

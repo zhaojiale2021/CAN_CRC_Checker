@@ -12,6 +12,7 @@ mappings can be passed via CLI (`--dataid-columns` JSON) or programmatically.
 """
 # pylint: disable=import-outside-toplevel
 # pylint: disable=consider-using-with
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -20,6 +21,16 @@ import logging
 import re
 
 logger = logging.getLogger("crc_checker")
+
+
+def normalize_signal_key(name: str) -> str:
+    """Normalize a signal/message name for fuzzy-but-exact DataID matching.
+
+    The GAC DataID tables name the CRC signal in the Remark column
+    ("SRS_1_CRC2"), while the DBC spells it "SRS_1_CRC_2"; underscores and
+    case are not significant, so both collapse to "srs1crc2".
+    """
+    return re.sub(r'[^0-9a-z]', '', (name or '').lower())
 
 
 class DataIDMap:
@@ -33,6 +44,9 @@ class DataIDMap:
         self._map: dict[tuple[int, str], int] = {}  # (frame_id, signal_name) → dataid
         self._profiles: dict[tuple[int, str], str] = {}  # (frame_id, signal_name) → profile
         self._frame_names: dict[tuple[int, str], str] = {}  # (frame_id, signal_name) → msg name
+        # Normalized index: (frame_id, normalize_signal_key(name)) → dataid
+        self._norm: dict[tuple[int, str], int] = {}
+        self._norm_profiles: dict[tuple[int, str], str] = {}
 
     def add(self, frame_id: int, signal_name: str, dataid: int, profile: str = ""):
         """Register a DataID for a specific checksum signal.
@@ -46,14 +60,27 @@ class DataIDMap:
         self._map[(frame_id, signal_name)] = dataid
         if profile:
             self._profiles[(frame_id, signal_name)] = profile
+        norm_key = normalize_signal_key(signal_name)
+        if norm_key:
+            self._norm[(frame_id, norm_key)] = dataid
+            if profile:
+                self._norm_profiles[(frame_id, norm_key)] = profile
 
     def get(self, frame_id: int, signal_name: str) -> int | None:
         """Get DataID for a frame/signal pair, or None if not found."""
         return self._map.get((frame_id, signal_name))
 
+    def get_normalized(self, frame_id: int, signal_name: str) -> int | None:
+        """Get DataID by normalized (underscore/case-insensitive) signal name."""
+        return self._norm.get((frame_id, normalize_signal_key(signal_name)))
+
     def get_profile(self, frame_id: int, signal_name: str) -> str | None:
         """Get profile hint for a frame/signal pair, or None."""
         return self._profiles.get((frame_id, signal_name))
+
+    def get_profile_normalized(self, frame_id: int, signal_name: str) -> str | None:
+        """Get profile hint by normalized signal name, or None."""
+        return self._norm_profiles.get((frame_id, normalize_signal_key(signal_name)))
 
     def __len__(self) -> int:
         return len(self._map)
@@ -157,6 +184,12 @@ class DataIDMap:
             if key in self._map:
                 overwritten += 1
             self._map[key] = value
+        # Merge normalized index (kept in sync with the exact map)
+        for key, value in other._norm.items():  # pylint: disable=protected-access
+            self._norm[key] = value
+        for key, profile in other._norm_profiles.items():  # pylint: disable=protected-access
+            if profile:
+                self._norm_profiles[key] = profile
         # Merge profiles and frame names
         for key, profile in other._profiles.items():  # pylint: disable=protected-access
             if profile:
@@ -451,6 +484,109 @@ def _parse_dataid_value(hi_val, lo_val, fmt: str) -> int | None:
     return None
 
 
+def _parse_message_id(value, base: int = 16) -> int | None:  # pylint: disable=too-many-return-statements
+    """Parse a CAN ID cell ("0x268", "268" in hex, or a numeric cell)."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if text.lower().startswith("0x"):
+            try:
+                return int(text, 16)
+            except ValueError:
+                return None
+        if all(c in '0123456789abcdefABCDEF' for c in text):
+            try:
+                return int(text, base)
+            except ValueError:
+                return None
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    return None
+
+
+def _entry_names(signal_name: str, remark: str) -> list[str]:
+    """Names a DataID row is registered under.
+
+    The message name is always registered (GAC sheets name the message), and
+    when the Remark column names a CRC signal (GAC EEA3/EEA4: "SRS_1_CRC1",
+    "SRS_1_CRC2", "SRS_1_CRC3" for the same message) that name is registered
+    too — otherwise the rows of a multi-CRC message overwrite each other and
+    only the last one survives.
+    """
+    names = [signal_name]
+    remark = (remark or "").strip()
+    if (remark and remark.lower() != (signal_name or "").lower()
+            and re.match(r'^[A-Za-z0-9_]*[_]CRC[_]?[0-9]*$', remark, re.IGNORECASE)):
+        names.append(remark)
+    return names
+
+
+def _add_dataid_row(row: list, mapping: ColumnMapping, dataid_map: DataIDMap) -> bool:
+    """Parse one spreadsheet row (list of cells) into the DataID map.
+
+    Shared by the openpyxl, raw-xlsx and xlrd (.xls) readers.
+
+    Returns:
+        True when the row produced a DataID entry.
+    """
+    # pylint: disable=too-many-return-statements,too-many-locals
+    max_col_needed = max(
+        mapping.col_signal_name,
+        mapping.col_message_id,
+        mapping.col_dataid_hi,
+        mapping.col_dataid_lo if mapping.col_dataid_lo >= 0 else 0,
+        mapping.col_remark if mapping.col_remark >= 0 else 0,
+    )
+    if len(row) <= max_col_needed:
+        return False
+
+    signal_name = row[mapping.col_signal_name]
+    dataid_hi = row[mapping.col_dataid_hi]
+    dataid_lo = row[mapping.col_dataid_lo] if mapping.col_dataid_lo >= 0 else None
+
+    # Skip header/sub-header rows
+    if dataid_hi is None and dataid_lo is None:
+        return False
+    if isinstance(dataid_hi, str) and dataid_hi.lower() in (
+            "high_byte", "dataid", "data_id", "data id"):
+        return False
+    if not isinstance(signal_name, str):
+        return False
+    # Excel cells carry stray whitespace (GAC EEA3.0混动 has trailing spaces on
+    # "ZCUR_8 " / "SBM_5 "; the BEV sheet title uses non-breaking spaces).
+    # Without stripping, the entry never matches the DBC name and the message
+    # silently gets no DataID (CRC then fails on every frame).
+    signal_name = signal_name.strip()
+
+    # Filter by signal name keyword (supports both prefix and suffix naming)
+    if mapping.signal_name_filter:
+        name_lower = signal_name.lower()
+        if not any(pfx in name_lower for pfx in mapping.signal_name_filter):
+            return False
+
+    frame_id = _parse_message_id(row[mapping.col_message_id], mapping.message_id_base)
+    if frame_id is None:
+        return False
+
+    dataid = _parse_dataid_value(dataid_hi, dataid_lo, mapping.dataid_format)
+    if dataid is None:
+        return False
+
+    # Remark column: profile marker ("Profile Variant 1A") or CRC signal name
+    remark = ""
+    if 0 <= mapping.col_remark < len(row) and isinstance(row[mapping.col_remark], str):
+        remark = row[mapping.col_remark].strip()
+    profile = remark if "profile" in remark.lower() else ""
+
+    for name in _entry_names(signal_name, remark):
+        dataid_map.add(frame_id, name, dataid, profile)
+    return True
+
+
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
                     mapping: ColumnMapping) -> DataIDMap:
@@ -552,65 +688,8 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
                 cell_values[col_idx] = val
                 max_col = max(max_col, col_idx)
 
-            # Extract values using column mapping
-            max_col_needed = max(
-                mapping.col_signal_name,
-                mapping.col_message_id,
-                mapping.col_dataid_hi,
-                mapping.col_dataid_lo if mapping.col_dataid_lo >= 0 else 0,
-                mapping.col_remark if mapping.col_remark >= 0 else 0,
-            )
-            if max_col < max_col_needed:
-                continue
-
-            signal_name = cell_values.get(mapping.col_signal_name)
-            message_id_str = cell_values.get(mapping.col_message_id)
-            dataid_hi = cell_values.get(mapping.col_dataid_hi)
-            dataid_lo = cell_values.get(
-                mapping.col_dataid_lo) if mapping.col_dataid_lo >= 0 else None
-
-            # Skip header/sub-header rows
-            if dataid_hi is None and dataid_lo is None:
-                continue
-            if isinstance(dataid_hi, str) and dataid_hi.lower() in (
-                "high_byte", "dataid", "data_id", "data id"):
-                continue
-            if not isinstance(signal_name, str):
-                continue
-
-            # Filter by signal name keyword (supports both prefix and suffix naming)
-            if mapping.signal_name_filter:
-                name_lower = signal_name.lower()
-                if not any(pfx in name_lower
-                          for pfx in mapping.signal_name_filter):
-                    continue
-
-            # Parse message ID
-            try:
-                msg_id_raw = message_id_str.strip() if message_id_str else ""
-                if msg_id_raw.startswith("0x") or msg_id_raw.startswith("0X"):
-                    frame_id = int(msg_id_raw, 16)
-                elif all(c in '0123456789abcdefABCDEF' for c in msg_id_raw):
-                    # Pure hex without 0x prefix
-                    frame_id = int(msg_id_raw, mapping.message_id_base)
-                else:
-                    continue
-            except (ValueError, TypeError):
-                continue
-
-            # Parse DataID
-            dataid = _parse_dataid_value(dataid_hi, dataid_lo, mapping.dataid_format)
-            if dataid is not None:
-                # Parse remark for profile info
-                profile = ""
-                remark_col = getattr(mapping, 'col_remark', -1)
-                if remark_col >= 0:
-                    remark_val = cell_values.get(remark_col)
-                    if remark_val and isinstance(remark_val, str):
-                        remark_val = remark_val.strip()
-                        if "profile" in remark_val.lower():
-                            profile = remark_val
-                dataid_map.add(frame_id, signal_name, dataid, profile)
+            row = [cell_values.get(i) for i in range(max_col + 1)]
+            _add_dataid_row(row, mapping, dataid_map)
 
         return dataid_map
 
@@ -686,6 +765,60 @@ def _parse_description_regex(ws, mapping, dataid_map, sheet_name, wb) -> DataIDM
     return dataid_map
 
 
+def is_xls_file(path: str) -> bool:
+    """True for legacy BIFF .xls files (OLE2 compound document magic)."""
+    try:
+        with open(path, "rb") as f:
+            return f.read(8) == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+    except OSError:
+        return False
+
+
+def get_xls_sheet_names(path: str) -> list[str]:
+    """Sheet names of a legacy .xls workbook (requires xlrd)."""
+    import xlrd
+    return list(xlrd.open_workbook(path).sheet_names())
+
+
+def get_sheet_names(path: str) -> list[str]:
+    """Sheet names of an .xlsx or .xls workbook."""
+    if is_xls_file(path):
+        return get_xls_sheet_names(path)
+    import zipfile
+    import xml.etree.ElementTree as ET
+    ns = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+    with zipfile.ZipFile(path) as zf:
+        wb_tree = ET.parse(zf.open('xl/workbook.xml'))
+        return [s.get('name', '') for s in wb_tree.findall('.//s:sheet', ns)]
+
+
+def _parse_xls(xls_path: str, sheet_name: str, mapping: ColumnMapping) -> DataIDMap:
+    """Parse a legacy BIFF (.xls) DataID workbook via xlrd.
+
+    Same column mapping as the .xlsx path — several GAC platforms ship their
+    E2E DataID configuration only as .xls (EEA3.0纯电平台).
+    """
+    import xlrd
+    book = xlrd.open_workbook(xls_path)
+    if sheet_name not in book.sheet_names():
+        available = ", ".join(book.sheet_names())
+        raise ValueError(f"Sheet '{sheet_name}' not found. Available: {available}")
+
+    sheet = book.sheet_by_name(sheet_name)
+    rows = [[sheet.cell_value(r, c) for c in range(sheet.ncols)]
+            for r in range(sheet.nrows)]
+
+    # Auto-detect columns from the header row (same rule as the xlsx paths)
+    header_row_num = mapping.data_row_start - 1 if mapping.data_row_start > 1 else 1
+    if header_row_num and header_row_num <= len(rows):
+        mapping = _auto_detect_columns(mapping, rows[header_row_num - 1])
+
+    dataid_map = DataIDMap(sheet_name=sheet_name)
+    for row in rows[mapping.data_row_start - 1:]:
+        _add_dataid_row(row, mapping, dataid_map)
+    return dataid_map
+
+
 def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         xlsx_path: str,
         sheet_name: str | None = None,
@@ -720,6 +853,13 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
                     f"Available builtins: {list(BUILTIN_MAPPINGS.keys())}. "
                     f"Or pass a JSON string with ColumnMapping fields. Error: {e}"
                 ) from e
+
+    # Legacy BIFF .xls workbooks (GAC EEA3.0纯电平台) go through xlrd
+    if is_xls_file(xlsx_path):
+        if sheet_name is None:
+            names = get_xls_sheet_names(xlsx_path)
+            sheet_name = names[0] if names else "Sheet1"
+        return _parse_xls(xlsx_path, sheet_name, mapping)
 
     # Determine sheet name if not provided
     if sheet_name is None:
@@ -766,61 +906,7 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
     for row in ws.iter_rows(min_row=mapping.data_row_start, values_only=True):
         if not row:
             continue
-
-        # Read cells according to column mapping
-        max_col_needed = max(
-            mapping.col_signal_name,
-            mapping.col_message_id,
-            mapping.col_dataid_hi,
-            mapping.col_dataid_lo if mapping.col_dataid_lo >= 0 else 0,
-            mapping.col_remark if mapping.col_remark >= 0 else 0,
-        )
-        if len(row) <= max_col_needed:
-            continue
-
-        signal_name = row[mapping.col_signal_name]
-        message_id_str = row[mapping.col_message_id]
-        dataid_hi = row[mapping.col_dataid_hi]
-        dataid_lo = row[mapping.col_dataid_lo] if mapping.col_dataid_lo >= 0 else None
-
-        # Skip header/sub-header rows
-        if dataid_hi is None and dataid_lo is None:
-            continue
-        if isinstance(dataid_hi, str) and dataid_hi.lower() in ("high_byte", "dataid", "data_id"):
-            continue
-        if not isinstance(signal_name, str):
-            continue
-
-        # Filter by signal name keyword (supports both prefix and suffix naming)
-        if mapping.signal_name_filter:
-            name_lower = signal_name.lower()
-            if not any(pfx in name_lower for pfx in mapping.signal_name_filter):
-                continue
-
-        # Parse message ID
-        try:
-            if isinstance(message_id_str, str):
-                frame_id = int(message_id_str, mapping.message_id_base)
-            elif isinstance(message_id_str, (int, float)):
-                frame_id = int(message_id_str)
-            else:
-                continue
-        except (ValueError, TypeError):
-            continue
-
-        # Parse DataID
-        dataid = _parse_dataid_value(dataid_hi, dataid_lo, mapping.dataid_format)
-        if dataid is not None:
-            # Parse remark for profile info
-            profile = ""
-            remark_col = getattr(mapping, 'col_remark', -1)
-            if 0 <= remark_col < len(row):
-                remark_val = row[remark_col]
-                if remark_val and isinstance(remark_val, str):
-                    remark_val = remark_val.strip()
-                    if "profile" in remark_val.lower():
-                        profile = remark_val
-            dataid_map.add(frame_id, signal_name, dataid, profile)
+        _add_dataid_row(list(row), mapping, dataid_map)
 
     wb.close()
     return dataid_map
@@ -905,16 +991,8 @@ def parse_dataid_xlsx_multi(xlsx_path: str,
     Returns:
         Merged DataIDMap with entries from all sheets.
     """
-    # pylint: disable=import-outside-toplevel
-    import zipfile
-    import xml.etree.ElementTree as ET
-
-    # Get sheet names via raw zipfile (avoids openpyxl)
-    ns_s = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-    # pylint: disable=consider-using-with
-    with zipfile.ZipFile(xlsx_path) as zf:
-        wb_tree = ET.parse(zf.open('xl/workbook.xml'))
-        all_sheets = [s.get('name', '') for s in wb_tree.findall('.//s:sheet', ns_s)]
+    # Get sheet names (handles both .xlsx and legacy .xls)
+    all_sheets = get_sheet_names(xlsx_path)
 
     if sheet_names:
         all_sheets = [s for s in all_sheets if s in sheet_names]
