@@ -11,9 +11,16 @@
 | skip | `算法另附文件` / nibble 亚字节校验 | 不自动校验，保持默认算法 |
 
 - 命名：CRC `<Msg>_Checksum` / `<Msg>_Chks`，RC `<Msg>_RollingCounter` / `<Msg>Cntr`
-- CAN FD 多段报文：每段段首一个 CRC（`*_Chks1/2/3…`），段内 4bit RC，DataID 逐段独立
+- CAN FD 多段报文：每段段首一个 CRC（`*_Chks1/2/3…`），段内 4bit RC，DataID 逐段独立。
+  每段 CRC 的覆盖范围是该段 8 字节内 CRC 之后的 7 字节（注释原文
+  `DataID and the following 7 bytes are included in CRC checksum calculation`），
+  即 `CRC8/SAE-J1850-ZERO(DataID_lo, DataID_hi, byte1…byte7)`——**不是**整帧的其余字节。
+  多段报文：`ADC_APA_0x135`（3 段，DataID 0x00E8/9/A）、`ADC_ADAS_0x136`（4 段，0x00EB…EE）、
+  `IDC_0x38C`（3 段，0x0042/3/4）
 - 常规报文：CRC 在 byte0 或 byte7，`exclude_crc` 按信号位自动排除
 - 3 通道：ADASBUS / BJEVCR / FR60（`dbc/` 目录多 DBC，按通道自动选择）
+- ADASBUS 矩阵为 GBK 编码，注释里的全角标点（`（Profile：1A；DataID：…）`）用于解析
+  DataID；解析器会自动识别文件编码（utf-8 → gbk → latin-1），DBC 可原样使用
 - 传统 CAN（BJEVCR/FR60）的 `Checksum<ID>` 无算法注释，默认按 SUM8 校验；
   其中 16bit 校验位的精确行为待真实 trace 验证后确认
 

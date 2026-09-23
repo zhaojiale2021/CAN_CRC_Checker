@@ -1,9 +1,33 @@
 """Tests for signal name resolution and DBC parsing."""
 
+from crc_checker.crc.classify import parse_dataid_from_comment
+from crc_checker.crc.engine import CRCEngine
+from crc_checker.crc.models import CRCRange
 from crc_checker.crc.presets import get_preset
+from crc_checker.dbc.parser import DBCParser, parse_dbc
 from crc_checker.dbc.resolver import SignalResolver
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
 from crc_checker.dataid.parser import DataIDMap
+from crc_checker.trace.models import CanFrame
+
+# Minimal DBC whose Profile 1A comment (full-width punctuation) only survives
+# the load when the file encoding is honoured.
+_GBK_DBC = """VERSION ""
+
+NS_ :
+\tCM_
+
+BS_:
+
+BU_: IDC CGW
+
+BO_ 309 ADC_APA_0x135: 24 IDC
+ SG_ ADC_APA1Chks : 7|8@0+ (1,0) [0|255] "" CGW
+ SG_ ADC_APA1Cntr : 11|4@0+ (1,0) [0|14] "" CGW
+
+CM_ SG_ 309 ADC_APA1Chks "CRC checksum. Refer to E2E Spec.（Profile：1A；DataID：0x00E8）";
+CM_ SG_ 309 ADC_APA1Cntr "Rolling counter.";
+"""
 
 
 class TestSignalResolver:
@@ -438,3 +462,45 @@ class TestApplyDataIDName:
         dm.add(0x300, "SigABC", 0x9ABC)
         pm.apply_dataid_map(dm)
         assert prot.dataid_name == "SigABC"
+
+
+class TestDBCEncoding:
+    """GBK-encoded OEM matrices must not turn their comments into mojibake."""
+
+    def test_detect_encoding(self, tmp_path):
+        """GBK bytes are detected as gbk, ASCII as utf-8, garbage falls back."""
+        gbk_file = tmp_path / "gbk.dbc"
+        gbk_file.write_bytes(_GBK_DBC.encode("gbk"))
+        assert DBCParser._detect_encoding(str(gbk_file)) == "gbk"  # pylint: disable=protected-access
+
+        ascii_file = tmp_path / "ascii.dbc"
+        ascii_file.write_bytes(_GBK_DBC.encode("utf-8", errors="replace"))
+        assert DBCParser._detect_encoding(str(ascii_file)) == "utf-8"  # pylint: disable=protected-access
+
+        # Latin-1 can always decode, so an undecodable file must not raise.
+        bad_file = tmp_path / "bad.dbc"
+        bad_file.write_bytes(b"\xd0\xd1\xd2\xd3\xff\xfe")
+        assert DBCParser._detect_encoding(str(bad_file))  # pylint: disable=protected-access
+
+    def test_profile1a_dataid_parsed_from_gbk_comment(self, tmp_path):
+        """The DataID in a GBK comment drives Profile 1A verification."""
+        dbc_file = tmp_path / "gbk.dbc"
+        dbc_file.write_bytes(_GBK_DBC.encode("gbk"))
+
+        pm = parse_dbc(str(dbc_file))
+        groups = pm.messages[309]
+        chks = next(p for p in groups if p.checksum_signal.name == "ADC_APA1Chks")
+        assert "DataID：0x00E8" in chks.checksum_comment
+        assert parse_dataid_from_comment(chks.checksum_comment) == 0x00E8
+
+    def test_crc_coverage_is_the_crc_segment(self):
+        """Profile 1A CRC = DataID + the 7 bytes after the CRC byte of its segment."""
+        engine = CRCEngine(get_preset("CRC8/SAE-J1850-ZERO"))
+        payload = bytes.fromhex("0102030405060708 F1F2F3F4F5F6F7F8")
+        frame = CanFrame(timestamp=0.0, arbitration_id=0x135, dlc=len(payload),
+                         data=payload)
+        # Second 8-byte segment: the CRC at byte 8 covers bytes 9..15 only.
+        crc_range = CRCRange.for_segment(checksum_start_bit=71, dataid=0x00E9)
+        assert crc_range.start_byte == 8
+        assert engine.compute_for_frame(frame, crc_range, 71, 8, "big_endian") == \
+            engine.compute(bytes([0xE9, 0x00]) + payload[9:16])

@@ -41,6 +41,28 @@ class DBCParser:
                 raise FileNotFoundError(f"DBC path not found: {p}")
         return result
 
+    @staticmethod
+    def _detect_encoding(dbc_path: str) -> str:
+        """Guess the text encoding of a DBC file.
+
+        DBCs come from many tools: most are ASCII/UTF-8, but OEM matrices with
+        Chinese comments are frequently saved as GBK (BAIC B81VS, Chery). canmatrix
+        falls back to latin-1, which turns the comments into mojibake and breaks
+        comment-driven parsing (e.g. the Profile 1A "DataID：0x00EB" pattern).
+
+        Returns:
+            Name of the first codec that decodes the whole file strictly
+            ("utf-8", "gbk"), else "latin-1" (never raises).
+        """
+        raw = Path(dbc_path).read_bytes()
+        for encoding in ("utf-8", "gbk"):
+            try:
+                raw.decode(encoding)
+                return encoding
+            except UnicodeDecodeError:
+                continue
+        return "latin-1"
+
     def parse(self, dbc_path: str) -> DBCProtectionMap:
         """Parse a DBC file and build the protection map.
 
@@ -52,8 +74,10 @@ class DBCParser:
         """
         dbc_name = Path(dbc_path).name
 
-        # Load DBC with canmatrix (loadp returns dict of name->CanMatrix)
-        loaded = canmatrix.formats.loadp(dbc_path)
+        # Load DBC with canmatrix (loadp returns dict of name->CanMatrix).
+        # Pass the detected encoding so non-ASCII comments survive the load.
+        loaded = canmatrix.formats.loadp(
+            dbc_path, dbcImportEncoding=self._detect_encoding(dbc_path))
         db = list(loaded.values())[0]
 
         # Convert to frame dicts for resolver
