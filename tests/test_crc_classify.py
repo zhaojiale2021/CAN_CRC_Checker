@@ -6,7 +6,7 @@ com_code_generator.
 
 from crc_checker.crc.classify import (
     classify_crc_algo, parse_crc_seed, build_crc_params_from_comment,
-    parse_dataid_from_comment,
+    parse_dataid_from_comment, parse_sum_byte_range,
 )
 from crc_checker.crc.presets import get_preset
 
@@ -169,3 +169,28 @@ class TestBuildParams:
     def test_skip_returns_none(self):
         """skip comments return None (caller keeps the default algorithm)."""
         assert build_crc_params_from_comment("CRC8 算法另附文件") is None
+
+
+class TestParseSumByteRange:
+    """Covered byte range of a sum checksum, as named by its DBC comment."""
+
+    def test_b81vs_first_segment(self):
+        """'byte1+byte2+…+byte 7' -> (1, 7); the ellipsis is a full-width char."""
+        assert parse_sum_byte_range(
+            "Checksum = (byte1+byte2+…+byte 7）and 0xFF") == (1, 7)
+
+    def test_b81vs_later_segment(self):
+        """Multi-segment frames name absolute positions (byte17..byte23)."""
+        assert parse_sum_byte_range(
+            "Checksum = (byte17+byte18+…+byte 23）and 0xFF") == (17, 23)
+
+    def test_fx12fl_style(self):
+        """fx12fl lists byte0..byte6 with plain ASCII punctuation."""
+        assert parse_sum_byte_range(
+            "((Byte0+Byte1+Byte2+Byte3+Byte4+Byte5+Byte6) AND 0xFF) XOR 0xFF"
+        ) == (0, 6)
+
+    def test_no_byte_list(self):
+        """A comment without a byte list yields None (caller keeps the default)."""
+        assert parse_sum_byte_range("CRC8算法另附文件") is None
+        assert parse_sum_byte_range("") is None

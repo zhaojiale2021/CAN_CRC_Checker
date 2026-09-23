@@ -88,8 +88,9 @@ class DBCProtectionMap:
         # pylint: disable=import-outside-toplevel
         from crc_checker.crc.classify import (
             build_crc_params_from_comment, classify_crc_algo,
-            parse_dataid_from_comment,
+            parse_dataid_from_comment, parse_sum_byte_range,
         )
+        from crc_checker.crc.profiles import BUILTIN_PROFILES
 
         applied = 0
 
@@ -117,6 +118,21 @@ class DBCProtectionMap:
                     dataid = parse_dataid_from_comment(prot.checksum_comment)
                     if dataid is not None:
                         prot.dataid = dataid
+                    # Profile 1 counters are 4-bit 0..14 (15 = invalid), so the
+                    # plain 2^n - 1 default would flag every wrap E->0 as a failure.
+                    prot.rc_max_valid = BUILTIN_PROFILES['p01'].counter_max_valid
+                elif (algo == 'sum_xor' and prot.dlc > 8
+                        and (prot.crc_range is None
+                             or prot.crc_range.mode == "exclude_crc")):
+                    # Multi-segment CAN FD: the global "exclude_crc" fallback would
+                    # sum the whole frame, but each checksum only covers the byte
+                    # range its comment names (b81vs ADAS2_ACANFD: byte1..7,
+                    # byte9..15, byte17..23, …). An explicit range still wins.
+                    byte_range = parse_sum_byte_range(prot.checksum_comment)
+                    if byte_range is not None:
+                        prot.crc_range = CRCRange(
+                            mode="custom_range",
+                            start_byte=byte_range[0], end_byte=byte_range[1] + 1)
                 params = build_crc_params_from_comment(
                     prot.checksum_comment, default_params)
                 if params is not None:

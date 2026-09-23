@@ -29,6 +29,8 @@ from crc_checker.crc.presets import get_preset
 _LITERAL_HEX = re.compile(r'0[xX][0-9A-Fa-f]+')
 # b81vs Profile 1A DataID: "DataID：0x00EB" (full-width colon tolerated)
 _DATAID_RE = re.compile(r'DataID\s*[：:=]?\s*0[xX]([0-9A-Fa-f]+)', re.IGNORECASE)
+# Sum-checksum byte list: "byte1+byte2+…+byte 7" / "Byte0+Byte1+...+Byte6"
+_BYTE_INDEX_RE = re.compile(r'BYTE\s*(\d+)', re.IGNORECASE)
 
 
 def classify_crc_algo(comment: str) -> str:  # pylint: disable=too-many-return-statements
@@ -90,6 +92,22 @@ def parse_dataid_from_comment(comment: str) -> int | None:
     """Extract a b81vs Profile 1A DataID ("DataID：0x00EB") from a comment."""
     m = _DATAID_RE.search(comment or '')
     return int(m.group(1), 16) if m else None
+
+
+def parse_sum_byte_range(comment: str) -> tuple[int, int] | None:
+    """Extract the covered byte range from a sum-checksum comment.
+
+    b81vs / fx12fl comments list the summed bytes in absolute frame positions,
+    e.g. "Checksum = (byte1+byte2+…+byte 7) and 0xFF" or "((Byte0+Byte1+...+Byte6)
+    AND 0xFF) XOR 0xFF". Multi-segment CAN FD frames name each segment's range
+    (byte1..7, byte9..15, byte17..23, …), so the range is what tells the checker
+    which 8-byte block a checksum covers.
+
+    Returns:
+        Inclusive (start_byte, end_byte), or None when the comment lists no bytes.
+    """
+    indices = [int(n) for n in _BYTE_INDEX_RE.findall(comment or '')]
+    return (min(indices), max(indices)) if indices else None
 
 
 def build_crc_params_from_comment(comment: str,

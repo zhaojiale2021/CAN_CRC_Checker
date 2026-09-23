@@ -1,9 +1,36 @@
 """Tests for signal name resolution and DBC parsing."""
 
+import os
+
+from crc_checker.crc.classify import parse_dataid_from_comment
+from crc_checker.crc.engine import CRCEngine
+from crc_checker.crc.models import CRCRange
 from crc_checker.crc.presets import get_preset
+from crc_checker.dbc.parser import DBCParser, parse_dbc
 from crc_checker.dbc.resolver import SignalResolver
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
 from crc_checker.dataid.parser import DataIDMap
+from crc_checker.protect.checksum import CRCVerifier
+from crc_checker.trace.models import CanFrame
+
+# Minimal DBC whose Profile 1A comment (full-width punctuation) only survives
+# the load when the file encoding is honoured.
+_GBK_DBC = """VERSION ""
+
+NS_ :
+\tCM_
+
+BS_:
+
+BU_: IDC CGW
+
+BO_ 309 ADC_APA_0x135: 24 IDC
+ SG_ ADC_APA1Chks : 7|8@0+ (1,0) [0|255] "" CGW
+ SG_ ADC_APA1Cntr : 11|4@0+ (1,0) [0|14] "" CGW
+
+CM_ SG_ 309 ADC_APA1Chks "CRC checksum. Refer to E2E Spec.（Profile：1A；DataID：0x00E8）";
+CM_ SG_ 309 ADC_APA1Cntr "Rolling counter.";
+"""
 
 
 class TestSignalResolver:
@@ -438,3 +465,104 @@ class TestApplyDataIDName:
         dm.add(0x300, "SigABC", 0x9ABC)
         pm.apply_dataid_map(dm)
         assert prot.dataid_name == "SigABC"
+
+
+class TestDBCEncoding:
+    """GBK-encoded OEM matrices must not turn their comments into mojibake."""
+
+    def test_detect_encoding(self, tmp_path):
+        """GBK bytes are detected as gbk, ASCII as utf-8, garbage falls back."""
+        gbk_file = tmp_path / "gbk.dbc"
+        gbk_file.write_bytes(_GBK_DBC.encode("gbk"))
+        assert DBCParser._detect_encoding(str(gbk_file)) == "gbk"  # pylint: disable=protected-access
+
+        ascii_file = tmp_path / "ascii.dbc"
+        ascii_file.write_bytes(_GBK_DBC.encode("utf-8", errors="replace"))
+        assert DBCParser._detect_encoding(str(ascii_file)) == "utf-8"  # pylint: disable=protected-access
+
+        # Latin-1 can always decode, so an undecodable file must not raise.
+        bad_file = tmp_path / "bad.dbc"
+        bad_file.write_bytes(b"\xd0\xd1\xd2\xd3\xff\xfe")
+        assert DBCParser._detect_encoding(str(bad_file))  # pylint: disable=protected-access
+
+    def test_profile1a_dataid_parsed_from_gbk_comment(self, tmp_path):
+        """The DataID in a GBK comment drives Profile 1A verification."""
+        dbc_file = tmp_path / "gbk.dbc"
+        dbc_file.write_bytes(_GBK_DBC.encode("gbk"))
+
+        pm = parse_dbc(str(dbc_file))
+        groups = pm.messages[309]
+        chks = next(p for p in groups if p.checksum_signal.name == "ADC_APA1Chks")
+        assert "DataID：0x00E8" in chks.checksum_comment
+        assert parse_dataid_from_comment(chks.checksum_comment) == 0x00E8
+
+    def test_crc_coverage_is_the_crc_segment(self):
+        """Profile 1A CRC = DataID + the 7 bytes after the CRC byte of its segment."""
+        engine = CRCEngine(get_preset("CRC8/SAE-J1850-ZERO"))
+        payload = bytes.fromhex("0102030405060708 F1F2F3F4F5F6F7F8")
+        frame = CanFrame(timestamp=0.0, arbitration_id=0x135, dlc=len(payload),
+                         data=payload)
+        # Second 8-byte segment: the CRC at byte 8 covers bytes 9..15 only.
+        crc_range = CRCRange.for_segment(checksum_start_bit=71, dataid=0x00E9)
+        assert crc_range.start_byte == 8
+        assert engine.compute_for_frame(frame, crc_range, 71, 8, "big_endian") == \
+            engine.compute(bytes([0xE9, 0x00]) + payload[9:16])
+
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+B81VS_DBC = os.path.join(
+    REPO_ROOT, "customers", "baic", "b81vs", "dbc",
+    "BAIC_B81VS_ADASBUS_IDC_CANFD_V1.4_20260915.dbc")
+
+# One captured ADAS2_ACANFD (0x393) frame: 5 SUM8/XOR-FF segments in a 64-byte
+# frame, tail padded with 0xFF. The checksum bytes are the firmware's own.
+_ADAS2_FRAME = bytes.fromhex(
+    "ED FC FF FF 0F 02 00 07 F3 0C 00 00 00 00 00 00 "
+    "33 0C 20 00 80 00 00 20 EB 0C 00 00 00 00 00 08 "
+    "37 0C 00 80 3F FF FF FF") + b"\xFF" * 24
+
+
+class TestB81vsCommentConfig:
+    """Comment-driven E2E settings on the shipped BAIC B81VS matrix."""
+
+    @staticmethod
+    def _classified(frame_id: int) -> list[MessageProtection]:
+        prot_map = parse_dbc(B81VS_DBC)
+        prot_map.apply_comment_classification()
+        return prot_map.messages[frame_id]
+
+    def test_profile1a_counter_max_is_14(self):
+        """Profile 1 counters run 0..14 — the 4-bit default (15) flags every wrap."""
+        for frame_id in (0x135, 0x136, 0x38C):
+            groups = self._classified(frame_id)
+            assert groups
+            assert all(g.rc_max_valid == 14 for g in groups), hex(frame_id)
+
+    def test_multisegment_sum_checksum_ranges(self):
+        """0x393's five checksums cover the bytes named by their own comments."""
+        groups = [g for g in self._classified(0x393) if g.checksum_signal]
+        ranges = sorted((g.checksum_signal.name, g.crc_range.start_byte,
+                         g.crc_range.end_byte) for g in groups)
+        assert ranges == [
+            ("ADAS2_Checksum1", 1, 8),
+            ("ADAS2_Checksum2", 9, 16),
+            ("ADAS2_Checksum3", 17, 24),
+            ("ADAS2_Checksum4", 25, 32),
+            ("ADAS2_Checksum5", 33, 40),
+        ]
+
+    def test_sum_checksums_match_firmware_frame(self):
+        """The captured frame's five checksums are reproduced exactly.
+
+        The whole-frame fallback ("sum the 64 bytes minus this checksum's byte")
+        yields 0x09/0x0F/0x4F/0x07/0x53 and fails all five.
+        """
+        assert len(_ADAS2_FRAME) == 64
+        frame = CanFrame(timestamp=0.0, arbitration_id=0x393, dlc=64,
+                         data=_ADAS2_FRAME)
+        verifier = CRCVerifier(get_preset("SUM8/XOR-FF"))
+        for group in self._classified(0x393):
+            if group.checksum_signal is None:
+                continue
+            verdict = verifier.verify(frame, group)
+            assert verdict is not None and verdict.is_pass, verdict.detail

@@ -33,38 +33,38 @@ NS_ :
 
 BS_:
 
-BU_: IDC Delete_FDCA Delete_APA Delete_CMRR_FL Delete_CMRR_FR CMRR_RL CMRR_RR CGW 
+BU_: IDC Delete_FDCA Delete_APA Delete_CMRR_FL Delete_CMRR_FR CMRR_RL CMRR_RR MRR CGW 
 
 
 BO_ 640 PDCU_EMS_5: 8 CGW
- SG_ EMS5_RollingCounter : 7|4@0+ (1,0) [0|15] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EMS5_F_BrakePedal : 3|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EMS5_St_BrakePedal : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EMS5_RollingCounter : 7|4@0+ (1,0) [0|15] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EMS5_F_BrakePedal : 3|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EMS5_St_BrakePedal : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ EMS5_St_LimpHome : 32|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ EMS5_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EMS5_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 792 WCBS_ESP_1: 8 CGW
  SG_ WCBS_ESP1_St_AutoHoldAvailable : 7|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
  SG_ WCBS_ESP1_St_AutoHold : 6|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
  SG_ WCBS_ESP1_St_AutoHoldTelltale : 5|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP1_Cmd_EPBPark : 4|2@0+ (1,0) [0|3] "" IDC,Delete_APA
- SG_ WCBS_ESP1_St_TCSActive : 2|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_St_TCSActive : 2|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP1_St_BrakeLightControl : 1|1@0+ (1,0) [0|1] "" IDC,Delete_APA
- SG_ WCBS_ESP1_St_ABSActive : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_St_ABSActive : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP1_St_EBDActive : 15|1@0+ (1,0) [0|1] "" IDC,Delete_APA
- SG_ WCBS_ESP1_St_ESPFailureTelltale : 14|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP1_St_ESPTCSOffTelltale : 13|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_St_ESPFailureTelltale : 14|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP1_St_ESPTCSOffTelltale : 13|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP1_St_DecelerationActive : 11|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP1_St_ABSTelltale : 23|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP1_St_EBDTelltale : 22|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP1_St_ESPActive : 21|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_St_ESPActive : 21|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP1_St_ESPTCSActiveTelltale : 20|1@0+ (1,0) [0|1] "" IDC,Delete_APA
- SG_ WCBS_ESP1_St_HDCTelltale : 17|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_St_HDCTelltale : 17|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP1_N_OdometerRoll : 31|16@0+ (1,0) [0|65535] "pulses" IDC,Delete_APA
- SG_ WCBS_ESP1_St_WCBSFault : 47|2@0+ (1,0) [0|3] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_St_WCBSFault : 47|2@0+ (1,0) [0|3] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP1_St_BrakeFluidW : 45|1@0+ (1,0) [0|1] "" IDC,Delete_APA
- SG_ WCBS_ESP1_RollingCounter : 55|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP1_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP1_RollingCounter : 55|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP1_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 288 WCBS_ESP_2: 8 CGW
  SG_ WCBS_ESP2_RollingCounter : 7|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA
@@ -74,96 +74,96 @@ BO_ 288 WCBS_ESP_2: 8 CGW
  SG_ WCBS_ESP2_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA
 
 BO_ 1600 WCBS_ESP_3: 8 CGW
- SG_ WCBS_ESP3_F_FLWheelSpeed : 7|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP3_N_FLWheelSpeed : 5|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP3_F_FRWheelSpeed : 23|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP3_N_FRWheelSpeed : 21|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP3_RollingCounter : 39|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP3_Checksum : 47|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
+ SG_ WCBS_ESP3_F_FLWheelSpeed : 7|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP3_N_FLWheelSpeed : 5|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP3_F_FRWheelSpeed : 23|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP3_N_FRWheelSpeed : 21|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP3_RollingCounter : 39|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP3_Checksum : 47|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
 
 BO_ 1616 WCBS_ESP_4: 8 CGW
- SG_ WCBS_ESP4_N_BrakePedalStroke : 7|7@0+ (1,-5) [-5|108] "mm" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP4_F_BrakePedalStroke : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP4_Checksum : 23|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP4_RollingCounter : 31|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP4_F_RLWheelSpeed : 39|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP4_N_RLWheelSpeed : 37|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP4_F_RRWheelSpeed : 55|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
- SG_ WCBS_ESP4_N_RRWheelSpeed : 53|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
+ SG_ WCBS_ESP4_N_BrakePedalStroke : 7|7@0+ (1,-5) [-5|108] "mm" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP4_F_BrakePedalStroke : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP4_Checksum : 23|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP4_RollingCounter : 31|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP4_F_RLWheelSpeed : 39|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP4_N_RLWheelSpeed : 37|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP4_F_RRWheelSpeed : 55|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
+ SG_ WCBS_ESP4_N_RRWheelSpeed : 53|14@0+ (0.0625,0) [0|300] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
 
 BO_ 785 WCBS_ESP_5: 8 CGW
- SG_ WCBS_ESP5_St_VehicleStandstill : 7|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP5_St_VehicleStandstill : 7|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP5_St_APAVLC : 5|4@0+ (1,0) [0|15] "" IDC,Delete_APA
  SG_ WCBS_ESP5_St_APACDDActive : 1|1@0+ (1,0) [0|1] "" IDC
  SG_ WCBS_ESP5_St_GearInhit : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
- SG_ WCBS_ESP5_RollingCounter : 12|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP5_F_VehicleSpeed : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP5_RollingCounter : 12|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP5_F_VehicleSpeed : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP5_St_APACDDAv : 23|1@0+ (1,0) [0|1] "" IDC,Delete_APA
  SG_ WCBS_ESP5_St_NoBrakeForce : 22|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP5_St_ACCCDDActive : 21|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP5_St_ACCCDDAv : 20|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP5_St_ABAactive : 19|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP5_St_ABAavailable : 18|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP5_St_PrefillActive : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP5_St_PrefillAvailable : 16|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP5_St_AEBdecActive : 31|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP5_St_AEBdecAv : 30|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP5_St_PrefillActive : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP5_St_PrefillAvailable : 16|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP5_St_AEBdecActive : 31|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP5_St_AEBdecAv : 30|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP5_St_DecSupportAc : 29|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP5_St_DecSupportAv : 28|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP5_AWBactive : 27|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP5_AWBavailable : 26|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP5_AWBactive : 27|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP5_AWBavailable : 26|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP5_QDCFail : 25|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP5_BrakeOverheat : 24|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP5_N_VehicleSpeed : 39|13@0+ (0.05625,0) [0|259.9875] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP5_N_VehicleSpeed : 39|13@0+ (0.05625,0) [0|259.9875] "km/h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP5_St_APALCFailure : 42|3@0+ (1,0) [0|7] "bit" IDC,Delete_APA
  SG_ WCBS_ESP5_St_APAVLCAv : 55|1@0+ (1,0) [0|1] "" IDC,Delete_APA
  SG_ WCBS_ESP5_St_TCSOffTelltale : 48|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP5_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP5_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 1008 WCBS_ESP_6: 8 CGW
- SG_ WCBS_ESP6_F_LongitudeAcc : 7|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_F_LateralAcc : 6|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_F_YawVelocity : 5|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP6_F_LongitudeAcc : 7|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_F_LateralAcc : 6|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_F_YawVelocity : 5|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP6_F_BrakePressure : 4|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP6_RollingCounter : 3|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_N_LongitudeAcc : 15|12@0+ (0.02,-25) [-25|25] "m/s2" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_FCTB_avaliable : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_RCTB_avaliable : 16|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_N_LateralAcc : 31|8@0+ (0.2,-25) [-25|25] "m/s2" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_N_YawVelocity : 39|13@0+ (0.001,-2.5) [-2.5|2.5] "rad/s" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_Checksum : 55|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP6_N_BrakePressure : 63|8@0+ (1,0) [0|255] "bar" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP6_RollingCounter : 3|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_N_LongitudeAcc : 15|12@0+ (0.02,-25) [-25|25] "m/s2" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_FCTB_avaliable : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_RCTB_avaliable : 16|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_N_LateralAcc : 31|8@0+ (0.2,-25) [-25|25] "m/s2" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_N_YawVelocity : 39|13@0+ (0.001,-2.5) [-2.5|2.5] "rad/s" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_Checksum : 55|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP6_N_BrakePressure : 63|8@0+ (1,0) [0|255] "bar" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 579 WCBS_ESP_10: 8 CGW
- SG_ WCBS_ESP10_N_FRPulse : 7|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_N_FLPulse : 15|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_N_RRPulse : 23|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_N_RLPulse : 31|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_F_FRPulse : 39|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_F_FLPulse : 38|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_F_RRPulse : 37|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_F_RLPulse : 36|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP10_N_FRPulse : 7|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_N_FLPulse : 15|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_N_RRPulse : 23|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_N_RLPulse : 31|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_F_FRPulse : 39|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_F_FLPulse : 38|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_F_RRPulse : 37|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_F_RLPulse : 36|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP10_St_HBA : 35|1@0+ (1,0) [0|1] "" IDC
  SG_ WCBS_ESP10_St_HHC : 33|1@0+ (1,0) [0|1] "" IDC
- SG_ WCBS_ESP10_RollingCounter : 55|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP10_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP10_RollingCounter : 55|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP10_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 578 WCBS_ESP_13: 8 CGW
- SG_ WCBS_ESP13_St_VDCFail : 7|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP13_St_BrakePedal : 6|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP13_St_TCSFail : 5|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP13_St_VDCFail : 7|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP13_St_BrakePedal : 6|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP13_St_TCSFail : 5|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP13_St_ACCVLCActive : 2|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP13_St_VLCAvailable : 1|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP13_St_VLCFail : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ WCBS_ESP13_N_VLCITA : 15|8@0+ (0.05,-7) [-7|5.75] "m/s^2" IDC,Delete_FDCA
- SG_ WCBS_ESP13_St_LHFWDD : 23|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP13_St_RHFWDD : 20|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP13_St_LHFWDD : 23|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP13_St_RHFWDD : 20|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP13_St_DCFail : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ WCBS_ESP13_St_LHRWDD : 31|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP13_St_RHRWDD : 28|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP13_St_LHRWDD : 31|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP13_St_RHRWDD : 28|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ WCBS_ESP13_St_CCOActive : 55|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA
- SG_ WCBS_ESP13_RollingCounter : 51|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ WCBS_ESP13_CheckSum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ WCBS_ESP13_RollingCounter : 51|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ WCBS_ESP13_CheckSum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 784 WCBS_EPB_1: 8 CGW
  SG_ EPB1_RollingCounter : 7|4@0+ (1,0) [0|15] "" IDC,Delete_APA
@@ -184,12 +184,12 @@ BO_ 1297 PDCU_ATS_1: 8 CGW
  SG_ ATS1_Checksum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA,Delete_APA
 
 BO_ 384 EPS_SAS: 8 CGW
- SG_ EPS_SAS_Checksum : 7|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EPS_SAS_RollingCounter : 3|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EPS_SAS_St_Calibrated : 9|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EPS_SAS_St_SensorInfo : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EPS_SAS_N_RotationSpeed : 23|8@0+ (4,0) [0|1016] "degree/ sec" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EPS_SAS_N_SteeringAngle : 31|16@0+ (0.1,-780) [-780|780] "degree" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EPS_SAS_Checksum : 7|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EPS_SAS_RollingCounter : 3|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EPS_SAS_St_Calibrated : 9|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EPS_SAS_St_SensorInfo : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EPS_SAS_N_RotationSpeed : 23|8@0+ (4,0) [0|1016] "degree/ sec" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EPS_SAS_N_SteeringAngle : 31|16@0+ (0.1,-780) [-780|780] "degree" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ EPS_St_DrvStrInterDeteToADAS : 46|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ EPS_F_DrvStrInterDeteToADAS : 45|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ EPS_SysAvlSts_APA : 42|3@0+ (1,0) [0|7] "" IDC
@@ -270,19 +270,19 @@ BO_ 1315 CDC_EHC_3: 8 CGW
  SG_ EHC3_Set_LDWSen : 11|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA
 
 BO_ 1319 CDC_EHC_6: 8 CGW
- SG_ EHC6_N_Year : 7|7@0+ (1,2000) [2000|2127] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC6_N_Month : 0|4@0+ (1,0) [0|12] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC6_N_Day : 12|5@0+ (1,0) [0|31] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC6_N_Hour : 23|5@0+ (1,0) [0|24] "h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC6_N_Minute : 31|6@0+ (1,0) [0|60] "M" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC6_N_Second : 25|6@0+ (1,0) [0|60] "S" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EHC6_N_Year : 7|7@0+ (1,2000) [2000|2127] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC6_N_Month : 0|4@0+ (1,0) [0|12] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC6_N_Day : 12|5@0+ (1,0) [0|31] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC6_N_Hour : 23|5@0+ (1,0) [0|24] "h" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC6_N_Minute : 31|6@0+ (1,0) [0|60] "M" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC6_N_Second : 25|6@0+ (1,0) [0|60] "S" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ EHC6_St_Navigation : 35|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA
  SG_ EHC6_Set_LanguageSetting : 55|4@0+ (1,0) [0|15] "" IDC,Delete_APA
  SG_ EHC6_TiMod : 50|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA
  SG_ EHC6_DateWeek : 59|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA
 
 BO_ 1766 CDC_EHC_11: 8 CGW
- SG_ EHC11_St_TrailerFcnActive : 1|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EHC11_St_TrailerFcnActive : 1|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ IccSentiModReq : 53|2@0+ (1,0) [0|3] "" IDC,Delete_APA
  SG_ CDC_Cmd_CampGuardee : 51|3@0+ (1,0) [0|7] "" IDC,Delete_APA
  SG_ IccSentiModSts : 58|3@0+ (1,0) [0|7] "" IDC,Delete_APA
@@ -291,7 +291,8 @@ BO_ 1568 CDC_IPC_1: 8 CGW
  SG_ IPC1_F_OdometerParameter : 0|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
  SG_ IPC1_St_QDashACCFail : 12|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ IPC1_St_DISFail : 10|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
- SG_ IPC1_N_OdoMeter : 23|32@0+ (0.01,0) [0|2000000] "km" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ IPC1_N_OdoMeter : 23|32@0+ (0.01,0) [0|2000000] "km" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ ICC_PrivacyAgreementSwt : 49|2@0+ (1,0) [0|1] "" IDC
 
 BO_ 656 APA_1: 8 IDC
  SG_ APA1_N_TargetSteeringAng : 7|16@0+ (0.1,-780) [-780|780] "degree" CGW
@@ -374,32 +375,32 @@ BO_ 917 APA_AVM_2: 8 IDC
  SG_ AvmSts : 39|3@0+ (1,0) [0|7] "" CGW
 
 BO_ 1392 BDC_CAPE_1: 8 CGW
- SG_ CAPE1_F_PowerMode : 7|2@0+ (1,0) [0|2] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ CAPE1_St_PowerMode : 5|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ CAPE1_F_PowerMode : 7|2@0+ (1,0) [0|2] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ CAPE1_St_PowerMode : 5|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ CAPE1_St_PepsRemPwrMod : 27|3@0+ (1,0) [0|7] "" IDC,Delete_APA
- SG_ CAPE1_RollingCounter : 55|8@0+ (1,0) [0|255] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ CAPE1_CheckSum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ CAPE1_RollingCounter : 55|8@0+ (1,0) [0|255] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ CAPE1_CheckSum : 63|8@0+ (1,0) [0|255] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 1184 BDC_BCM_1: 8 CGW
  SG_ BCM1_Cmd_PositionLamp : 15|1@0+ (1,0) [0|1] "" IDC,Delete_APA
- SG_ BCM1_Sw_TurnLeftLamp : 11|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_Sw_TurnRightLamp : 10|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ BCM1_Sw_TurnLeftLamp : 11|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_Sw_TurnRightLamp : 10|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ BCM1_St_HazzardFlash : 9|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ BCM1_St_HighBeam : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
  SG_ BCM1_Cmd_LeftTurnLamp : 23|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
- SG_ BCM1_St_LeftTurnLamp : 22|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ BCM1_St_LeftTurnLamp : 22|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ BCM1_Cmd_RightTurnLamp : 21|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
- SG_ BCM1_St_RightTurnLamp : 20|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ BCM1_St_RightTurnLamp : 20|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ BCM1_St_PositionLamp : 19|1@0+ (1,0) [0|1] "" IDC,Delete_APA
- SG_ BCM1_St_AntiThelfIndication : 18|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_LFDoorLock : 31|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_PasDoorLock : 30|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_DriverDoor : 29|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_PassengerDoor : 28|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_LRDoor : 27|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_RRDoor : 26|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_TrunkDoor : 25|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM1_St_Hood : 24|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ BCM1_St_AntiThelfIndication : 18|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_LFDoorLock : 31|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_PasDoorLock : 30|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_DriverDoor : 29|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_PassengerDoor : 28|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_LRDoor : 27|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_RRDoor : 26|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_TrunkDoor : 25|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM1_St_Hood : 24|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ BCM1_Sw_Brake : 35|1@0+ (1,0) [0|1] "" IDC,Delete_APA
  SG_ BCM1_Sw_ReverseGear : 34|1@0+ (1,0) [0|1] "" IDC,Delete_APA
  SG_ BCM1_St_LowBeam : 46|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
@@ -416,8 +417,8 @@ BO_ 1184 BDC_BCM_1: 8 CGW
 
 BO_ 1203 BDC_BCM_2: 8 CGW
  SG_ BCM2_St_FrontWiper : 13|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA
- SG_ BCM2_St_LRDoorLock : 58|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ BCM2_St_RRDoorLock : 57|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ BCM2_St_LRDoorLock : 58|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ BCM2_St_RRDoorLock : 57|1@0+ (1,0) [0|1] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 866 BDC_BCM_4: 8 CGW
  SG_ BCM4_St_DRSeatbelt : 12|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA
@@ -434,7 +435,7 @@ BO_ 866 BDC_BCM_4: 8 CGW
  SG_ BCM4_Sw_RearFogLamp : 61|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
 
 BO_ 1383 BDC_BCM_9: 8 CGW
- SG_ BCM9_St_LightSoundInhibition : 43|2@0+ (1,0) [0|3] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ BCM9_St_LightSoundInhibition : 43|2@0+ (1,0) [0|3] "" IDC,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
 
 BO_ 1380 DCU_LF_1: 8 CGW
  SG_ DLF1_St_LmirrorFold : 25|2@0+ (1,0) [0|3] "" IDC,Delete_APA
@@ -484,26 +485,26 @@ BO_ 902 CMRR_RR_2: 8 IDC
 BO_ 324 PDCU_0x144: 8 CGW
  SG_ Pdcu0x144Chks1 : 7|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA
  SG_ Pdcu0x144Cntr1 : 11|4@0+ (1,0) [0|14] "" IDC,Delete_FDCA
- SG_ PdcuRdySt : 16|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
+ SG_ PdcuRdySt : 16|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
  SG_ PdcuDrvCycDetc : 17|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ PdcuWrmupCycDetec : 18|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ PdcuEspVehSpd : 31|16@0+ (0.1,0) [0|300] "km/h" IDC,Delete_FDCA
  SG_ PdcuEnrgMod : 23|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA
  SG_ PdcuTqPatonRat : 63|7@0+ (1,0) [0|100] "" IDC,Delete_FDCA
- SG_ PdcuSelGearVld : 20|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ PdcuSelGear : 15|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ PdcuSelGearVld : 20|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ PdcuSelGear : 15|4@0+ (1,0) [0|15] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ PdcuTqFltFlg : 56|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
  SG_ PdcuActvDchaEnaFlg : 55|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ PdcuVehAllwRefrshFlg : 53|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
- SG_ PdcuStrtActv : 51|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,Vector__XXX
+ SG_ PdcuStrtActv : 51|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,Vector__XXX
  SG_ PdcuAccrPedl1Volt : 47|8@0+ (19.6078,0) [0|5000] "mV" IDC,Delete_FDCA
  SG_ PdcuAccrPedl1VoltVld : 50|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA
 
 BO_ 267 PDCU_0x10B: 8 CGW
- SG_ PdcuAccPedalPosVld : 12|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ PdcuAccPedalPosDigVld : 40|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ PdcuAccPedalPos : 23|8@0+ (0.3937,0) [0|100.395] "%" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ PdcuAccPedalPosDig : 31|8@0+ (0.3937,0) [0|100.395] "%" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ PdcuAccPedalPosVld : 12|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ PdcuAccPedalPosDigVld : 40|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ PdcuAccPedalPos : 23|8@0+ (0.3937,0) [0|100.395] "%" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ PdcuAccPedalPosDig : 31|8@0+ (0.3937,0) [0|100.395] "%" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ PdcuEbrEnFlg : 42|2@0+ (1,0) [0|2] "" IDC,Delete_FDCA
  SG_ PdcuEbrReqFlg : 15|2@0+ (1,0) [0|2] "" IDC,Delete_FDCA
  SG_ PdcuEbrTagTrq : 39|13@0+ (1,0) [0|6000] "Nm" IDC,Delete_FDCA
@@ -571,6 +572,7 @@ BO_ 306 WCBS_0x132: 8 CGW
  SG_ WCBS_LgtReqModeACtiveSts : 43|2@0+ (1,0) [0|3] "" IDC
  SG_ WCBS_ADLCFailureSts : 47|3@0+ (1,0) [0|7] "" IDC
  SG_ WCBS_APAavailable : 25|1@0+ (1,0) [0|1] "" IDC
+ SG_ WCBS_OMPavailable : 57|1@0+ (1,0) [0|1] "" IDC
 
 BO_ 307 WCBS_0x133: 8 CGW
  SG_ WCBS0x133Chks1 : 7|8@0+ (1,0) [0|255] "" IDC,Delete_FDCA
@@ -656,6 +658,7 @@ BO_ 1508 FDCA_1: 8 IDC
  SG_ ADAS_FDCA1_St_FCWMode : 39|3@0+ (1,0) [0|7] "" CGW
  SG_ ADAS_FDCA1_St_TSRwarning : 35|1@0+ (1,0) [0|1] "" CGW
  SG_ ADAS_FDCA1_LDW_meter_Warning : 34|2@0+ (1,0) [0|3] "" CGW
+ SG_ ADC_PrivacyAgreementSts : 42|2@0+ (1,0) [0|1] "" CGW
  SG_ FDCA1_St_VehicleMode : 40|3@0+ (1,0) [0|7] "" CGW
  SG_ ADAS_FDCA1_ESSTraj : 53|2@0+ (1,0) [0|3] "" CGW
  SG_ FDCA1_RollingCounter : 51|4@0+ (1,0) [0|15] "" CGW
@@ -774,6 +777,7 @@ BO_ 915 ADAS2_ACANFD: 64 IDC
  SG_ ADC_enum_PrkgBuzAlrmLvlReq : 282|3@0+ (1,0) [0|7] "" Vector__XXX
  SG_ ADC_SysStartupInPro : 283|1@0+ (1,0) [0|1] "" Vector__XXX
  SG_ ADC_IMUSentiWarningSts : 286|3@0+ (1,0) [0|7] "" Vector__XXX
+ SG_ MPC_SOCOffSwtFb : 295|2@0+ (1,0) [0|3] "" Vector__XXX
 
 BO_ 547 ADAS3_ACANFD: 64 IDC
  SG_ AdasHmiNeighboringObj1ObjTyp : 7|3@0+ (1,0) [0|7] "" CGW
@@ -903,8 +907,8 @@ BO_ 2015 DLC_Diag_Function: 8 CGW
 BO_ 585 APA_0x249: 8 IDC
  SG_ RemPrkgReq : 1|2@0+ (1,0) [0|3] "" CGW
  SG_ ApaAbordReason : 7|6@0+ (1,0) [0|63] "" CGW
- SG_ ApaSts : 11|4@0+ (1,0) [0|15] "" Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,CGW
- SG_ RpaSts : 15|4@0+ (1,0) [0|15] "" Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,CGW
+ SG_ ApaSts : 11|4@0+ (1,0) [0|15] "" Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,CGW
+ SG_ RpaSts : 15|4@0+ (1,0) [0|15] "" Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,CGW
  SG_ APA_0x249_St_ParkingOutMode : 23|2@0+ (1,0) [0|3] "" CGW
  SG_ APA_0x249_St_ParkingInMode : 21|2@0+ (1,0) [0|3] "" CGW
  SG_ ApaParkOutDirSts : 19|4@0+ (1,0) [0|15] "" CGW
@@ -921,8 +925,8 @@ BO_ 585 APA_0x249: 8 IDC
  SG_ ApaUnfoldMirror : 45|2@0+ (1,0) [0|3] "" CGW
  SG_ APA_HazardWarningLightsReq : 47|2@0+ (1,0) [0|3] "" CGW
  SG_ ApaSuspendReason : 55|4@0+ (1,0) [0|15] "" CGW
- SG_ APA_0x249_RollingCounter : 51|4@0+ (1,0) [0|15] "" Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,CGW
- SG_ APA_0x249_Checksum : 63|8@0+ (1,0) [0|255] "" Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,CGW
+ SG_ APA_0x249_RollingCounter : 51|4@0+ (1,0) [0|15] "" Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,CGW
+ SG_ APA_0x249_Checksum : 63|8@0+ (1,0) [0|255] "" Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR,CGW
 
 BO_ 658 APA_5: 24 IDC
  SG_ ApaDispReq : 13|6@0+ (1,0) [0|63] "" CGW
@@ -1210,9 +1214,10 @@ BO_ 858 BDC_BCM_12: 8 CGW
  SG_ BCM12_St_VehicleMode : 23|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA,Delete_APA
 
 BO_ 529 TIM_1: 8 CGW
- SG_ TIM1_St_TIMSt : 9|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ TIM1_St_TrailerLightsFaultSt : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ TIM1_St_SoftSwMemory : 23|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ TIM1_St_TIMSt : 9|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ TIM1_St_TrailerLightsFaultSt : 8|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ TIM1_St_SoftSwMemory : 23|1@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_APA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ TIM1_St_SoftSwMemoryNew : 20|2@0+ (1,0) [0|3] "" IDC,CMRR_RL,CMRR_RR,MRR
 
 BO_ 225 CDC_EHC_24: 8 CGW
  SG_ EHC12_St_AVMSaleCalibration : 18|2@0+ (1,0) [0|3] "" IDC,Delete_APA
@@ -1245,8 +1250,8 @@ BO_ 237 CDC_EHC_22: 8 CGW
  SG_ EHC22_ESS_EnbSw : 11|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_LKA_EnbSw : 9|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_LDW_EnbSw : 23|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
- SG_ EHC22_BSD_LCA_EnbSw : 21|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC22_DOW_EnbSw : 19|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EHC22_BSD_LCA_EnbSw : 21|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC22_DOW_EnbSw : 19|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ EHC22_ELK_EnbSw : 17|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_AVM_EnbSw : 31|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_HMA_EnbSw : 29|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
@@ -1254,14 +1259,14 @@ BO_ 237 CDC_EHC_22: 8 CGW
  SG_ EHC22_LCK_EnbSw : 25|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_ASLSw : 33|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_Set_FcwSwt : 35|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
- SG_ EHC22_Set_FCTA : 37|2@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
- SG_ EHC22_Set_FCTB : 39|2@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EHC22_Set_FCTA : 37|2@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
+ SG_ EHC22_Set_FCTB : 39|2@0+ (1,0) [0|1] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ EHC22_Set_LDWLKALCKSen : 41|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_Sw_LDWLKALCK : 43|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_St_LDWLKALCKSet : 46|3@0+ (1,0) [0|7] "" IDC,Delete_FDCA
  SG_ EHC22_NOAFct_EnbSw : 50|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_SDA_EnbSw : 53|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
- SG_ EHC22_Set_JA : 55|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR
+ SG_ EHC22_Set_JA : 55|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA,Delete_CMRR_FL,Delete_CMRR_FR,CMRR_RL,CMRR_RR,MRR
  SG_ EHC22_CDCShowoffset : 57|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
  SG_ EHC22_Set_ELKSen : 59|2@0+ (1,0) [0|3] "" IDC,Delete_FDCA
 
@@ -1364,6 +1369,11 @@ BO_ 444 CDC_0x1BC: 8 CGW
  SG_ ICC_ATSMode : 36|2@0+ (1,0) [0|3] "" IDC,Delete_APA
  SG_ ICC_N_CoorA_Y : 31|11@0+ (1,0) [0|1080] "pixel" IDC,Delete_APA
  SG_ ICC_ScrnAngle : 32|9@0+ (1,0) [0|511] "" IDC,Delete_APA
+ SG_ ICCAdasApaSocOffSwt : 34|2@0+ (1,0) [0|3] "" IDC
+ SG_ ICC_AvapViewSource : 58|3@0+ (1,0) [0|7] "" IDC
+ SG_ ICC_AvapSysSts : 61|3@0+ (1,0) [0|7] "" IDC
+ SG_ ICCAvmCalibrationParameter : 11|1@0+ (1,0) [0|1] "" IDC
+ SG_ ICCApaCalibrationReq : 63|2@0+ (1,0) [0|3] "" IDC
 
 BO_ 1099 IDC_NM: 8 IDC
  SG_ IDC_44B_NM_SrcAdr : 7|8@0+ (1,0) [0|127] "" Vector__XXX
@@ -1467,6 +1477,7 @@ BO_ 310 ADC_ADAS_0x136: 32 IDC
  SG_ ADAS_ExtMinRPCTrq : 210|11@0+ (0.01,-10.24) [-10.24|10.23] "Nm" CGW
  SG_ ADAS_Req_EPBVld : 211|1@0+ (1,0) [0|1] "" CGW
  SG_ ADS_DrvTarTq_J6 : 247|16@0+ (1,-32768) [-32768|32767] "Nm" CGW
+ SG_ ADS_SteerAgCtrlEnaReq_J6 : 15|2@0+ (1,0) [0|3] "" CGW
 
 BO_ 923 ADC_AVAP_0x39B: 8 IDC
  SG_ AVAP_RemViewSts : 19|4@0+ (1,0) [0|15] "" CGW
@@ -1522,14 +1533,65 @@ BO_ 1583 TBOX_0x62F: 8 CGW
  SG_ TBOX_CrtTi_Mth : 55|4@0+ (1,1) [1|12] "month" IDC
  SG_ TBOX_CrtTi_Sec : 63|6@0+ (1,0) [0|59] "second" IDC
 
-BO_ 926 WCBS_0x39E: 16 CGW
- SG_ PBM_FltIndcn_EPB : 28|2@0+ (1,0) [0|3] "" IDC
-
 BO_ 315 EPS_0x13B: 16 CGW
  SG_ EPS_SteerTorqueByADASReq : 23|11@0+ (0.01,-10.24) [-10.24|10.23] "Nm" IDC
  SG_ EPS_SteerTorqueVldByADASReq : 15|1@0+ (1,0) [0|1] "" IDC
  SG_ EPS_SteerSnsrSts : 14|1@0+ (1,0) [0|1] "" IDC
  SG_ EPS_DrvrSteerTqDir : 13|1@0+ (1,0) [0|1] "" IDC
+ SG_ EPS_SteerDrvrOvrd_J6 : 12|1@0+ (1,0) [0|1] "" IDC
+
+BO_ 410 YRS_0x19A: 8 CGW
+ SG_ Yrs1Chks : 7|8@0+ (1,0) [0|255] "" IDC
+ SG_ Yrs1Cntr : 11|4@0+ (1,0) [0|14] "" IDC
+ SG_ LatAcce : 23|12@0+ (0.001,-2) [-2|2] "g" IDC
+ SG_ LgtAcce : 27|12@0+ (0.001,-2) [-2|2] "g" IDC
+ SG_ YawRate : 47|16@0+ (0.01,-180) [-180|180] "¡ã/s" IDC
+ SG_ LatSnsrSts : 57|2@0+ (1,0) [0|3] "" IDC
+ SG_ LgtSnsrSts : 59|2@0+ (1,0) [0|3] "" IDC
+ SG_ YawRateSnsrSts : 61|2@0+ (1,0) [0|3] "" IDC
+ SG_ YawRateSnsrCalSts : 62|1@0+ (1,0) [0|1] "" IDC
+
+BO_ 908 IDC_0x38C: 64 IDC
+ SG_ IDC0x38C1Chks : 7|8@0+ (1,0) [0|255] "" CGW
+ SG_ IDC0x38C1Cntr : 11|4@0+ (1,0) [0|14] "" CGW
+ SG_ LeftFrontUssSts : 17|2@0+ (1,0) [0|3] "" CGW
+ SG_ FrontLeftUssSts : 19|2@0+ (1,0) [0|3] "" CGW
+ SG_ FrontLeftCenterUssSts : 21|2@0+ (1,0) [0|3] "" CGW
+ SG_ FrontRightCenterUssSts : 23|2@0+ (1,0) [0|3] "" CGW
+ SG_ FrontRightUssSts : 25|2@0+ (1,0) [0|3] "" CGW
+ SG_ RightFrontUssSts : 27|2@0+ (1,0) [0|3] "" CGW
+ SG_ LeftBackUssSts : 29|2@0+ (1,0) [0|3] "" CGW
+ SG_ BackLeftUssSts : 31|2@0+ (1,0) [0|3] "" CGW
+ SG_ BackLeftCenterUssSts : 33|2@0+ (1,0) [0|3] "" CGW
+ SG_ BackRightCenterUssSts : 35|2@0+ (1,0) [0|3] "" CGW
+ SG_ BackRightUssSts : 37|2@0+ (1,0) [0|3] "" CGW
+ SG_ RightBacktUssSts : 39|2@0+ (1,0) [0|3] "" CGW
+ SG_ IDC0x38C2Chks : 71|8@0+ (1,0) [0|255] "" CGW
+ SG_ IDC0x38C2Cntr : 75|4@0+ (1,0) [0|14] "" CGW
+ SG_ PAS_FL_Distance : 87|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_FML_Distance : 84|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_FMR_Distance : 81|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_FR_Distance : 94|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_LSF1_Distance : 91|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_LSF2_Distance : 88|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_LSR2_Distance : 101|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_LSR1_Distance : 98|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_RSF1_Distance : 111|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_RSF2_Distance : 108|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_RSR2_Distance : 105|3@0+ (1,0) [0|7] "" CGW
+ SG_ SDW_RSR1_Distance : 118|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_RL_Distance : 115|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_RML_Distance : 112|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_RMR_Distance : 125|3@0+ (1,0) [0|7] "" CGW
+ SG_ PAS_RR_Distance : 122|3@0+ (1,0) [0|7] "" CGW
+ SG_ IDC0x38C3Chks : 135|8@0+ (1,0) [0|255] "" CGW
+ SG_ IDC0x38C3Cntr : 139|4@0+ (1,0) [0|14] "" CGW
+ SG_ ApaCalibrationParameter : 143|1@0+ (1,0) [0|1] "" CGW
+ SG_ ApaFactoryCalibrationSts : 151|2@0+ (1,0) [0|3] "" CGW
+ SG_ ApaFactoryCalibFailureRsn : 159|8@0+ (1,0) [0|255] "" CGW
+ SG_ ApaAfterSalesCalibrationSts : 142|2@0+ (1,0) [0|3] "" CGW
+ SG_ ApaAfterSalesCalibStsProgress : 175|7@0+ (1,0) [0|100] "%" CGW
+ SG_ ApaAfterSalesCalibFailureRsn : 167|8@0+ (1,0) [0|255] "" CGW
 
 
 BO_TX_BU_ 582 : IDC,Delete_FDCA;
@@ -1543,10 +1605,6 @@ BO_TX_BU_ 657 : IDC,Delete_APA;
 BO_TX_BU_ 1427 : IDC,Delete_APA;
 
 BO_TX_BU_ 917 : IDC,Delete_APA;
-
-BO_TX_BU_ 901 : IDC,CMRR_RR;
-
-BO_TX_BU_ 902 : IDC,CMRR_RR;
 
 BO_TX_BU_ 583 : IDC,Delete_FDCA;
 
@@ -1602,6 +1660,36 @@ Version:V1.1,Date:2026.7.13,Author:ÍõÈÃ,Review:,Approval:,Description:(IDC)¸ù¾ÝÕ
 *0x39E: PBMÔö¼Ó·¢ËÍPBM_FltIndcn_EPB,Íø¹ØÐèÒªÔö¼ÓÂ·ÓÉ(pbm,idc,cgw)
 *EPSÐÂÔö·¢ËÍ±¨ÎÄ0x13B,Íø¹ØÐèÒªÔö¼ÓÂ·ÓÉ(eps,pdcu,idc,cgw)£»
 *0x1BB£ºICCÔö¼Ó·¢ËÍICC_ApaExamStatus£¬ICC_AdasExamStatus£¨icc£¬idc£©;
+Version:V1.2,Date:2026.8.7,Author:,Review:,Approval:,Description:(IDC)¸ù¾Ý²ÌöÎÓê¹¤20260730µÄOAÊäÈë£¬Õë¶ÔB81VSµÄJ6B¹¦ÄÜ£º
+*0x1BC£ºICCÔö¼Ó·¢ËÍICC_AvapViewSource£¬ICC_AvapSysSts£¬ICCAvmCalibrationParameter£¬ICCApaCalibrationReq£¨icc£¬idc£©
+*0x38C£ºIDCÔö¼Ó·¢ËÍ±¨ÎÄ0x38C£¬Íø¹ØÐèÒªÔö¼ÓÂ·ÓÉ£¨idc£¬icc£¬cgw£©
+*0x137£ºÐÞ¸ÄPDCU_AVAPFltFbµÄÐÅºÅÖµÃèÊö£¨pdcu£¬idc£©
+*0x135: EPSÔö¼Ó½ÓÊÕAPA_SysFailSts£¨eps£©£¬Í¬Ê±¸üÐÂAPA_SysFailStsµÄÐÅºÅÖµÃèÊö£¨idc£¬eps£¬pbm£©
+*0x135: ¸üÐÂAPA_StrWhlAgReqµÄ³õÊ¼Öµ£¨idc£¬eps£©
+*0x132£ºPBMÔö¼Ó·¢ËÍWCBS_OMPavailable£¨pbm£¬idc£©
+¸ù¾ÝÍõê¿³ä¹¤20260805µÄOAÊäÈë£¬Õë¶ÔB81VSµÄJ6B¹¦ÄÜ£º
+*IDCÔö¼Ó½ÓÊÕ±¨ÎÄYRS_0x19A,Íø¹ØÐèÒªÔö¼ÓÂ·ÓÉ£¨idc£¬cgw£©
+*0x136: IDCÔö¼Ó·¢ËÍADS_SteerAgCtrlEnaReq_J6£¨idc£¬eps£©
+*0x13B: EPSÔö¼Ó·¢ËÍEPS_SteerDrvrOvrd_J6 (eps£¬idc)
+*0x1BC£ºICCÔö¼Ó·¢ËÍICCAdasApaSocOffSwt£¨icc£¬idc£©
+*0x393: IDCÔö¼Ó·¢ËÍMPC_SOCOffSwtFb£¨idc£¬icc£©
+*0x39E: PBM²»ÔÙ·¢ËÍÐÅºÅPBM_FltIndcn_EPB£¬É¾³ý(pbm,idc);
+Version:V1.3,Date:2026.8.22,Author:,Review:,Approval:,Description:(IDC)¸ù¾ÝÑîÜç¹¤20260818µÄOAÊäÈë,Õë¶ÔÕû³µÒþË½Ð­Òé¹¦ÄÜ
+*0x620:ICCÔö¼Ó·¢ËÍICC_PrivacyAgreementSwt£¨icc£¬idc£¬tbox£©
+*0x5E4:IDCÔö¼Ó·¢ËÍADC_PrivacyAgreementSts (idc,icc)
+*0x529:TBOXÔö¼Ó·¢ËÍTBOX_PrivacyAgreementSts (tbox,icc);
+Version:V1.4,Date:2026.9.13,Author:,Review:,Approval:,Description:(IDC)¸ù¾Ý¶¡ÍòÐË¹¤20260902µÄOAÊäÈë£¬Õë¶ÔB81VSÏîÄ¿6×ù³µÔö¼ÓÁËÈýÅÅ×ùÒÎ£¬ÒÔ¼°BDCU¼¯³ÉÁËTIM£º
+*0x362£ºÓÅ»¯BCM4_St_RLSeatbelt£¬BCM4_St_RRSeatbelt£¬BCM4_St_RMSeatbeltµÄÖÐÎÄÐÅºÅÃèÊö£¬ÔÚºó×ºÔö¼Ó£¨¶þÅÅ£©×ÖÑù£¨bdcu£¬sdm£¬icc£¬idc£¬tbox£©
+*0x339£ºBDCUÔö¼Ó·¢ËÍÐÅºÅThirdDrvSeatWarnLamp£¬ThirdPassSeatWarnLamp£¨bdcu£¬icc£¬sdm£©
+*0x211£ºÕë¶ÔB81VSÏîÄ¿£¬BDCUÔö¼Ó·¢ËÍÐÅºÅTIM1_St_SoftSwMemoryNew£¬ÐÅºÅ³¤¶ÈÎª2bit£¨bdcu£¬icc£¬idc, cmrr_rl, cmrr_rr, mrr£©£»ÎªÁËÐÅºÅÆ½Ì¨»¯¹ÜÀí£¬ÐÅºÅ³¤¶È1bitµÄTIM1_St_SoftSwMemoryÔÝÊ±±£Áô£»
+*0x6E6: Õë¶ÔB81VSÏîÄ¿, EHC11_St_TrailerFcnActive²ÉÓÃÐÂµÄÐÅºÅÖµÃèÊö£¬¼ûºóÃæÀ¨ºÅÄÚµÄÄÚÈÝ£»ÎªÁËÐÅºÅÆ½Ì¨»¯¹ÜÀí£¬¾ÉµÄÐÅºÅÖµÃèÊöÔÝÊ±±£Áô£¬¼ûÀ¨ºÅÍâÇ°ÃæµÄÄÚÈÝ£¨icc£¬bdcu£¬idc,cmrr_rl, cmrr_rr, mrr£©¡£;
+Version:V1.4,Date:2026.9.15,Author:,Review:,Approval:,Description:(IDC)¸ù¾Ý²ÌöÎÓê¹¤20260914µÄOAÊäÈë£¬
+*0x38C£ºÐÞ¸ÄÐÅºÅÃû³ÆApaCalibrationSts£¨²´³µ±ê¶¨½á¹û·´À¡£©ÎªApaFactoryCalibrationSts£¨¹¤³§²´³µ±ê¶¨½á¹û·´À¡£©£¨idc£¬icc£©
+*0x38C£ºÐÞ¸ÄÐÅºÅÃû³ÆApaCalibrationFailureReasons£¨²´³µ±ê¶¨Ê§°ÜÔ­Òò·´À¡£©ÎªApaFactoryCalibFailureRsn£¨¹¤³§²´³µ±ê¶¨Ê§°ÜÔ­Òò·´À¡£©,²¢¸üÐÂÐÅºÅ³¤¶È¼°codingÖµ£¨idc£¬icc£©
+*0x38C£ºÔö¼ÓÐÅºÅApaAfterSalesCalibrationSts£¨IDC·¢£¬ICCÊÕ£©
+*0x38C£ºÔö¼ÓÐÅºÅApaAfterSalesCalibStsProgress£¨IDC·¢£¬ICCÊÕ£©
+*0x38C£ºÔö¼ÓÐÅºÅApaAfterSalesCalibFailureRsn£¨IDC·¢£¬ICCÊÕ£©
+*WCBS_0x132£ºÐÞ¸ÄWCBS_APLCFailureStsµÄÐÅºÅÖµÃèÊöÓÉ0x6~0x7: Reserved£¬¸ÄÎª0x6£ºMessage Error,0x7: Reserved£¨pbm£¬idc£©;
  ";
 
 CM_ BO_ 640 "×ªµ½ICANÊÇ50ms
@@ -1654,8 +1742,9 @@ CM_ BO_ 923 "B81VSµÄJ6B½èÓÃB41VSµÄJ6M";
 CM_ BO_ 924 "B81VSµÄJ6B½èÓÃB41VSµÄJ6M";
 CM_ BO_ 311 "B81VSµÄJ6B½èÓÃB41VSµÄJ6M";
 CM_ BO_ 536 "ÄÚº¬5¸öF03µÄ»ªÎªÖÇ¼ÝÐÅºÅ";
-CM_ BO_ 926 "B60VS-F03ÐÂÔöID£¬ISA¹¦ÄÜ";
 CM_ BO_ 315 "B81VSÐÂÔöID";
+CM_ BO_ 410 "B60VS-F03ÐÂÔöID";
+CM_ BO_ 908 "B81VSÐÂÔöID£¬J6B-APA";
 CM_ SG_ 582 FDCA4_N_ComAccUpperValue "ComforAccUpperValue±£Ö¤ÊæÊÊÐÔµÄ¼ÓËÙ¶ÈÉÏÏÞ";
 CM_ SG_ 582 FDCA4_Cmd_BrakePreferred "BrakePreferredÖÆ¶¯ÓÅÏÈ";
 CM_ SG_ 582 FDCA4_N_ComAccLowerValue "ComforAccLowerValue±£Ö¤ÊæÊÊÐÔµÄ¼ÓËÙ¶ÈÏÂÏÞ";
@@ -1810,6 +1899,7 @@ CM_ SG_ 1508 ADAS_FDCA1_Sts_ESS "ESS¹¦ÄÜ×´Ì¬£¬×´Ì¬»ú";
 CM_ SG_ 1508 ADAS_FDCA1_St_FCWMode "FCW Mode";
 CM_ SG_ 1508 ADAS_FDCA1_St_TSRwarning "TSRÊ§Ð§×´Ì¬";
 CM_ SG_ 1508 ADAS_FDCA1_LDW_meter_Warning "LDW±¨¾¯";
+CM_ SG_ 1508 ADC_PrivacyAgreementSts "²éÑ¯Õû³µÒþË½Ð­Òé¿ª¹Ø";
 CM_ SG_ 1508 FDCA1_St_VehicleMode "FDCA½ÓÊÕµ½³µÁ¾Ä£Ê½ÐÅºÅºó·µ»ØµÄ×´Ì¬ÐÅºÅ";
 CM_ SG_ 1508 ADAS_FDCA1_ESSTraj "ESS¹æ»®Â·¾¶×´Ì¬";
 CM_ SG_ 1508 FDCA1_RollingCounter "Message counter for each message transmittedThe transmitter shall update the value of the Message Counter signal every time a frame is transmitted (even if no other data in theframe has changed value). The counter value shall be updated in the sequence 0, 1, 2, 3......15, 0, 1, 2, 3......15, etc. Upon startup,theinitial value of the Message Counter signal shall be 0.";
@@ -1924,6 +2014,7 @@ CM_ SG_ 915 ADC_ADASYSSTS "ADCÐÐ³µÏµÍ³¹ÊÕÏ×´Ì¬";
 CM_ SG_ 915 ADC_enum_PrkgBuzAlrmLvlReq "À×´ï±¨¾¯ÌáÊ¾Òô";
 CM_ SG_ 915 ADC_SysStartupInPro "System startup in progressÏµÍ³Æô¶¯×´Ì¬±êÖ¾Î»";
 CM_ SG_ 915 ADC_IMUSentiWarningSts "IMU±¨¾¯ÐÅºÅ";
+CM_ SG_ 915 MPC_SOCOffSwtFb "ÖÇ¼Ý½ÚÄÜÄ£Ê½¿ª¹Ø·´À¡";
 CM_ SG_ 547 AdasHmiNeighboringObj1ObjTyp "Provides the type of the neihboring Object no. 1";
 CM_ SG_ 547 Obj1Ttc "Time to Collision with target Object";
 CM_ SG_ 547 AdasHmiNeighboringObj1XOut "Provides the location of the neighboring Object no.1 as a longitudinal distance from ego center";
@@ -2322,6 +2413,7 @@ CM_ SG_ 310 ADC_ADAS4Cntr "Rolling counter. Refer to E2E Spec..";
 CM_ SG_ 310 ADAS_ExtMinRPCTrq "EPS ¿ÉÖ´ÐÐµÄ×îÐ¡Å¤¾ØÏÞÖµ";
 CM_ SG_ 310 ADAS_Req_EPBVld "ADASÇëÇóÀ­ÆðEPB¶¯×÷µÄÓÐÐ§Î»";
 CM_ SG_ 310 ADS_DrvTarTq_J6 "Çý¶¯Ä¿±êÅ¤¾Ø";
+CM_ SG_ 310 ADS_SteerAgCtrlEnaReq_J6 "×ªÏò×ª½Ç¿ØÖÆÊ¹ÄÜ";
 CM_ SG_ 923 AVAP_RemViewSts "Ô¶³Ì²é¿´¹¦ÄÜ×´Ì¬ÐÅÏ¢(AVAP·´À¡)";
 CM_ SG_ 923 AVAP_ViewSwtSts "ÊÓ½ÇÇÐ»»×´Ì¬·´À¡";
 CM_ SG_ 923 AVAP_MirrReq "ÇëÇóºóÊÓ¾µÕÛµþÕ¹¿ª";
@@ -2340,6 +2432,46 @@ CM_ SG_ 924 ADAS_TurnLightReq "×ªÏòµÆÇëÇó";
 CM_ SG_ 924 ADAS_FrontWasherReq "Ç°·çµ²²£Á§ÇåÏ´ÇëÇó";
 CM_ SG_ 924 ADAS_FrontWiperReq "Ç°Óê¹Î¹¤×÷ÇëÇó";
 CM_ SG_ 924 ADC_HAD_CoolingfluidflowRateReq "HADÀäÈ´ÒºÁ÷ËÙÇëÇó";
+CM_ SG_ 908 IDC0x38C1Chks "CRC checksum. DataID and the following 7 bytes are included in CRC checksum calculation. Refer to E2E Spec.£¨Profile£º1A£»DataID£º0x0042£©";
+CM_ SG_ 908 IDC0x38C1Cntr "Rolling counter. Refer to E2E Spec.";
+CM_ SG_ 908 LeftFrontUssSts "×óÇ°USS¹¤×÷×´Ì¬";
+CM_ SG_ 908 FrontLeftUssSts "Ç°×óUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 FrontLeftCenterUssSts "Ç°×óÖÐUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 FrontRightCenterUssSts "Ç°ÓÒÖÐUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 FrontRightUssSts "Ç°ÓÒUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 RightFrontUssSts "ÓÒÇ°USS¹¤×÷×´Ì¬";
+CM_ SG_ 908 LeftBackUssSts "×óºóUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 BackLeftUssSts "ºó×óUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 BackLeftCenterUssSts "ºó×óÖÐUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 BackRightCenterUssSts "ºóÓÒÖÐUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 BackRightUssSts "ºóÓÒUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 RightBacktUssSts "ÓÒºóUSS¹¤×÷×´Ì¬";
+CM_ SG_ 908 IDC0x38C2Chks "CRC checksum. DataID and the following 7 bytes are included in CRC checksum calculation. Refer to E2E Spec.£¨Profile£º1A£»DataID£º0x0043£©";
+CM_ SG_ 908 IDC0x38C2Cntr "Rolling counter. Refer to E2E Spec.";
+CM_ SG_ 908 PAS_FL_Distance "µ¹³µÀ×´ïÇ½Ç°×óÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_FML_Distance "µ¹³µÀ×´ïÇ½Ç°ÖÐ×óÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_FMR_Distance "µ¹³µÀ×´ïÇ½Ç°ÖÐÓÒÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_FR_Distance "µ¹³µÀ×´ïÇ½Ç°ÓÒÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_LSF1_Distance "²à±ß¾àÀë±¨¾¯×ó²àÇ°1Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_LSF2_Distance "²à±ß¾àÀë±¨¾¯×ó²àÇ°2Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_LSR2_Distance "²à±ß¾àÀë±¨¾¯×ó²àºó2Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_LSR1_Distance "²à±ß¾àÀë±¨¾¯×ó²àºó1Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_RSF1_Distance "²à±ß¾àÀë±¨¾¯ÓÒ²àÇ°1Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_RSF2_Distance "²à±ß¾àÀë±¨¾¯ÓÒ²àÇ°2Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_RSR2_Distance "²à±ß¾àÀë±¨¾¯ÓÒ²àºó2Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 SDW_RSR1_Distance "²à±ß¾àÀë±¨¾¯ÓÒ²àºó1Çø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_RL_Distance "µ¹³µÀ×´ïÇ½ºó×óÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_RML_Distance "µ¹³µÀ×´ïÇ½ºóÖÐ×óÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_RMR_Distance "µ¹³µÀ×´ïÇ½ºóÖÐÓÒÇø±¨¾¯¾àÀë";
+CM_ SG_ 908 PAS_RR_Distance "µ¹³µÀ×´ïÇ½ºóÓÒ±¨¾¯¾àÀë";
+CM_ SG_ 908 IDC0x38C3Chks "CRC checksum. DataID and the following 7 bytes are included in CRC checksum calculation. Refer to E2E Spec.£¨Profile£º1A£»DataID£º0x0044£©";
+CM_ SG_ 908 IDC0x38C3Cntr "Rolling counter. Refer to E2E Spec.";
+CM_ SG_ 908 ApaCalibrationParameter "²´³µ±ê¶¨²ÎÊý";
+CM_ SG_ 908 ApaFactoryCalibrationSts "¹¤³§²´³µ±ê¶¨½á¹û·´À¡";
+CM_ SG_ 908 ApaFactoryCalibFailureRsn "¹¤³§²´³µ±ê¶¨Ê§°ÜÔ­Òò·´À¡";
+CM_ SG_ 908 ApaAfterSalesCalibrationSts "ÊÛºó²´³µ±ê¶¨½á¹û·´À¡";
+CM_ SG_ 908 ApaAfterSalesCalibStsProgress "ÊÛºó²´³µ±ê¶¨½ø¶È";
+CM_ SG_ 908 ApaAfterSalesCalibFailureRsn "ÊÛºó²´³µ±ê¶¨Ê§°ÜÔ­Òò·´À¡";
 CM_ SG_ 640 EMS5_RollingCounter "Message counter for each message transmittedThe transmitter shall update the value of the Message Counter signal every time a frame is transmitted (even if no other data in theframe has changed value). The counter value shall be updated in the sequence 0, 1, 2, 3......15, 0, 1, 2, 3......15, etc. Upon startup,theinitial value of the Message Counter signal shall be 0.N=E";
 CM_ SG_ 640 EMS5_F_BrakePedal "The valid indication of EMS5_St_BrakePedalThis signal is a quality signal connected to EMS5_St_BrakePedal";
 CM_ SG_ 640 EMS5_St_BrakePedal "indicates that Brake Pedal is pressed";
@@ -2527,6 +2659,7 @@ CM_ SG_ 1568 IPC1_F_OdometerParameter "The valid indication of odo meter£¬odo me
 CM_ SG_ 1568 IPC1_St_QDashACCFail "Error in the ACC message detected by the HMI, like timeout or alivecounter error.The error should distinguish reversible and irreversible errors.";
 CM_ SG_ 1568 IPC1_St_DISFail "Error in the display or display control unit.";
 CM_ SG_ 1568 IPC1_N_OdoMeter "The value of odo meter";
+CM_ SG_ 1568 ICC_PrivacyAgreementSwt "ÉèÖÃÕû³µÒþË½Ð­Òé¿ª¹Ø";
 CM_ SG_ 1392 CAPE1_F_PowerMode "Vehicle power mode validityThis signal indicates if power mode signal is valid or not";
 CM_ SG_ 1392 CAPE1_St_PowerMode "Vehicle power modeThis signal indicates the inner power mode of PDM";
 CM_ SG_ 1392 CAPE1_St_PepsRemPwrMod "PEPS remote power mode statusinclude remote control£¬remote start£¬Bluetooth control£¬ bluetooth start£¬RPA control";
@@ -2568,10 +2701,10 @@ CM_ SG_ 1203 BCM2_St_FrontWiper "The status of front wiper";
 CM_ SG_ 1203 BCM2_St_LRDoorLock "×óºóËø×´Ì¬";
 CM_ SG_ 1203 BCM2_St_RRDoorLock "ÓÒºóËø×´Ì¬";
 CM_ SG_ 866 BCM4_St_DRSeatbelt "Driver Seatbelt Buckle Switch Status";
-CM_ SG_ 866 BCM4_St_PASeatbelt "Warning Status for Passenger occupied with Passenger Seatbelt Buckle Switch  Unbuckled";
-CM_ SG_ 866 BCM4_St_RLSeatbelt "RearRow Left  Seatbelt Buckle Switch Status";
-CM_ SG_ 866 BCM4_St_RRSeatbelt "Rear Row Right  Seatbelt Buckle Switch Status";
-CM_ SG_ 866 BCM4_St_RMSeatbelt "Rear Middle  Seatbelt Buckle Switch Status";
+CM_ SG_ 866 BCM4_St_PASeatbelt "¸±¼Ý°²È«´ø±¨¾¯ÐÅºÅ";
+CM_ SG_ 866 BCM4_St_RLSeatbelt "×óºó°²È«´ø±¨¾¯ÐÅºÅ£¨¶þÅÅ£©";
+CM_ SG_ 866 BCM4_St_RRSeatbelt "ÓÒºó°²È«´ø±¨¾¯ÐÅºÅ£¨¶þÅÅ£©";
+CM_ SG_ 866 BCM4_St_RMSeatbelt "ºóÅÅÖÐÑë°²È«´ø±¨¾¯ÐÅºÅ£¨¶þÅÅ£©";
 CM_ SG_ 866 BCM4_Sw_PositionLamp "The state of positionLamp SW";
 CM_ SG_ 866 BCM4_Sw_LowLamp "The state of lowLamp SW";
 CM_ SG_ 866 BCM4_Sw_HighLamp "The state of highLamp SW";
@@ -2661,6 +2794,7 @@ CM_ SG_ 306 WCBS_ADASL12AvlSts "WCBS×ÝÏò¿ØÖÆ¿ÉÓÃ×´Ì¬";
 CM_ SG_ 306 WCBS_LgtReqModeACtiveSts "WCBS×ÝÏò¿ØÖÆÇëÇóÄ£Ê½¼¤»î×´Ì¬";
 CM_ SG_ 306 WCBS_ADLCFailureSts "WCBSÍË³öÎÕÊÖµÄÔ­ÒòÐÅºÅ";
 CM_ SG_ 306 WCBS_APAavailable "APA¿ÉÓÃ";
+CM_ SG_ 306 WCBS_OMPavailable "WCBSÊÇ·ñÖ§³ÖAPA¹¦ÄÜÐÅºÅ";
 CM_ SG_ 307 WCBS0x133Chks1 "CRC checksum. DataID and the following 7 bytes are included in CRC checksum calculation. Refer to E2E Spec.£¨Profile£º1A£¬DataID=0x0030£©";
 CM_ SG_ 307 WCBS0x133Cntr1 "Rolling counter. Refer to E2E Spec.";
 CM_ SG_ 307 WCBS_St_ReAxleTrqIntv "ºóÖáÅ¤¾Ø½µÅ¤¸ÉÔ¤ÇëÇó";
@@ -2755,7 +2889,8 @@ CM_ SG_ 537 IPC8_IcmDispFail "ICM Display Fail Error in the display or display c
 CM_ SG_ 858 BCM12_St_VehicleMode "³µÁ¾Ä£Ê½ Vehicle Mode for µçÔ´¹ÜÀí¹¦ÄÜ";
 CM_ SG_ 529 TIM1_St_TIMSt "The status of trailer connection.ÍÏ³µ×ÊÖÊÊÇ·ñÁ¬½ÓÉÏ";
 CM_ SG_ 529 TIM1_St_TrailerLightsFaultSt "The fault status of trailer lights.";
-CM_ SG_ 529 TIM1_St_SoftSwMemory "TIM saves ICC Soft Switch StateTIM¼ÇÒäÍÏ¹ÒÄ£Ê½Èí¿ª¹Ø×´Ì¬";
+CM_ SG_ 529 TIM1_St_SoftSwMemory "TIM saves ICC Soft Switch State£¨±£Áô£©TIM¼ÇÒäÍÏ¹ÒÄ£Ê½Èí¿ª¹Ø×´Ì¬";
+CM_ SG_ 529 TIM1_St_SoftSwMemoryNew "TIM saves ICC Soft Switch State (ÐÂÔö)TIM¼ÇÒäÍÏ¹ÒÄ£Ê½Èí¿ª¹Ø×´Ì¬";
 CM_ SG_ 225 EHC12_St_AVMSaleCalibration "calibration after sale ÊÛºó±ê¶¨";
 CM_ SG_ 225 EHC24_ParkingPlaceConfirm "self-selected parking slot confirm ×ÔÑ¡³µÎ»È·ÈÏ";
 CM_ SG_ 225 AvmViewSet "AVM view set request signal ÇÐ»»È«¾°ÊÓÍ¼ÃüÁî£¬";
@@ -2820,6 +2955,11 @@ CM_ SG_ 444 ICC_N_CoorA_X "slot point A Coordination X, ³µÎ»µãA";
 CM_ SG_ 444 ICC_ATSMode "ATSÑÒÊ¯Ä£Ê½½øÈëÇëÇóÐÅºÅ";
 CM_ SG_ 444 ICC_N_CoorA_Y "slot point A Coordination Y, ³µÎ»µãA";
 CM_ SG_ 444 ICC_ScrnAngle "×ÔÑ¡³µÎ»£º³µÍ·³¯ÏòÓë³µÁ¾ÐÐÊ»·½Ïò¼Ð½Ç";
+CM_ SG_ 444 ICCAdasApaSocOffSwt "ÖÇ¼Ý½ÚÄÜÄ£Ê½¿ª¹Ø";
+CM_ SG_ 444 ICC_AvapViewSource "³µ»ú½çÃæ×´Ì¬";
+CM_ SG_ 444 ICC_AvapSysSts "È«¾°×´Ì¬·´À¡";
+CM_ SG_ 444 ICCAvmCalibrationParameter "È«¾°±ê¶¨²ÎÊý";
+CM_ SG_ 444 ICCApaCalibrationReq "±ê¶¨´¥·¢ÐÅºÅ";
 CM_ SG_ 648 SWS_Cruise "6_Ñ²º½¼¤»îÓëÍË³ö";
 CM_ SG_ 648 SWS_360 "5_360È«¾°";
 CM_ SG_ 648 SWS_AccTiGapPlus "4_³µ¾à+";
@@ -2850,11 +2990,20 @@ CM_ SG_ 1583 TBOX_CrtTi_Mins "µ±Ç°Ê±¼ä_·ÖÖÓ";
 CM_ SG_ 1583 TBOX_CrtTi_Yr "µ±Ç°Ê±¼ä_Äê";
 CM_ SG_ 1583 TBOX_CrtTi_Mth "µ±Ç°Ê±¼ä_ÔÂ";
 CM_ SG_ 1583 TBOX_CrtTi_Sec "µ±Ç°Ê±¼ä_Ãë";
-CM_ SG_ 926 PBM_FltIndcn_EPB "EPBÏµÍ³´íÎóÖ¸Ê¾";
 CM_ SG_ 315 EPS_SteerTorqueByADASReq "EPSÖ´ÐÐADAS·½ÏòÅÌÊÖÁ¦¾Ø";
 CM_ SG_ 315 EPS_SteerTorqueVldByADASReq "EPSÖ´ÐÐADAS·½ÏòÅÌÊÖÁ¦¾ØÓÐÐ§Î»";
 CM_ SG_ 315 EPS_SteerSnsrSts "×ª½Ç´«¸ÐÆ÷×´Ì¬";
 CM_ SG_ 315 EPS_DrvrSteerTqDir "¼ÝÊ»Ô±×ªÏòÁ¦¾Ø·½Ïò";
+CM_ SG_ 315 EPS_SteerDrvrOvrd_J6 "¼ÝÊ»Ô±×ªÏò¸ÉÔ¤×´Ì¬";
+CM_ SG_ 410 Yrs1Chks "CRC checksum. DataID and the following 7 bytes are included in CRC checksum calculation. Refer to E2E Spec.(Profile:1A,DataID:0x001F)";
+CM_ SG_ 410 Yrs1Cntr "Rolling counter. Refer to E2E Spec.";
+CM_ SG_ 410 LatAcce "Lateral AccelerationºáÏò¼ÓËÙ¶È(×ó²àÎªÕý,ÓÒ²àÎª¸º)";
+CM_ SG_ 410 LgtAcce "Longitudinal Acceleration×ÝÏò¼ÓËÙ¶È(ÏòÇ°Îª¸º,ÏòºóÎªÕý)";
+CM_ SG_ 410 YawRate "Yaw RateÆ«º½ÂÊ(ÄæÊ±ÕëÎªÕý,Ë³Ê±ÕëÎª¸º)";
+CM_ SG_ 410 LatSnsrSts "Lateral Sensor StatusºáÏò´«¸ÐÆ÷µÄ×´Ì¬";
+CM_ SG_ 410 LgtSnsrSts "Longitudinal Sensor Status×ÝÏò´«¸ÐÆ÷µÄ×´Ì¬";
+CM_ SG_ 410 YawRateSnsrSts "Yaw Rate Sensor StatusÆ«º½ÂÊ´«¸ÐÆ÷µÄ×´Ì¬";
+CM_ SG_ 410 YawRateSnsrCalSts "Yaw Rate Sensor Calibration StatusÆ«º½ÂÊ´«¸ÐÆ÷µÄ±ê¶¨×´Ì¬£¨Õû¸öºá°Ú½ÇÊý¾ÝÀ´Ô´ÎªÒ»¸ö´«¸ÐÆ÷£¬¸Ã´«¸ÐÆ÷ÓÐ3¸öchannel£¬À´·Ö±ðÊä³öºáÏò£¬×ÝÏò£¬ÒÔ¼°Æ«º½ÂÊ£¬3¸öchannel·Ö±ðÓÐ×ÔÉíµÄ¹ÊÕÏÅÐ¶¨¹¦ÄÜ£¬¸Ã±ê¶¨ÐÅºÅÎªÕû¸ö´«¸ÐÆ÷µÄ±ê¶¨×´Ì¬£©";
 
 
 BA_DEF_ BO_  "NmMessage" ENUM "No","Yes";
@@ -2927,7 +3076,7 @@ BA_DEF_DEF_ "sigDespEng" "" ;
 BA_DEF_DEF_ "sigSecLevel" "QM" ;
 BA_DEF_DEF_ "sigConfig" "" ;
 BA_DEF_DEF_ "sigExplanation" "" ;
-BA_ "DBName" "BAIC_B81VS_ADASBUS_Matrix_CANFD_V1.1_20260713";
+BA_ "DBName" "BAIC_B81VS_ADASBUS_Matrix_CANFD_V1.4_20260915";
 BA_ "GenMsgCycleTime" BO_ 640 10;
 BA_ "VFrameFormat" BO_ 640 14;
 BA_ "sigDespEng"  SG_ 640 EMS5_RollingCounter "";
@@ -3848,6 +3997,10 @@ BA_ "sigDespEng"  SG_ 1568 IPC1_N_OdoMeter "L2.5,Àï³Ì";
 BA_ "sigSecLevel"  SG_ 1568 IPC1_N_OdoMeter "";
 BA_ "sigConfig"  SG_ 1568 IPC1_N_OdoMeter "";
 BA_ "sigExplanation"  SG_ 1568 IPC1_N_OdoMeter "ems,tcm,wcbsepb,egsm,eds,ehc,apa,bdcbcm,bsg,bms,tbox,fdca,eps";
+BA_ "sigDespEng"  SG_ 1568 ICC_PrivacyAgreementSwt "ÉèÖÃÕû³µÒþË½Ð­Òé¿ª¹Ø";
+BA_ "sigSecLevel"  SG_ 1568 ICC_PrivacyAgreementSwt "";
+BA_ "sigConfig"  SG_ 1568 ICC_PrivacyAgreementSwt "B81VS";
+BA_ "sigExplanation"  SG_ 1568 ICC_PrivacyAgreementSwt "adc£¬TBOX";
 BA_ "GenMsgCycleTime" BO_ 656 20;
 BA_ "VFrameFormat" BO_ 656 14;
 BA_ "GenSigStartValue" SG_ 656 APA1_N_TargetSteeringAng 7800;
@@ -4318,19 +4471,19 @@ BA_ "sigDespEng"  SG_ 866 BCM4_St_DRSeatbelt "";
 BA_ "sigSecLevel"  SG_ 866 BCM4_St_DRSeatbelt "";
 BA_ "sigConfig"  SG_ 866 BCM4_St_DRSeatbelt "";
 BA_ "sigExplanation"  SG_ 866 BCM4_St_DRSeatbelt "ems,wcbsesp,sdm,fdca,dvr,ipc,apa,tbox";
-BA_ "sigDespEng"  SG_ 866 BCM4_St_PASeatbelt "";
+BA_ "sigDespEng"  SG_ 866 BCM4_St_PASeatbelt "Warning Status for Passenger occupied with Passenger Seatbelt Buckle Switch  Unbuckled";
 BA_ "sigSecLevel"  SG_ 866 BCM4_St_PASeatbelt "";
 BA_ "sigConfig"  SG_ 866 BCM4_St_PASeatbelt "";
 BA_ "sigExplanation"  SG_ 866 BCM4_St_PASeatbelt "ems,sdm,ipc,apa,tbox";
-BA_ "sigDespEng"  SG_ 866 BCM4_St_RLSeatbelt "";
+BA_ "sigDespEng"  SG_ 866 BCM4_St_RLSeatbelt "RearRow Left  Seatbelt Buckle Switch Status";
 BA_ "sigSecLevel"  SG_ 866 BCM4_St_RLSeatbelt "";
 BA_ "sigConfig"  SG_ 866 BCM4_St_RLSeatbelt "";
 BA_ "sigExplanation"  SG_ 866 BCM4_St_RLSeatbelt "ems,sdm,ipc,apa,tbox";
-BA_ "sigDespEng"  SG_ 866 BCM4_St_RRSeatbelt "";
+BA_ "sigDespEng"  SG_ 866 BCM4_St_RRSeatbelt "Rear Row Right  Seatbelt Buckle Switch Status";
 BA_ "sigSecLevel"  SG_ 866 BCM4_St_RRSeatbelt "";
 BA_ "sigConfig"  SG_ 866 BCM4_St_RRSeatbelt "";
 BA_ "sigExplanation"  SG_ 866 BCM4_St_RRSeatbelt "ems,sdm,ipc,apa,tbox";
-BA_ "sigDespEng"  SG_ 866 BCM4_St_RMSeatbelt "";
+BA_ "sigDespEng"  SG_ 866 BCM4_St_RMSeatbelt "Rear Middle  Seatbelt Buckle Switch Status";
 BA_ "sigSecLevel"  SG_ 866 BCM4_St_RMSeatbelt "";
 BA_ "sigConfig"  SG_ 866 BCM4_St_RMSeatbelt "";
 BA_ "sigExplanation"  SG_ 866 BCM4_St_RMSeatbelt "ems,sdm,ipc,apa,tbox";
@@ -4841,6 +4994,10 @@ BA_ "sigDespEng"  SG_ 306 WCBS_APAavailable "WCBSÊÇ·ñÖ§³ÖAPA¹¦ÄÜÐÅºÅ";
 BA_ "sigSecLevel"  SG_ 306 WCBS_APAavailable "";
 BA_ "sigConfig"  SG_ 306 WCBS_APAavailable "B81";
 BA_ "sigExplanation"  SG_ 306 WCBS_APAavailable "";
+BA_ "sigDespEng"  SG_ 306 WCBS_OMPavailable "";
+BA_ "sigSecLevel"  SG_ 306 WCBS_OMPavailable "";
+BA_ "sigConfig"  SG_ 306 WCBS_OMPavailable "B81";
+BA_ "sigExplanation"  SG_ 306 WCBS_OMPavailable "";
 BA_ "GenMsgCycleTime" BO_ 307 10;
 BA_ "VFrameFormat" BO_ 307 14;
 BA_ "sigDespEng"  SG_ 307 WCBS0x133Chks1 "";
@@ -5141,6 +5298,10 @@ BA_ "sigDespEng"  SG_ 1508 ADAS_FDCA1_LDW_meter_Warning "½ÏB60V±ä¶¯";
 BA_ "sigSecLevel"  SG_ 1508 ADAS_FDCA1_LDW_meter_Warning "";
 BA_ "sigConfig"  SG_ 1508 ADAS_FDCA1_LDW_meter_Warning "";
 BA_ "sigExplanation"  SG_ 1508 ADAS_FDCA1_LDW_meter_Warning "cdcipc";
+BA_ "sigDespEng"  SG_ 1508 ADC_PrivacyAgreementSts "²éÑ¯Õû³µÒþË½Ð­Òé¿ª¹Ø";
+BA_ "sigSecLevel"  SG_ 1508 ADC_PrivacyAgreementSts "";
+BA_ "sigConfig"  SG_ 1508 ADC_PrivacyAgreementSts "B81";
+BA_ "sigExplanation"  SG_ 1508 ADC_PrivacyAgreementSts "ICC";
 BA_ "sigDespEng"  SG_ 1508 FDCA1_St_VehicleMode "´ý¶¨";
 BA_ "sigSecLevel"  SG_ 1508 FDCA1_St_VehicleMode "";
 BA_ "sigConfig"  SG_ 1508 FDCA1_St_VehicleMode "³µÁ¾Ä£Ê½,TSP";
@@ -5602,6 +5763,10 @@ BA_ "sigDespEng"  SG_ 915 ADC_IMUSentiWarningSts "IMUÉÚ±ø¾¯Ê¾×´Ì¬,0x1»ò0x2Ê±½øÈë
 BA_ "sigSecLevel"  SG_ 915 ADC_IMUSentiWarningSts "";
 BA_ "sigConfig"  SG_ 915 ADC_IMUSentiWarningSts "B81";
 BA_ "sigExplanation"  SG_ 915 ADC_IMUSentiWarningSts "";
+BA_ "sigDespEng"  SG_ 915 MPC_SOCOffSwtFb "";
+BA_ "sigSecLevel"  SG_ 915 MPC_SOCOffSwtFb "";
+BA_ "sigConfig"  SG_ 915 MPC_SOCOffSwtFb "B81";
+BA_ "sigExplanation"  SG_ 915 MPC_SOCOffSwtFb "";
 BA_ "GenMsgCycleTime" BO_ 547 100;
 BA_ "VFrameFormat" BO_ 547 14;
 BA_ "sigDespEng"  SG_ 547 AdasHmiNeighboringObj1ObjTyp "";
@@ -7371,6 +7536,10 @@ BA_ "sigDespEng"  SG_ 529 TIM1_St_SoftSwMemory "²»´øµçÔ´µÄÍÏ¹ÒÄ£Ê½";
 BA_ "sigSecLevel"  SG_ 529 TIM1_St_SoftSwMemory "";
 BA_ "sigConfig"  SG_ 529 TIM1_St_SoftSwMemory "";
 BA_ "sigExplanation"  SG_ 529 TIM1_St_SoftSwMemory "CDC£¬APA, FDCA, CMWR, ADAS";
+BA_ "sigDespEng"  SG_ 529 TIM1_St_SoftSwMemoryNew "TIM saves ICC Soft Switch State and feedback ICC";
+BA_ "sigSecLevel"  SG_ 529 TIM1_St_SoftSwMemoryNew "";
+BA_ "sigConfig"  SG_ 529 TIM1_St_SoftSwMemoryNew "B81";
+BA_ "sigExplanation"  SG_ 529 TIM1_St_SoftSwMemoryNew "icc£¬idc,cmrr,mrr";
 BA_ "GenMsgCycleTime" BO_ 225 100;
 BA_ "GenMsgCycleTimeFast" BO_ 225 20;
 BA_ "GenMsgNrOfRepetition" BO_ 225 3;
@@ -8043,6 +8212,26 @@ BA_ "sigDespEng"  SG_ 444 ICC_ScrnAngle "";
 BA_ "sigSecLevel"  SG_ 444 ICC_ScrnAngle "";
 BA_ "sigConfig"  SG_ 444 ICC_ScrnAngle "";
 BA_ "sigExplanation"  SG_ 444 ICC_ScrnAngle "";
+BA_ "sigDespEng"  SG_ 444 ICCAdasApaSocOffSwt "";
+BA_ "sigSecLevel"  SG_ 444 ICCAdasApaSocOffSwt "";
+BA_ "sigConfig"  SG_ 444 ICCAdasApaSocOffSwt "B81";
+BA_ "sigExplanation"  SG_ 444 ICCAdasApaSocOffSwt "";
+BA_ "sigDespEng"  SG_ 444 ICC_AvapViewSource "³µ»ú½çÃæ×´Ì¬ÐÅºÅ·´À¡";
+BA_ "sigSecLevel"  SG_ 444 ICC_AvapViewSource "";
+BA_ "sigConfig"  SG_ 444 ICC_AvapViewSource "B81";
+BA_ "sigExplanation"  SG_ 444 ICC_AvapViewSource "";
+BA_ "sigDespEng"  SG_ 444 ICC_AvapSysSts "";
+BA_ "sigSecLevel"  SG_ 444 ICC_AvapSysSts "";
+BA_ "sigConfig"  SG_ 444 ICC_AvapSysSts "B81";
+BA_ "sigExplanation"  SG_ 444 ICC_AvapSysSts "";
+BA_ "sigDespEng"  SG_ 444 ICCAvmCalibrationParameter "";
+BA_ "sigSecLevel"  SG_ 444 ICCAvmCalibrationParameter "";
+BA_ "sigConfig"  SG_ 444 ICCAvmCalibrationParameter "B81";
+BA_ "sigExplanation"  SG_ 444 ICCAvmCalibrationParameter "";
+BA_ "sigDespEng"  SG_ 444 ICCApaCalibrationReq "";
+BA_ "sigSecLevel"  SG_ 444 ICCApaCalibrationReq "";
+BA_ "sigConfig"  SG_ 444 ICCApaCalibrationReq "B81";
+BA_ "sigExplanation"  SG_ 444 ICCApaCalibrationReq "";
 BA_ "NmMessage" BO_ 1099 1;
 BA_ "GenMsgCycleTime" BO_ 1099 500;
 BA_ "CANFD_BRS" BO_ 1099 0;
@@ -8239,6 +8428,7 @@ BA_ "sigDespEng"  SG_ 309 ADC_APA3Cntr "";
 BA_ "sigSecLevel"  SG_ 309 ADC_APA3Cntr "";
 BA_ "sigConfig"  SG_ 309 ADC_APA3Cntr "";
 BA_ "sigExplanation"  SG_ 309 ADC_APA3Cntr "";
+BA_ "GenSigStartValue" SG_ 309 APA_StrWhlAgReq 12480;
 BA_ "sigDespEng"  SG_ 309 APA_StrWhlAgReq "µ±APAÏë¿ØÖÆ·½ÏòÅÌÊ±·¢ËÍ´ËÐÅºÅ£¬APAÇëÇóµÄ·½ÏòÅÌ½Ç¶È";
 BA_ "sigSecLevel"  SG_ 309 APA_StrWhlAgReq "";
 BA_ "sigConfig"  SG_ 309 APA_StrWhlAgReq "";
@@ -8435,8 +8625,12 @@ BA_ "sigExplanation"  SG_ 310 ADAS_Req_EPBVld "";
 BA_ "GenSigStartValue" SG_ 310 ADS_DrvTarTq_J6 32768;
 BA_ "sigDespEng"  SG_ 310 ADS_DrvTarTq_J6 "";
 BA_ "sigSecLevel"  SG_ 310 ADS_DrvTarTq_J6 "";
-BA_ "sigConfig"  SG_ 310 ADS_DrvTarTq_J6 "";
+BA_ "sigConfig"  SG_ 310 ADS_DrvTarTq_J6 "B81";
 BA_ "sigExplanation"  SG_ 310 ADS_DrvTarTq_J6 "";
+BA_ "sigDespEng"  SG_ 310 ADS_SteerAgCtrlEnaReq_J6 "";
+BA_ "sigSecLevel"  SG_ 310 ADS_SteerAgCtrlEnaReq_J6 "";
+BA_ "sigConfig"  SG_ 310 ADS_SteerAgCtrlEnaReq_J6 "B81";
+BA_ "sigExplanation"  SG_ 310 ADS_SteerAgCtrlEnaReq_J6 "";
 BA_ "GenMsgCycleTime" BO_ 923 100;
 BA_ "VFrameFormat" BO_ 923 14;
 BA_ "sigDespEng"  SG_ 923 AVAP_RemViewSts "Ô¶³Ì²é¿´¼°³µÎ»ÍÆËÍÔ¶³Ì²é¿´¹¦ÄÜ×´Ì¬ÐÅÏ¢(AVAP·´À¡)";
@@ -8617,12 +8811,6 @@ BA_ "sigDespEng"  SG_ 1583 TBOX_CrtTi_Sec "ÐèÒª·¢³ö";
 BA_ "sigSecLevel"  SG_ 1583 TBOX_CrtTi_Sec "";
 BA_ "sigConfig"  SG_ 1583 TBOX_CrtTi_Sec "tsp";
 BA_ "sigExplanation"  SG_ 1583 TBOX_CrtTi_Sec "PDCU";
-BA_ "GenMsgCycleTime" BO_ 926 100;
-BA_ "VFrameFormat" BO_ 926 14;
-BA_ "sigDespEng"  SG_ 926 PBM_FltIndcn_EPB "indicating EPB is available or not";
-BA_ "sigSecLevel"  SG_ 926 PBM_FltIndcn_EPB "";
-BA_ "sigConfig"  SG_ 926 PBM_FltIndcn_EPB "";
-BA_ "sigExplanation"  SG_ 926 PBM_FltIndcn_EPB "";
 BA_ "GenMsgCycleTime" BO_ 315 10;
 BA_ "VFrameFormat" BO_ 315 14;
 BA_ "GenSigStartValue" SG_ 315 EPS_SteerTorqueByADASReq 1023;
@@ -8642,6 +8830,213 @@ BA_ "sigDespEng"  SG_ 315 EPS_DrvrSteerTqDir "";
 BA_ "sigSecLevel"  SG_ 315 EPS_DrvrSteerTqDir "";
 BA_ "sigConfig"  SG_ 315 EPS_DrvrSteerTqDir "B81";
 BA_ "sigExplanation"  SG_ 315 EPS_DrvrSteerTqDir "";
+BA_ "sigDespEng"  SG_ 315 EPS_SteerDrvrOvrd_J6 "";
+BA_ "sigSecLevel"  SG_ 315 EPS_SteerDrvrOvrd_J6 "";
+BA_ "sigConfig"  SG_ 315 EPS_SteerDrvrOvrd_J6 "B81";
+BA_ "sigExplanation"  SG_ 315 EPS_SteerDrvrOvrd_J6 "";
+BA_ "GenMsgCycleTime" BO_ 410 10;
+BA_ "VFrameFormat" BO_ 410 14;
+BA_ "sigDespEng"  SG_ 410 Yrs1Chks "E2E";
+BA_ "sigSecLevel"  SG_ 410 Yrs1Chks "";
+BA_ "sigConfig"  SG_ 410 Yrs1Chks "";
+BA_ "sigExplanation"  SG_ 410 Yrs1Chks "";
+BA_ "sigDespEng"  SG_ 410 Yrs1Cntr "";
+BA_ "sigSecLevel"  SG_ 410 Yrs1Cntr "";
+BA_ "sigConfig"  SG_ 410 Yrs1Cntr "";
+BA_ "sigExplanation"  SG_ 410 Yrs1Cntr "";
+BA_ "GenSigStartValue" SG_ 410 LatAcce 2000;
+BA_ "sigDespEng"  SG_ 410 LatAcce "";
+BA_ "sigSecLevel"  SG_ 410 LatAcce "";
+BA_ "sigConfig"  SG_ 410 LatAcce "";
+BA_ "sigExplanation"  SG_ 410 LatAcce "";
+BA_ "GenSigStartValue" SG_ 410 LgtAcce 2000;
+BA_ "sigDespEng"  SG_ 410 LgtAcce "";
+BA_ "sigSecLevel"  SG_ 410 LgtAcce "";
+BA_ "sigConfig"  SG_ 410 LgtAcce "";
+BA_ "sigExplanation"  SG_ 410 LgtAcce "";
+BA_ "GenSigStartValue" SG_ 410 YawRate 18000;
+BA_ "sigDespEng"  SG_ 410 YawRate "";
+BA_ "sigSecLevel"  SG_ 410 YawRate "";
+BA_ "sigConfig"  SG_ 410 YawRate "";
+BA_ "sigExplanation"  SG_ 410 YawRate "";
+BA_ "sigDespEng"  SG_ 410 LatSnsrSts "";
+BA_ "sigSecLevel"  SG_ 410 LatSnsrSts "";
+BA_ "sigConfig"  SG_ 410 LatSnsrSts "";
+BA_ "sigExplanation"  SG_ 410 LatSnsrSts "";
+BA_ "sigDespEng"  SG_ 410 LgtSnsrSts "";
+BA_ "sigSecLevel"  SG_ 410 LgtSnsrSts "";
+BA_ "sigConfig"  SG_ 410 LgtSnsrSts "";
+BA_ "sigExplanation"  SG_ 410 LgtSnsrSts "";
+BA_ "sigDespEng"  SG_ 410 YawRateSnsrSts "";
+BA_ "sigSecLevel"  SG_ 410 YawRateSnsrSts "";
+BA_ "sigConfig"  SG_ 410 YawRateSnsrSts "";
+BA_ "sigExplanation"  SG_ 410 YawRateSnsrSts "";
+BA_ "sigDespEng"  SG_ 410 YawRateSnsrCalSts "";
+BA_ "sigSecLevel"  SG_ 410 YawRateSnsrCalSts "";
+BA_ "sigConfig"  SG_ 410 YawRateSnsrCalSts "";
+BA_ "sigExplanation"  SG_ 410 YawRateSnsrCalSts "";
+BA_ "GenMsgCycleTime" BO_ 908 100;
+BA_ "VFrameFormat" BO_ 908 14;
+BA_ "sigDespEng"  SG_ 908 IDC0x38C1Chks "Ô¤Áô";
+BA_ "sigSecLevel"  SG_ 908 IDC0x38C1Chks "";
+BA_ "sigConfig"  SG_ 908 IDC0x38C1Chks "";
+BA_ "sigExplanation"  SG_ 908 IDC0x38C1Chks "";
+BA_ "sigDespEng"  SG_ 908 IDC0x38C1Cntr "Ô¤Áô";
+BA_ "sigSecLevel"  SG_ 908 IDC0x38C1Cntr "";
+BA_ "sigConfig"  SG_ 908 IDC0x38C1Cntr "";
+BA_ "sigExplanation"  SG_ 908 IDC0x38C1Cntr "";
+BA_ "sigDespEng"  SG_ 908 LeftFrontUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 LeftFrontUssSts "";
+BA_ "sigConfig"  SG_ 908 LeftFrontUssSts "";
+BA_ "sigExplanation"  SG_ 908 LeftFrontUssSts "";
+BA_ "sigDespEng"  SG_ 908 FrontLeftUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 FrontLeftUssSts "";
+BA_ "sigConfig"  SG_ 908 FrontLeftUssSts "";
+BA_ "sigExplanation"  SG_ 908 FrontLeftUssSts "";
+BA_ "sigDespEng"  SG_ 908 FrontLeftCenterUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 FrontLeftCenterUssSts "";
+BA_ "sigConfig"  SG_ 908 FrontLeftCenterUssSts "";
+BA_ "sigExplanation"  SG_ 908 FrontLeftCenterUssSts "";
+BA_ "sigDespEng"  SG_ 908 FrontRightCenterUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 FrontRightCenterUssSts "";
+BA_ "sigConfig"  SG_ 908 FrontRightCenterUssSts "";
+BA_ "sigExplanation"  SG_ 908 FrontRightCenterUssSts "";
+BA_ "sigDespEng"  SG_ 908 FrontRightUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 FrontRightUssSts "";
+BA_ "sigConfig"  SG_ 908 FrontRightUssSts "";
+BA_ "sigExplanation"  SG_ 908 FrontRightUssSts "";
+BA_ "sigDespEng"  SG_ 908 RightFrontUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 RightFrontUssSts "";
+BA_ "sigConfig"  SG_ 908 RightFrontUssSts "";
+BA_ "sigExplanation"  SG_ 908 RightFrontUssSts "";
+BA_ "sigDespEng"  SG_ 908 LeftBackUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 LeftBackUssSts "";
+BA_ "sigConfig"  SG_ 908 LeftBackUssSts "";
+BA_ "sigExplanation"  SG_ 908 LeftBackUssSts "";
+BA_ "sigDespEng"  SG_ 908 BackLeftUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 BackLeftUssSts "";
+BA_ "sigConfig"  SG_ 908 BackLeftUssSts "";
+BA_ "sigExplanation"  SG_ 908 BackLeftUssSts "";
+BA_ "sigDespEng"  SG_ 908 BackLeftCenterUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 BackLeftCenterUssSts "";
+BA_ "sigConfig"  SG_ 908 BackLeftCenterUssSts "";
+BA_ "sigExplanation"  SG_ 908 BackLeftCenterUssSts "";
+BA_ "sigDespEng"  SG_ 908 BackRightCenterUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 BackRightCenterUssSts "";
+BA_ "sigConfig"  SG_ 908 BackRightCenterUssSts "";
+BA_ "sigExplanation"  SG_ 908 BackRightCenterUssSts "";
+BA_ "sigDespEng"  SG_ 908 BackRightUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 BackRightUssSts "";
+BA_ "sigConfig"  SG_ 908 BackRightUssSts "";
+BA_ "sigExplanation"  SG_ 908 BackRightUssSts "";
+BA_ "sigDespEng"  SG_ 908 RightBacktUssSts "³µ»ú¸ù¾Ý×´Ì¬ÌáÊ¾¹ÊÕÏ·ûºÅ";
+BA_ "sigSecLevel"  SG_ 908 RightBacktUssSts "";
+BA_ "sigConfig"  SG_ 908 RightBacktUssSts "";
+BA_ "sigExplanation"  SG_ 908 RightBacktUssSts "";
+BA_ "sigDespEng"  SG_ 908 IDC0x38C2Chks "Ô¤Áô";
+BA_ "sigSecLevel"  SG_ 908 IDC0x38C2Chks "";
+BA_ "sigConfig"  SG_ 908 IDC0x38C2Chks "";
+BA_ "sigExplanation"  SG_ 908 IDC0x38C2Chks "";
+BA_ "sigDespEng"  SG_ 908 IDC0x38C2Cntr "Ô¤Áô";
+BA_ "sigSecLevel"  SG_ 908 IDC0x38C2Cntr "";
+BA_ "sigConfig"  SG_ 908 IDC0x38C2Cntr "";
+BA_ "sigExplanation"  SG_ 908 IDC0x38C2Cntr "";
+BA_ "sigDespEng"  SG_ 908 PAS_FL_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_FL_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_FL_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_FL_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_FML_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_FML_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_FML_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_FML_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_FMR_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_FMR_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_FMR_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_FMR_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_FR_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_FR_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_FR_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_FR_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_LSF1_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_LSF1_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_LSF1_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_LSF1_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_LSF2_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_LSF2_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_LSF2_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_LSF2_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_LSR2_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_LSR2_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_LSR2_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_LSR2_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_LSR1_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_LSR1_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_LSR1_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_LSR1_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_RSF1_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_RSF1_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_RSF1_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_RSF1_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_RSF2_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_RSF2_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_RSF2_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_RSF2_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_RSR2_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_RSR2_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_RSR2_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_RSR2_Distance "";
+BA_ "sigDespEng"  SG_ 908 SDW_RSR1_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 SDW_RSR1_Distance "";
+BA_ "sigConfig"  SG_ 908 SDW_RSR1_Distance "";
+BA_ "sigExplanation"  SG_ 908 SDW_RSR1_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_RL_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_RL_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_RL_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_RL_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_RML_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_RML_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_RML_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_RML_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_RMR_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_RMR_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_RMR_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_RMR_Distance "";
+BA_ "sigDespEng"  SG_ 908 PAS_RR_Distance "³µ»ú¸ù¾Ý×´Ì¬äÖÈ¾À×´ïÇ½";
+BA_ "sigSecLevel"  SG_ 908 PAS_RR_Distance "";
+BA_ "sigConfig"  SG_ 908 PAS_RR_Distance "";
+BA_ "sigExplanation"  SG_ 908 PAS_RR_Distance "";
+BA_ "sigDespEng"  SG_ 908 IDC0x38C3Chks "Ô¤Áô";
+BA_ "sigSecLevel"  SG_ 908 IDC0x38C3Chks "";
+BA_ "sigConfig"  SG_ 908 IDC0x38C3Chks "";
+BA_ "sigExplanation"  SG_ 908 IDC0x38C3Chks "";
+BA_ "sigDespEng"  SG_ 908 IDC0x38C3Cntr "Ô¤Áô";
+BA_ "sigSecLevel"  SG_ 908 IDC0x38C3Cntr "";
+BA_ "sigConfig"  SG_ 908 IDC0x38C3Cntr "";
+BA_ "sigExplanation"  SG_ 908 IDC0x38C3Cntr "";
+BA_ "sigDespEng"  SG_ 908 ApaCalibrationParameter "";
+BA_ "sigSecLevel"  SG_ 908 ApaCalibrationParameter "";
+BA_ "sigConfig"  SG_ 908 ApaCalibrationParameter "";
+BA_ "sigExplanation"  SG_ 908 ApaCalibrationParameter "";
+BA_ "sigDespEng"  SG_ 908 ApaFactoryCalibrationSts "";
+BA_ "sigSecLevel"  SG_ 908 ApaFactoryCalibrationSts "";
+BA_ "sigConfig"  SG_ 908 ApaFactoryCalibrationSts "";
+BA_ "sigExplanation"  SG_ 908 ApaFactoryCalibrationSts "";
+BA_ "sigDespEng"  SG_ 908 ApaFactoryCalibFailureRsn "";
+BA_ "sigSecLevel"  SG_ 908 ApaFactoryCalibFailureRsn "";
+BA_ "sigConfig"  SG_ 908 ApaFactoryCalibFailureRsn "";
+BA_ "sigExplanation"  SG_ 908 ApaFactoryCalibFailureRsn "";
+BA_ "sigDespEng"  SG_ 908 ApaAfterSalesCalibrationSts "";
+BA_ "sigSecLevel"  SG_ 908 ApaAfterSalesCalibrationSts "";
+BA_ "sigConfig"  SG_ 908 ApaAfterSalesCalibrationSts "";
+BA_ "sigExplanation"  SG_ 908 ApaAfterSalesCalibrationSts "";
+BA_ "sigDespEng"  SG_ 908 ApaAfterSalesCalibStsProgress "";
+BA_ "sigSecLevel"  SG_ 908 ApaAfterSalesCalibStsProgress "";
+BA_ "sigConfig"  SG_ 908 ApaAfterSalesCalibStsProgress "";
+BA_ "sigExplanation"  SG_ 908 ApaAfterSalesCalibStsProgress "";
+BA_ "sigDespEng"  SG_ 908 ApaAfterSalesCalibFailureRsn "";
+BA_ "sigSecLevel"  SG_ 908 ApaAfterSalesCalibFailureRsn "";
+BA_ "sigConfig"  SG_ 908 ApaAfterSalesCalibFailureRsn "";
+BA_ "sigExplanation"  SG_ 908 ApaAfterSalesCalibFailureRsn "";
 VAL_ 582 FDCA4_Cmd_BrakePreferred 1 "Demand" 0 "No demand" ;
 VAL_ 582 FDCA4_St_ReqDriveroff 1 "Demand" 0 "No demand" ;
 VAL_ 582 FDCA4_St_ReqHBA 1 "Demand" 0 "No demand" ;
@@ -8770,6 +9165,7 @@ VAL_ 1508 ADAS_FDCA1_Sts_ESS 15 "Reserved" 14 "Reserved" 13 "Reserved" 12 "Reser
 VAL_ 1508 ADAS_FDCA1_St_FCWMode 4 "Failure mode" 3 "standby" 2 "Active mode" 1 "On mode" 0 "OFF mode" ;
 VAL_ 1508 ADAS_FDCA1_St_TSRwarning 1 "Fault" 0 "No Fault" ;
 VAL_ 1508 ADAS_FDCA1_LDW_meter_Warning 2 "level2 warning" 1 "level1 warning" 0 "no warning" ;
+VAL_ 1508 ADC_PrivacyAgreementSts 3 "reserve" 2 "Í¬Òâ" 1 "¾Ü¾ø" 0 "default" ;
 VAL_ 1508 FDCA1_St_VehicleMode 7 "Rerserved" 6 "Gallery Mode" 5 "Test Mode£¨Ô¤Áô£©" 4 "Crash Mode£¨Ô¤Áô£©" 3 "Transport Mode" 2 "Factory Mode£¨default£©" 1 "Normal Mode" 0 "initialization" ;
 VAL_ 1508 ADAS_FDCA1_ESSTraj 3 "Reserved" 2 "Right" 1 "Left" 0 "Neither" ;
 VAL_ 1351 FDCA2_N_vSetDisp 255 "Invalid" ;
@@ -8869,6 +9265,7 @@ VAL_ 915 ADC_ADASYSSTS 1 "FAILURE" 0 "NO FAILURE" ;
 VAL_ 915 ADC_enum_PrkgBuzAlrmLvlReq 7 "reserved" 6 "reserved" 5 "reserved" 4 "Buzzer4" 3 "Buzzer3" 2 "Buzzer2" 1 "Buzzer1" 0 "No Request" ;
 VAL_ 915 ADC_SysStartupInPro 1 "Active" 0 "None" ;
 VAL_ 915 ADC_IMUSentiWarningSts 7 "Invalid" 6 "reserved" 5 "reserved" 4 "reserved" 3 "reserved" 2 "shaking" 1 "normal" 0 "Initialize" ;
+VAL_ 915 MPC_SOCOffSwtFb 3 "reserved" 2 "Initialization" 1 "On" 0 "Off" ;
 VAL_ 547 AdasHmiNeighboringObj1ObjTyp 7 "reserved" 6 "three-wheeler ÈýÂÖ³µ" 5 "bus ¹«¹²Æû³µ" 4 "pedestrian ÐÐÈË" 3 "motorbike/Bicycle ¶þÂÖ³µ" 2 "truck ¿¨³µ" 1 "passenger car Ð¡½Î³µ" 0 "Object not present" ;
 VAL_ 547 AdasHmiNeighboringObj1XOut 255 "distance (positive values are front, negative values rear from ego center)" 254 "distance (positive values are front, negative values rear from ego center)" 253 "distance (positive values are front, negative values rear from ego center)" 252 "distance (positive values are front, negative values rear from ego center)" 251 "distance (positive values are front, negative values rear from ego center)" 250 "distance (positive values are front, negative values rear from ego center)" 249 "distance (positive values are front, negative values rear from ego center)" 248 "distance (positive values are front, negative values rear from ego center)" 247 "distance (positive values are front, negative values rear from ego center)" 246 "distance (positive values are front, negative values rear from ego center)" 245 "distance (positive values are front, negative values rear from ego center)" 244 "distance (positive values are front, negative values rear from ego center)" 243 "distance (positive values are front, negative values rear from ego center)" 242 "distance (positive values are front, negative values rear from ego center)" 241 "distance (positive values are front, negative values rear from ego center)" 240 "distance (positive values are front, negative values rear from ego center)" 239 "distance (positive values are front, negative values rear from ego center)" 238 "distance (positive values are front, negative values rear from ego center)" 237 "distance (positive values are front, negative values rear from ego center)" 236 "distance (positive values are front, negative values rear from ego center)" 235 "distance (positive values are front, negative values rear from ego center)" 234 "distance (positive values are front, negative values rear from ego center)" 233 "distance (positive values are front, negative values rear from ego center)" 232 "distance (positive values are front, negative values rear from ego center)" 231 "distance (positive values are front, negative values rear from ego center)" 230 "distance (positive values are front, negative values rear from ego center)" 229 "distance (positive values are front, negative values rear from ego center)" 228 "distance (positive values are front, negative values rear from ego center)" 227 "distance (positive values are front, negative values rear from ego center)" 226 "distance (positive values are front, negative values rear from ego center)" 225 "distance (positive values are front, negative values rear from ego center)" 224 "distance (positive values are front, negative values rear from ego center)" 223 "distance (positive values are front, negative values rear from ego center)" 222 "distance (positive values are front, negative values rear from ego center)" 221 "distance (positive values are front, negative values rear from ego center)" 220 "distance (positive values are front, negative values rear from ego center)" 219 "distance (positive values are front, negative values rear from ego center)" 218 "distance (positive values are front, negative values rear from ego center)" 217 "distance (positive values are front, negative values rear from ego center)" 216 "distance (positive values are front, negative values rear from ego center)" 215 "distance (positive values are front, negative values rear from ego center)" 214 "distance (positive values are front, negative values rear from ego center)" 213 "distance (positive values are front, negative values rear from ego center)" 212 "distance (positive values are front, negative values rear from ego center)" 211 "distance (positive values are front, negative values rear from ego center)" 210 "distance (positive values are front, negative values rear from ego center)" 209 "distance (positive values are front, negative values rear from ego center)" 208 "distance (positive values are front, negative values rear from ego center)" 207 "distance (positive values are front, negative values rear from ego center)" 206 "distance (positive values are front, negative values rear from ego center)" 205 "distance (positive values are front, negative values rear from ego center)" 204 "distance (positive values are front, negative values rear from ego center)" 203 "distance (positive values are front, negative values rear from ego center)" 202 "distance (positive values are front, negative values rear from ego center)" 201 "distance (positive values are front, negative values rear from ego center)" 200 "distance (positive values are front, negative values rear from ego center)" 199 "distance (positive values are front, negative values rear from ego center)" 198 "distance (positive values are front, negative values rear from ego center)" 197 "distance (positive values are front, negative values rear from ego center)" 196 "distance (positive values are front, negative values rear from ego center)" 195 "distance (positive values are front, negative values rear from ego center)" 194 "distance (positive values are front, negative values rear from ego center)" 193 "distance (positive values are front, negative values rear from ego center)" 192 "distance (positive values are front, negative values rear from ego center)" 191 "distance (positive values are front, negative values rear from ego center)" 190 "distance (positive values are front, negative values rear from ego center)" 189 "distance (positive values are front, negative values rear from ego center)" 188 "distance (positive values are front, negative values rear from ego center)" 187 "distance (positive values are front, negative values rear from ego center)" 186 "distance (positive values are front, negative values rear from ego center)" 185 "distance (positive values are front, negative values rear from ego center)" 184 "distance (positive values are front, negative values rear from ego center)" 183 "distance (positive values are front, negative values rear from ego center)" 182 "distance (positive values are front, negative values rear from ego center)" 181 "distance (positive values are front, negative values rear from ego center)" 180 "distance (positive values are front, negative values rear from ego center)" 179 "distance (positive values are front, negative values rear from ego center)" 178 "distance (positive values are front, negative values rear from ego center)" 177 "distance (positive values are front, negative values rear from ego center)" 176 "distance (positive values are front, negative values rear from ego center)" 175 "distance (positive values are front, negative values rear from ego center)" 174 "distance (positive values are front, negative values rear from ego center)" 173 "distance (positive values are front, negative values rear from ego center)" 172 "distance (positive values are front, negative values rear from ego center)" 171 "distance (positive values are front, negative values rear from ego center)" 170 "distance (positive values are front, negative values rear from ego center)" 169 "distance (positive values are front, negative values rear from ego center)" 168 "distance (positive values are front, negative values rear from ego center)" 167 "distance (positive values are front, negative values rear from ego center)" 166 "distance (positive values are front, negative values rear from ego center)" 165 "distance (positive values are front, negative values rear from ego center)" 164 "distance (positive values are front, negative values rear from ego center)" 163 "distance (positive values are front, negative values rear from ego center)" 162 "distance (positive values are front, negative values rear from ego center)" 161 "distance (positive values are front, negative values rear from ego center)" 160 "distance (positive values are front, negative values rear from ego center)" 159 "distance (positive values are front, negative values rear from ego center)" 158 "distance (positive values are front, negative values rear from ego center)" 157 "distance (positive values are front, negative values rear from ego center)" 156 "distance (positive values are front, negative values rear from ego center)" 155 "distance (positive values are front, negative values rear from ego center)" 154 "distance (positive values are front, negative values rear from ego center)" 153 "distance (positive values are front, negative values rear from ego center)" 152 "distance (positive values are front, negative values rear from ego center)" 151 "distance (positive values are front, negative values rear from ego center)" 150 "distance (positive values are front, negative values rear from ego center)" 149 "distance (positive values are front, negative values rear from ego center)" 148 "distance (positive values are front, negative values rear from ego center)" 147 "distance (positive values are front, negative values rear from ego center)" 146 "distance (positive values are front, negative values rear from ego center)" 145 "distance (positive values are front, negative values rear from ego center)" 144 "distance (positive values are front, negative values rear from ego center)" 143 "distance (positive values are front, negative values rear from ego center)" 142 "distance (positive values are front, negative values rear from ego center)" 141 "distance (positive values are front, negative values rear from ego center)" 140 "distance (positive values are front, negative values rear from ego center)" 139 "distance (positive values are front, negative values rear from ego center)" 138 "distance (positive values are front, negative values rear from ego center)" 137 "distance (positive values are front, negative values rear from ego center)" 136 "distance (positive values are front, negative values rear from ego center)" 135 "distance (positive values are front, negative values rear from ego center)" 134 "distance (positive values are front, negative values rear from ego center)" 133 "distance (positive values are front, negative values rear from ego center)" 132 "distance (positive values are front, negative values rear from ego center)" 131 "distance (positive values are front, negative values rear from ego center)" 130 "distance (positive values are front, negative values rear from ego center)" 129 "distance (positive values are front, negative values rear from ego center)" 128 "distance (positive values are front, negative values rear from ego center)" 127 "distance (positive values are front, negative values rear from ego center)" 126 "distance (positive values are front, negative values rear from ego center)" 125 "distance (positive values are front, negative values rear from ego center)" 124 "distance (positive values are front, negative values rear from ego center)" 123 "distance (positive values are front, negative values rear from ego center)" 122 "distance (positive values are front, negative values rear from ego center)" 121 "distance (positive values are front, negative values rear from ego center)" 120 "distance (positive values are front, negative values rear from ego center)" 119 "distance (positive values are front, negative values rear from ego center)" 118 "distance (positive values are front, negative values rear from ego center)" 117 "distance (positive values are front, negative values rear from ego center)" 116 "distance (positive values are front, negative values rear from ego center)" 115 "distance (positive values are front, negative values rear from ego center)" 114 "distance (positive values are front, negative values rear from ego center)" 113 "distance (positive values are front, negative values rear from ego center)" 112 "distance (positive values are front, negative values rear from ego center)" 111 "distance (positive values are front, negative values rear from ego center)" 110 "distance (positive values are front, negative values rear from ego center)" 109 "distance (positive values are front, negative values rear from ego center)" 108 "distance (positive values are front, negative values rear from ego center)" 107 "distance (positive values are front, negative values rear from ego center)" 106 "distance (positive values are front, negative values rear from ego center)" 105 "distance (positive values are front, negative values rear from ego center)" 104 "distance (positive values are front, negative values rear from ego center)" 103 "distance (positive values are front, negative values rear from ego center)" 102 "distance (positive values are front, negative values rear from ego center)" 101 "distance (positive values are front, negative values rear from ego center)" 100 "distance (positive values are front, negative values rear from ego center)" 99 "distance (positive values are front, negative values rear from ego center)" 98 "distance (positive values are front, negative values rear from ego center)" 97 "distance (positive values are front, negative values rear from ego center)" 96 "distance (positive values are front, negative values rear from ego center)" 95 "distance (positive values are front, negative values rear from ego center)" 94 "distance (positive values are front, negative values rear from ego center)" 93 "distance (positive values are front, negative values rear from ego center)" 92 "distance (positive values are front, negative values rear from ego center)" 91 "distance (positive values are front, negative values rear from ego center)" 90 "distance (positive values are front, negative values rear from ego center)" 89 "distance (positive values are front, negative values rear from ego center)" 88 "distance (positive values are front, negative values rear from ego center)" 87 "distance (positive values are front, negative values rear from ego center)" 86 "distance (positive values are front, negative values rear from ego center)" 85 "distance (positive values are front, negative values rear from ego center)" 84 "distance (positive values are front, negative values rear from ego center)" 83 "distance (positive values are front, negative values rear from ego center)" 82 "distance (positive values are front, negative values rear from ego center)" 81 "distance (positive values are front, negative values rear from ego center)" 80 "distance (positive values are front, negative values rear from ego center)" 79 "distance (positive values are front, negative values rear from ego center)" 78 "distance (positive values are front, negative values rear from ego center)" 77 "distance (positive values are front, negative values rear from ego center)" 76 "distance (positive values are front, negative values rear from ego center)" 75 "distance (positive values are front, negative values rear from ego center)" 74 "distance (positive values are front, negative values rear from ego center)" 73 "distance (positive values are front, negative values rear from ego center)" 72 "distance (positive values are front, negative values rear from ego center)" 71 "distance (positive values are front, negative values rear from ego center)" 70 "distance (positive values are front, negative values rear from ego center)" 69 "distance (positive values are front, negative values rear from ego center)" 68 "distance (positive values are front, negative values rear from ego center)" 67 "distance (positive values are front, negative values rear from ego center)" 66 "distance (positive values are front, negative values rear from ego center)" 65 "distance (positive values are front, negative values rear from ego center)" 64 "distance (positive values are front, negative values rear from ego center)" 63 "distance (positive values are front, negative values rear from ego center)" 62 "distance (positive values are front, negative values rear from ego center)" 61 "distance (positive values are front, negative values rear from ego center)" 60 "distance (positive values are front, negative values rear from ego center)" 59 "distance (positive values are front, negative values rear from ego center)" 58 "distance (positive values are front, negative values rear from ego center)" 57 "distance (positive values are front, negative values rear from ego center)" 56 "distance (positive values are front, negative values rear from ego center)" 55 "distance (positive values are front, negative values rear from ego center)" 54 "distance (positive values are front, negative values rear from ego center)" 53 "distance (positive values are front, negative values rear from ego center)" 52 "distance (positive values are front, negative values rear from ego center)" 51 "distance (positive values are front, negative values rear from ego center)" 50 "distance (positive values are front, negative values rear from ego center)" 49 "distance (positive values are front, negative values rear from ego center)" 48 "distance (positive values are front, negative values rear from ego center)" 47 "distance (positive values are front, negative values rear from ego center)" 46 "distance (positive values are front, negative values rear from ego center)" 45 "distance (positive values are front, negative values rear from ego center)" 44 "distance (positive values are front, negative values rear from ego center)" 43 "distance (positive values are front, negative values rear from ego center)" 42 "distance (positive values are front, negative values rear from ego center)" 41 "distance (positive values are front, negative values rear from ego center)" 40 "distance (positive values are front, negative values rear from ego center)" 39 "distance (positive values are front, negative values rear from ego center)" 38 "distance (positive values are front, negative values rear from ego center)" 37 "distance (positive values are front, negative values rear from ego center)" 36 "distance (positive values are front, negative values rear from ego center)" 35 "distance (positive values are front, negative values rear from ego center)" 34 "distance (positive values are front, negative values rear from ego center)" 33 "distance (positive values are front, negative values rear from ego center)" 32 "distance (positive values are front, negative values rear from ego center)" 31 "distance (positive values are front, negative values rear from ego center)" 30 "distance (positive values are front, negative values rear from ego center)" 29 "distance (positive values are front, negative values rear from ego center)" 28 "distance (positive values are front, negative values rear from ego center)" 27 "distance (positive values are front, negative values rear from ego center)" 26 "distance (positive values are front, negative values rear from ego center)" 25 "distance (positive values are front, negative values rear from ego center)" 24 "distance (positive values are front, negative values rear from ego center)" 23 "distance (positive values are front, negative values rear from ego center)" 22 "distance (positive values are front, negative values rear from ego center)" 21 "distance (positive values are front, negative values rear from ego center)" 20 "distance (positive values are front, negative values rear from ego center)" 19 "distance (positive values are front, negative values rear from ego center)" 18 "distance (positive values are front, negative values rear from ego center)" 17 "distance (positive values are front, negative values rear from ego center)" 16 "distance (positive values are front, negative values rear from ego center)" 15 "distance (positive values are front, negative values rear from ego center)" 14 "distance (positive values are front, negative values rear from ego center)" 13 "distance (positive values are front, negative values rear from ego center)" 12 "distance (positive values are front, negative values rear from ego center)" 11 "distance (positive values are front, negative values rear from ego center)" 10 "distance (positive values are front, negative values rear from ego center)" 9 "distance (positive values are front, negative values rear from ego center)" 8 "distance (positive values are front, negative values rear from ego center)" 7 "distance (positive values are front, negative values rear from ego center)" 6 "distance (positive values are front, negative values rear from ego center)" 5 "distance (positive values are front, negative values rear from ego center)" 4 "distance (positive values are front, negative values rear from ego center)" 3 "distance (positive values are front, negative values rear from ego center)" 2 "distance (positive values are front, negative values rear from ego center)" 1 "distance (positive values are front, negative values rear from ego center)" 0 "distance (positive values are front, negative values rear from ego center)" ;
 VAL_ 547 AdasHmiNeighboringObj1YOut 255 "distance right from ego center" 254 "distance right from ego center" 253 "distance right from ego center" 252 "distance right from ego center" 251 "distance right from ego center" 250 "distance right from ego center" 249 "distance right from ego center" 248 "distance right from ego center" 247 "distance right from ego center" 246 "distance right from ego center" 245 "distance right from ego center" 244 "distance right from ego center" 243 "distance right from ego center" 242 "distance right from ego center" 241 "distance right from ego center" 240 "distance right from ego center" 239 "distance right from ego center" 238 "distance right from ego center" 237 "distance right from ego center" 236 "distance right from ego center" 235 "distance right from ego center" 234 "distance right from ego center" 233 "distance right from ego center" 232 "distance right from ego center" 231 "distance right from ego center" 230 "distance right from ego center" 229 "distance right from ego center" 228 "distance right from ego center" 227 "distance right from ego center" 226 "distance right from ego center" 225 "distance right from ego center" 224 "distance right from ego center" 223 "distance right from ego center" 222 "distance right from ego center" 221 "distance right from ego center" 220 "distance right from ego center" 219 "distance right from ego center" 218 "distance right from ego center" 217 "distance right from ego center" 216 "distance right from ego center" 215 "distance right from ego center" 214 "distance right from ego center" 213 "distance right from ego center" 212 "distance right from ego center" 211 "distance right from ego center" 210 "distance right from ego center" 209 "distance right from ego center" 208 "distance right from ego center" 207 "distance right from ego center" 206 "distance right from ego center" 205 "distance right from ego center" 204 "distance right from ego center" 203 "distance right from ego center" 202 "distance right from ego center" 201 "distance right from ego center" 200 "distance right from ego center" 199 "distance right from ego center" 198 "distance right from ego center" 197 "distance right from ego center" 196 "distance right from ego center" 195 "distance right from ego center" 194 "distance right from ego center" 193 "distance right from ego center" 192 "distance right from ego center" 191 "distance right from ego center" 190 "distance right from ego center" 189 "distance right from ego center" 188 "distance right from ego center" 187 "distance right from ego center" 186 "distance right from ego center" 185 "distance right from ego center" 184 "distance right from ego center" 183 "distance right from ego center" 182 "distance right from ego center" 181 "distance right from ego center" 180 "distance right from ego center" 179 "distance right from ego center" 178 "distance right from ego center" 177 "distance right from ego center" 176 "distance right from ego center" 175 "distance right from ego center" 174 "distance right from ego center" 173 "distance right from ego center" 172 "distance right from ego center" 171 "distance right from ego center" 170 "distance right from ego center" 169 "distance right from ego center" 168 "distance right from ego center" 167 "distance right from ego center" 166 "distance right from ego center" 165 "distance right from ego center" 164 "distance right from ego center" 163 "distance right from ego center" 162 "distance right from ego center" 161 "distance right from ego center" 160 "distance right from ego center" 159 "distance right from ego center" 158 "distance right from ego center" 157 "distance right from ego center" 156 "distance right from ego center" 155 "distance right from ego center" 154 "distance right from ego center" 153 "distance right from ego center" 152 "distance right from ego center" 151 "distance right from ego center" 150 "distance right from ego center" 149 "distance right from ego center" 148 "distance right from ego center" 147 "distance right from ego center" 146 "distance right from ego center" 145 "distance right from ego center" 144 "distance right from ego center" 143 "distance right from ego center" 142 "distance right from ego center" 141 "distance right from ego center" 140 "distance right from ego center" 139 "distance right from ego center" 138 "distance right from ego center" 137 "distance right from ego center" 136 "distance right from ego center" 135 "distance right from ego center" 134 "distance right from ego center" 133 "distance right from ego center" 132 "distance right from ego center" 131 "distance right from ego center" 130 "distance right from ego center" 129 "distance right from ego center" 128 "distance right from ego center" 127 "distance left from ego center" 126 "distance left from ego center" 125 "distance left from ego center" 124 "distance left from ego center" 123 "distance left from ego center" 122 "distance left from ego center" 121 "distance left from ego center" 120 "distance left from ego center" 119 "distance left from ego center" 118 "distance left from ego center" 117 "distance left from ego center" 116 "distance left from ego center" 115 "distance left from ego center" 114 "distance left from ego center" 113 "distance left from ego center" 112 "distance left from ego center" 111 "distance left from ego center" 110 "distance left from ego center" 109 "distance left from ego center" 108 "distance left from ego center" 107 "distance left from ego center" 106 "distance left from ego center" 105 "distance left from ego center" 104 "distance left from ego center" 103 "distance left from ego center" 102 "distance left from ego center" 101 "distance left from ego center" 100 "distance left from ego center" 99 "distance left from ego center" 98 "distance left from ego center" 97 "distance left from ego center" 96 "distance left from ego center" 95 "distance left from ego center" 94 "distance left from ego center" 93 "distance left from ego center" 92 "distance left from ego center" 91 "distance left from ego center" 90 "distance left from ego center" 89 "distance left from ego center" 88 "distance left from ego center" 87 "distance left from ego center" 86 "distance left from ego center" 85 "distance left from ego center" 84 "distance left from ego center" 83 "distance left from ego center" 82 "distance left from ego center" 81 "distance left from ego center" 80 "distance left from ego center" 79 "distance left from ego center" 78 "distance left from ego center" 77 "distance left from ego center" 76 "distance left from ego center" 75 "distance left from ego center" 74 "distance left from ego center" 73 "distance left from ego center" 72 "distance left from ego center" 71 "distance left from ego center" 70 "distance left from ego center" 69 "distance left from ego center" 68 "distance left from ego center" 67 "distance left from ego center" 66 "distance left from ego center" 65 "distance left from ego center" 64 "distance left from ego center" 63 "distance left from ego center" 62 "distance left from ego center" 61 "distance left from ego center" 60 "distance left from ego center" 59 "distance left from ego center" 58 "distance left from ego center" 57 "distance left from ego center" 56 "distance left from ego center" 55 "distance left from ego center" 54 "distance left from ego center" 53 "distance left from ego center" 52 "distance left from ego center" 51 "distance left from ego center" 50 "distance left from ego center" 49 "distance left from ego center" 48 "distance left from ego center" 47 "distance left from ego center" 46 "distance left from ego center" 45 "distance left from ego center" 44 "distance left from ego center" 43 "distance left from ego center" 42 "distance left from ego center" 41 "distance left from ego center" 40 "distance left from ego center" 39 "distance left from ego center" 38 "distance left from ego center" 37 "distance left from ego center" 36 "distance left from ego center" 35 "distance left from ego center" 34 "distance left from ego center" 33 "distance left from ego center" 32 "distance left from ego center" 31 "distance left from ego center" 30 "distance left from ego center" 29 "distance left from ego center" 28 "distance left from ego center" 27 "distance left from ego center" 26 "distance left from ego center" 25 "distance left from ego center" 24 "distance left from ego center" 23 "distance left from ego center" 22 "distance left from ego center" 21 "distance left from ego center" 20 "distance left from ego center" 19 "distance left from ego center" 18 "distance left from ego center" 17 "distance left from ego center" 16 "distance left from ego center" 15 "distance left from ego center" 14 "distance left from ego center" 13 "distance left from ego center" 12 "distance left from ego center" 11 "distance left from ego center" 10 "distance left from ego center" 9 "distance left from ego center" 8 "distance left from ego center" 7 "distance left from ego center" 6 "distance left from ego center" 5 "distance left from ego center" 4 "distance left from ego center" 3 "distance left from ego center" 2 "distance left from ego center" 1 "distance left from ego center" 0 "distance left from ego center" ;
@@ -9192,7 +9589,7 @@ VAL_ 309 APA_TarGearReq 7 "Reversed" 6 "Reversed" 5 "Reversed" 4 "Target Shift D
 VAL_ 309 APA_TarGearReqVld 1 "Valid" 0 "Invalid" ;
 VAL_ 309 APA_AxReqEnable 1 "Enable" 0 "Not Enable" ;
 VAL_ 309 APA_AxReqVld 1 "Valid" 0 "Invalid" ;
-VAL_ 309 APA_SysFailSts 1 "Available" 0 "Not available" ;
+VAL_ 309 APA_SysFailSts 1 "fault present" 0 "No fault present" ;
 VAL_ 309 APA_DrvOffReq 1 "Request" 0 "Not Request" ;
 VAL_ 309 APA_VehStandstillReq 1 "Request" 0 "Not Request" ;
 VAL_ 309 APA_CtrlEPBAux 1 "Request" 0 "No Request" ;
@@ -9233,6 +9630,7 @@ VAL_ 310 ADAS_LatFuncMode 3 "Reserved" 2 "ESS/AES" 1 "LKA/RDP/ELK" 0 "None" ;
 VAL_ 310 ADAS_PinionAgReqVld 3 "Reserved" 2 "Valid" 1 "Invalid" 0 "Initializing" ;
 VAL_ 310 ADAS_Req_EPBVld 1 "Valid" 0 "Invalid" ;
 VAL_ 310 ADS_DrvTarTq_J6 65535 "Invalid" ;
+VAL_ 310 ADS_SteerAgCtrlEnaReq_J6 1 "Active" 0 "Not Active" ;
 VAL_ 923 AVAP_RemViewSts 15 "reserved" 14 "reserved" 13 "reserved" 12 "reserved" 11 "reserved" 10 "reserved" 9 "reserved" 8 "reserved" 7 "reserved" 6 "reserved" 5 "reserved" 4 "¹¦ÄÜÒì³£-AVAP¿ØÖÆÆ÷ÄÚ²¿Òì³£" 3 "¹¦ÄÜÒì³£-ºóÊÓ¾µÒì³£" 2 "¹¦ÄÜÒì³£-ÉãÏñÍ·Òì³£" 1 "¹¦ÄÜÕý³£" 0 "³õÊ¼Öµ£»" ;
 VAL_ 923 AVAP_ViewSwtSts 15 "reserved" 14 "reserved" 13 "reserved" 12 "reserved" 11 "reserved" 10 "AVM 3D»­Ãæ£¨¸©ÊÓ£©" 9 "AVM 3D»­Ãæ£¨ÓÒÊÓ£©" 8 "AVM 3D»­Ãæ£¨×óÊÓ£©" 7 "AVM 3D»­Ãæ£¨ºóÊÓ£©" 6 "AVM 3D»­Ãæ£¨Ç°ÊÓ£©" 5 "ÓãÑÛ£¨ËÄÂ·Æ´½Ó£©" 4 "ÓãÑÛ£¨ÓÒÊÓ£©" 3 "ÓãÑÛ£¨×óÊÓ£©" 2 "ÓãÑÛ£¨ºóÊÓ£©" 1 "ÓãÑÛ£¨Ç°ÊÓ£©" 0 "³õÊ¼Öµ" ;
 VAL_ 923 AVAP_MirrReq 3 "reserved" 2 "unfoldÇëÇóÕ¹¿ª" 1 "foldÇëÇó¹Ø±Õ" 0 "³õÊ¼Öµ" ;
@@ -9251,6 +9649,39 @@ VAL_ 924 ADAS_TurnLightReq 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Activate ha
 VAL_ 924 ADAS_FrontWasherReq 1 "Activate low speed wiper" 0 "No Request" ;
 VAL_ 924 ADAS_FrontWiperReq 3 "Activate high speed wiper" 2 "Activate low speed wiper" 1 "Deactivate wiper" 0 "No Request" ;
 VAL_ 924 ADC_HAD_CoolingfluidflowRateReq 15 "Invalid" 14 "3.5L/min" 13 "3.25L/min" 12 "3.0L/min" 11 "2.75L/min" 10 "2.5L/min" 9 "2.25L/min" 8 "2.0L/min" 7 "1.75L/min" 6 "1.5L/min" 5 "1.25L/min" 4 "1.0L/min" 3 "0.75L/min" 2 "0.5L/min" 1 "0.25L/min" 0 "0.0L/min" ;
+VAL_ 908 LeftFrontUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 FrontLeftUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 FrontLeftCenterUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 FrontRightCenterUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 FrontRightUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 RightFrontUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 LeftBackUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 BackLeftUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 BackLeftCenterUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 BackRightCenterUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 BackRightUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 RightBacktUssSts 3 "reserved" 2 "failure" 1 "Blockage" 0 "Normal" ;
+VAL_ 908 PAS_FL_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_FML_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_FMR_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_FR_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_LSF1_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_LSF2_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_LSR2_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_LSR1_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_RSF1_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_RSF2_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_RSR2_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 SDW_RSR1_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_RL_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_RML_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_RMR_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 PAS_RR_Distance 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Green" 3 "Green" 2 "Yellow" 1 "Red" 0 "None" ;
+VAL_ 908 ApaCalibrationParameter 1 "Completed" 0 "Int" ;
+VAL_ 908 ApaFactoryCalibrationSts 3 "±ê¶¨Ê§°Ü" 2 "±ê¶¨³É¹¦" 1 "±ê¶¨ÖÐ" 0 "NONE" ;
+VAL_ 908 ApaFactoryCalibFailureRsn 255 "Reserved" 254 "Reserved" 253 "Reserved" 252 "Reserved" 251 "Reserved" 250 "Reserved" 249 "Reserved" 248 "Reserved" 247 "Reserved" 246 "Reserved" 245 "Reserved" 244 "Reserved" 243 "Reserved" 242 "Reserved" 241 "Reserved" 240 "Reserved" 239 "Reserved" 238 "Reserved" 237 "Reserved" 236 "Reserved" 235 "Reserved" 234 "Reserved" 233 "Reserved" 232 "Reserved" 231 "Reserved" 230 "Reserved" 229 "Reserved" 228 "Reserved" 227 "Reserved" 226 "Reserved" 225 "Reserved" 224 "Reserved" 223 "Reserved" 222 "Reserved" 221 "Reserved" 220 "Reserved" 219 "Reserved" 218 "Reserved" 217 "Reserved" 216 "Reserved" 215 "Reserved" 214 "Reserved" 213 "Reserved" 212 "Reserved" 211 "Reserved" 210 "Reserved" 209 "Reserved" 208 "Reserved" 207 "Reserved" 206 "Reserved" 205 "Reserved" 204 "Reserved" 203 "Reserved" 202 "Reserved" 201 "Reserved" 200 "Reserved" 199 "Reserved" 198 "Reserved" 197 "Reserved" 196 "Reserved" 195 "Reserved" 194 "Reserved" 193 "Reserved" 192 "Reserved" 191 "Reserved" 190 "Reserved" 189 "Reserved" 188 "Reserved" 187 "Reserved" 186 "Reserved" 185 "Reserved" 184 "Reserved" 183 "Reserved" 182 "Reserved" 181 "Reserved" 180 "Reserved" 179 "Reserved" 178 "Reserved" 177 "Reserved" 176 "Reserved" 175 "Reserved" 174 "Reserved" 173 "Reserved" 172 "Reserved" 171 "Reserved" 170 "Reserved" 169 "Reserved" 168 "Reserved" 167 "Reserved" 166 "Reserved" 165 "Reserved" 164 "Reserved" 163 "Reserved" 162 "Reserved" 161 "Reserved" 160 "Reserved" 159 "Reserved" 158 "Reserved" 157 "Reserved" 156 "Reserved" 155 "Reserved" 154 "Reserved" 153 "Reserved" 152 "Reserved" 151 "Reserved" 150 "Reserved" 149 "Reserved" 148 "Reserved" 147 "Reserved" 146 "Reserved" 145 "Reserved" 144 "Reserved" 143 "Reserved" 142 "Reserved" 141 "Reserved" 140 "Reserved" 139 "Reserved" 138 "Reserved" 137 "Reserved" 136 "Reserved" 135 "Reserved" 134 "Reserved" 133 "Reserved" 132 "Reserved" 131 "Reserved" 130 "Reserved" 129 "Reserved" 128 "Reserved" 127 "Reserved" 126 "Reserved" 125 "Reserved" 124 "Reserved" 123 "Reserved" 122 "Reserved" 121 "Reserved" 120 "Reserved" 119 "Reserved" 118 "Reserved" 117 "Reserved" 116 "Reserved" 115 "Reserved" 114 "Reserved" 113 "Reserved" 112 "Reserved" 111 "Reserved" 110 "Reserved" 109 "Reserved" 108 "Reserved" 107 "Reserved" 106 "Reserved" 105 "Reserved" 104 "Reserved" 103 "Reserved" 102 "Reserved" 101 "Reserved" 100 "Reserved" 99 "Reserved" 98 "Reserved" 97 "Reserved" 96 "Reserved" 95 "Reserved" 94 "Reserved" 93 "Reserved" 92 "Reserved" 91 "Reserved" 90 "Reserved" 89 "Reserved" 88 "Reserved" 87 "Reserved" 86 "Reserved" 85 "Reserved" 84 "Reserved" 83 "Reserved" 82 "Reserved" 81 "Reserved" 80 "Reserved" 79 "Cord49" 78 "Cord49" 77 "Cord49" 76 "Cord49" 75 "Cord49" 74 "Cord49" 73 "Cord49" 72 "Cord48" 71 "Cord47" 70 "Cord46" 69 "Cord45" 68 "Cord44" 67 "Cord43" 66 "Cord42" 65 "Cord41" 64 "None" 63 "Cord39" 62 "Cord39" 61 "Cord39" 60 "Cord39" 59 "Cord39" 58 "Cord39" 57 "Cord39" 56 "Cord38" 55 "Cord37" 54 "Cord36" 53 "Cord35" 52 "Cord34" 51 "Cord33" 50 "Cord32" 49 "Cord31" 48 "NONE" 47 "Cord29" 46 "Cord29" 45 "Cord29" 44 "Cord29" 43 "Cord29" 42 "Cord29" 41 "Cord29" 40 "Cord28" 39 "Cord27" 38 "Cord26" 37 "Cord25" 36 "Cord24" 35 "Cord23" 34 "Cord22" 33 "Cord21" 32 "NONE" 31 "Cord19" 30 "Cord19" 29 "Cord19" 28 "Cord19" 27 "Cord19" 26 "Cord19" 25 "Cord19" 24 "Cord18" 23 "Cord17" 22 "Cord16" 21 "Cord15" 20 "Cord14" 19 "Cord13" 18 "Cord12" 17 "Cord11" 16 "NONE" 15 "NONE" 14 "NONE" 13 "NONE" 12 "NONE" 11 "NONE" 10 "NONE" 9 "NONE" 8 "NONE" 7 "NONE" 6 "NONE" 5 "NONE" 4 "NONE" 3 "NONE" 2 "NONE" 1 "Cord1" 0 "NONE" ;
+VAL_ 908 ApaAfterSalesCalibrationSts 3 "±ê¶¨Ê§°Ü" 2 "±ê¶¨³É¹¦" 1 "±ê¶¨ÖÐ" 0 "NONE" ;
+VAL_ 908 ApaAfterSalesCalibFailureRsn 255 "Reserved" 254 "Reserved" 253 "Reserved" 252 "Reserved" 251 "Reserved" 250 "Reserved" 249 "Reserved" 248 "Reserved" 247 "Reserved" 246 "Reserved" 245 "Reserved" 244 "Reserved" 243 "Reserved" 242 "Reserved" 241 "Reserved" 240 "Reserved" 239 "Reserved" 238 "Reserved" 237 "Reserved" 236 "Reserved" 235 "Reserved" 234 "Reserved" 233 "Reserved" 232 "Reserved" 231 "Reserved" 230 "Reserved" 229 "Reserved" 228 "Reserved" 227 "Reserved" 226 "Reserved" 225 "Reserved" 224 "Reserved" 223 "Reserved" 222 "Reserved" 221 "Reserved" 220 "Reserved" 219 "Reserved" 218 "Reserved" 217 "Reserved" 216 "Reserved" 215 "Reserved" 214 "Reserved" 213 "Reserved" 212 "Reserved" 211 "Reserved" 210 "Reserved" 209 "Reserved" 208 "Reserved" 207 "Reserved" 206 "Reserved" 205 "Reserved" 204 "Reserved" 203 "Reserved" 202 "Reserved" 201 "Reserved" 200 "Reserved" 199 "Reserved" 198 "Reserved" 197 "Reserved" 196 "Reserved" 195 "Reserved" 194 "Reserved" 193 "Reserved" 192 "Reserved" 191 "Reserved" 190 "Reserved" 189 "Reserved" 188 "Reserved" 187 "Reserved" 186 "Reserved" 185 "Reserved" 184 "Reserved" 183 "Reserved" 182 "Reserved" 181 "Reserved" 180 "Reserved" 179 "Reserved" 178 "Reserved" 177 "Reserved" 176 "Reserved" 175 "Reserved" 174 "Reserved" 173 "Reserved" 172 "Reserved" 171 "Reserved" 170 "Reserved" 169 "Reserved" 168 "Reserved" 167 "Reserved" 166 "Reserved" 165 "Reserved" 164 "Reserved" 163 "Reserved" 162 "Reserved" 161 "Reserved" 160 "Reserved" 159 "Reserved" 158 "Reserved" 157 "Reserved" 156 "Reserved" 155 "Reserved" 154 "Reserved" 153 "Reserved" 152 "Reserved" 151 "Reserved" 150 "Reserved" 149 "Reserved" 148 "Reserved" 147 "Reserved" 146 "Reserved" 145 "Reserved" 144 "Reserved" 143 "Reserved" 142 "Reserved" 141 "Reserved" 140 "Reserved" 139 "Reserved" 138 "Reserved" 137 "Reserved" 136 "Reserved" 135 "Reserved" 134 "Reserved" 133 "Reserved" 132 "Reserved" 131 "Reserved" 130 "Reserved" 129 "Reserved" 128 "Reserved" 127 "Reserved" 126 "Reserved" 125 "Reserved" 124 "Reserved" 123 "Reserved" 122 "Reserved" 121 "Reserved" 120 "Reserved" 119 "Reserved" 118 "Reserved" 117 "Reserved" 116 "Reserved" 115 "Reserved" 114 "Reserved" 113 "Reserved" 112 "Reserved" 111 "Reserved" 110 "Reserved" 109 "Reserved" 108 "Reserved" 107 "Reserved" 106 "Reserved" 105 "Reserved" 104 "Reserved" 103 "Reserved" 102 "Reserved" 101 "Reserved" 100 "Reserved" 99 "Reserved" 98 "Reserved" 97 "Reserved" 96 "Reserved" 95 "Reserved" 94 "Reserved" 93 "Reserved" 92 "Reserved" 91 "Reserved" 90 "Reserved" 89 "Reserved" 88 "Reserved" 87 "Reserved" 86 "Reserved" 85 "Reserved" 84 "Reserved" 83 "Reserved" 82 "Reserved" 81 "Reserved" 80 "Reserved" 79 "Cord47" 78 "Cord47" 77 "Cord47" 76 "Cord47" 75 "Cord47" 74 "Cord47" 73 "Cord47" 72 "Cord47" 71 "Cord47" 70 "Cord46" 69 "Cord45" 68 "Cord44" 67 "Cord43" 66 "Cord42" 65 "Cord41" 64 "NONE" 63 "Cord37" 62 "Cord37" 61 "Cord37" 60 "Cord37" 59 "Cord37" 58 "Cord37" 57 "Cord37" 56 "Cord37" 55 "Cord37" 54 "Cord36" 53 "Cord35" 52 "Cord34" 51 "Cord33" 50 "Cord32" 49 "Cord31" 48 "NONE" 47 "Cord27" 46 "Cord27" 45 "Cord27" 44 "Cord27" 43 "Cord27" 42 "Cord27" 41 "Cord27" 40 "Cord27" 39 "Cord27" 38 "Cord26" 37 "Cord25" 36 "Cord24" 35 "Cord23" 34 "Cord22" 33 "Cord21" 32 "NONE" 31 "Cord17" 30 "Cord17" 29 "Cord17" 28 "Cord17" 27 "Cord17" 26 "Cord17" 25 "Cord17" 24 "Cord17" 23 "Cord17" 22 "Cord16" 21 "Cord15" 20 "Cord14" 19 "Cord13" 18 "Cord12" 17 "Cord11" 16 "NONE" 15 "NONE" 14 "NONE" 13 "NONE" 12 "NONE" 11 "NONE" 10 "NONE" 9 "NONE" 8 "NONE" 7 "NONE" 6 "NONE" 5 "Cord5" 4 "Cord4" 3 "Cord3" 2 "Cord2" 1 "Cord1" 0 "NONE" ;
 VAL_ 640 EMS5_F_BrakePedal 1 "Invalid" 0 "Valid" ;
 VAL_ 640 EMS5_St_BrakePedal 1 "Pressed" 0 "No Pressed" ;
 VAL_ 640 EMS5_St_LimpHome 1 "Limp home" 0 "Normal" ;
@@ -9388,13 +9819,14 @@ VAL_ 1319 EHC6_St_Navigation 3 "Cruise Status" 2 "Open" 1 "Close" 0 "Invalid" ;
 VAL_ 1319 EHC6_Set_LanguageSetting 15 "Reserve" 14 "Reserve" 13 "Reserve" 12 "Reserve" 11 "Reserve" 10 "Reserve" 9 "Reserve" 8 "Reserve" 7 "Reserve" 6 "Reserve" 5 "Reserve" 4 "Reserve" 3 "Arabic" 2 "Spanish" 1 "English" 0 "Chinese" ;
 VAL_ 1319 EHC6_TiMod 7 "Invalid" 6 "Reserved" 5 "Reserved" 4 "24 hour" 3 "PM" 2 "AM" 1 "No display" 0 "reserved" ;
 VAL_ 1319 EHC6_DateWeek 15 "Invalid" 14 "Reserved" 13 "Reserved" 12 "Reserved" 11 "Reserved" 10 "Reserved" 9 "Reserved" 8 "Reserved" 7 "Sunday" 6 "Saturday" 5 "Friday" 4 "Thursday" 3 "Wednesday" 2 "Tuesday" 1 "Monday" 0 "reserved" ;
-VAL_ 1766 EHC11_St_TrailerFcnActive 3 "reserved" 2 "active" 1 "inactive" 0 "no change" ;
+VAL_ 1766 EHC11_St_TrailerFcnActive 3 "reserved£¨Mode2£¨ÍÏ³µÄ£Ê½¶þ£¨¹ÒÆ½°å£©£©£©" 2 "active£¨Mode1£¨ÍÏ³µÄ£Ê½Ò»£¨¹ÒÍÏ³µ£©£©£©" 1 "inactive £¨Off mode£¨OFF£©£©" 0 "no change £¨ÎÞ´¥·¢£©" ;
 VAL_ 1766 IccSentiModReq 3 "Invalid" 2 "Not active" 1 "Active" 0 "Initialize" ;
 VAL_ 1766 CDC_Cmd_CampGuardee 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Reserved" 3 "Reserved" 2 "¹Ø±Õ" 1 "¿ªÆô" 0 "Initial" ;
 VAL_ 1766 IccSentiModSts 7 "Invalid" 6 "reserved" 5 "reserved" 4 "Pre Active£¨Ô¤¿ªÆô£©" 3 "Suspend£¨ÔÝÍ££©" 2 "Active" 1 "Not active" 0 "Initialize" ;
 VAL_ 1568 IPC1_F_OdometerParameter 1 "Value unreliable" 0 "Value OK" ;
 VAL_ 1568 IPC1_St_QDashACCFail 3 "not defined" 2 "irreversible error" 1 "reversible error" 0 "no error" ;
 VAL_ 1568 IPC1_St_DISFail 1 "error" 0 "no error" ;
+VAL_ 1568 ICC_PrivacyAgreementSwt 3 "reserve" 2 "Í¬Òâ" 1 "¾Ü¾ø" 0 "default" ;
 VAL_ 1392 CAPE1_F_PowerMode 2 "Valid" 1 "Invalid" 0 "Not available" ;
 VAL_ 1392 CAPE1_St_PowerMode 5 "Crank Off(Reserve)" 4 "Crank£¨ÉÏReadyÈÏÖ¤¹ý³Ì£©" 3 "Crank Pending(Reserve)" 2 "Run£¨ON£©" 1 "Acc£¨È¡Ïû£©" 0 "Off" ;
 VAL_ 1392 CAPE1_St_PepsRemPwrMod 7 "invalid" 6 "reserved" 5 "RPA bluetooth motion control mode" 4 "bluetooth start" 3 "bluetooth control" 2 "remote start" 1 "remote control" 0 "initialing/normal mode" ;
@@ -9490,12 +9922,13 @@ VAL_ 306 WCBS_RPAavailable 1 "Available" 0 "Not Available" ;
 VAL_ 306 WCBS_MEBavailable 1 "Available" 0 "Not Available" ;
 VAL_ 306 WCBS_APLCSts 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Reserved" 3 "ActiveHPA" 2 "Active RPA" 1 "Active APAMRA" 0 "Not Active" ;
 VAL_ 306 WCBS_ActvIndcn_MEB 1 "Active" 0 "Not Active" ;
-VAL_ 306 WCBS_APLCFailureSts 7 "Reserved" 6 "Reserved" 5 "Error" 4 "RPA trigger without secure" 3 "too high speed" 2 "Unexpected EPB Action" 1 "RPA too high slope" 0 "No Error" ;
+VAL_ 306 WCBS_APLCFailureSts 7 "Reserved" 6 "Message Error" 5 "Error" 4 "RPA trigger without secure" 3 "too high speed" 2 "Unexpected EPB Action" 1 "RPA too high slope" 0 "No Error" ;
 VAL_ 306 WCBS_BrakeHld 1 "True ±£Ñ¹ÖÐ" 0 "False Î´±£Ñ¹" ;
 VAL_ 306 WCBS_ADASL12AvlSts 1 "Available" 0 "Not Available" ;
 VAL_ 306 WCBS_LgtReqModeACtiveSts 3 "Reserved" 2 "Active_l3" 1 "Active_l12" 0 "Not active" ;
 VAL_ 306 WCBS_ADLCFailureSts 7 "Reserved" 6 "Reserved" 5 "Reserved" 4 "Reserved" 3 "Over speed" 2 "Error" 1 "Message Error" 0 "No Error" ;
 VAL_ 306 WCBS_APAavailable 1 "Available" 0 "Not Available" ;
+VAL_ 306 WCBS_OMPavailable 1 "Available" 0 "Not Available" ;
 VAL_ 307 WCBS_St_ReAxleTrqIntv 1 "Active" 0 "Inactive" ;
 VAL_ 307 WCBS_N_ReAxleFastReductionTrqReq 16383 "Invalid" ;
 VAL_ 307 WCBS_St_ReAxleDTCIntv 1 "Active" 0 "Inactive" ;
@@ -9580,6 +10013,7 @@ VAL_ 858 BCM12_St_VehicleMode 7 "Rerserved" 6 "Gallery Mode" 5 "Test Mode£¨Ô¤Áô£
 VAL_ 529 TIM1_St_TIMSt 1 "Active" 0 "Not active" ;
 VAL_ 529 TIM1_St_TrailerLightsFaultSt 1 "Fault" 0 "Normal" ;
 VAL_ 529 TIM1_St_SoftSwMemory 1 "active" 0 "inactive" ;
+VAL_ 529 TIM1_St_SoftSwMemoryNew 3 "reserved" 2 "active mode2£©" 1 "active mode1" 0 "inactive£¨¶ÔÓ¦off mode·´À¡£©" ;
 VAL_ 225 EHC12_St_AVMSaleCalibration 3 "È¡Ïû±ê¶¨ Calibration Cancel" 2 "¿ªÊ¼±ê¶¨ Start Calibration" 1 "½øÈë±ê¶¨ Calibration Confirm" 0 "NONE" ;
 VAL_ 225 EHC24_ParkingPlaceConfirm 1 "Confirm" 0 "none" ;
 VAL_ 225 AvmViewSet 31 "Reserved" 30 "Reserved" 29 "Reserved" 28 "Reserved" 27 "Reserved" 26 "Reserved" 25 "Rock Mode" 24 "Worm Mode" 23 "Driver view-3D" 22 "Top view-3D" 21 "Rear-Right view-3D" 20 "Rear-Left view-3D" 19 "Front-Right view-3D" 18 "Front-Left view-3D" 17 "Right view-3D" 16 "Left view-3D" 15 "Rear view-3D" 14 "Front view-3D" 13 "EOL/Test-view-2D" 12 "Aerial View-2D" 11 "View of both sides of the body-2D" 10 "Zoom in rear view-2D" 9 "Zoom in front view-2D" 8 "Rear wide_angle view-2D" 7 "Front wide_angle view-2D" 6 "Rear wheel view-2D" 5 "Front wheel view-2D" 4 "Right view-2D" 3 "Left view-2D" 2 "Rear view-2D" 1 "Front view-2D" 0 "Inactive" ;
@@ -9644,6 +10078,11 @@ VAL_ 444 ICC_N_CoorA_X 2047 "Invalid" ;
 VAL_ 444 ICC_ATSMode 2 "OFF" 1 "ON" 0 "invalid" ;
 VAL_ 444 ICC_N_CoorA_Y 2047 "Invalid" ;
 VAL_ 444 ICC_ScrnAngle 511 "Invalid" ;
+VAL_ 444 ICCAdasApaSocOffSwt 3 "Invalid" 2 "Off" 1 "On" 0 "Inactive" ;
+VAL_ 444 ICC_AvapViewSource 7 "Ô¤Áô" 6 "Ô¤Áô" 5 "Ô¤Áô" 4 "Ô¤Áô" 3 "Ô¤Áô" 2 "¿ªÆô-²´³µ¸¨Öú" 1 "¿ªÆô-È«¾°" 0 "¹Ø±Õ" ;
+VAL_ 444 ICC_AvapSysSts 7 "Ô¤Áô" 6 "Ô¤Áô" 5 "Ô¤Áô" 4 "IDCÍ¨ÐÅ¶ªÊ§" 3 "ÊÓÆµÁ÷¹ÊÕÏ" 2 "È«¾°ÏµÍ³¹ÊÕÏ" 1 "¹¦ÄÜÕý³£" 0 "Int" ;
+VAL_ 444 ICCAvmCalibrationParameter 1 "Completed" 0 "Int" ;
+VAL_ 444 ICCApaCalibrationReq 3 "Calibration Cancel" 2 "After-sales Calibration" 1 "Factory Calibration" 0 "NONE" ;
 VAL_ 648 SWS_Cruise 1 "active" 0 "Inactive" ;
 VAL_ 648 SWS_360 1 "active" 0 "Inactive" ;
 VAL_ 648 SWS_AccTiGapPlus 1 "active" 0 "Inactive" ;
@@ -9654,7 +10093,7 @@ VAL_ 311 PDCU_PtTqAvl 7 "reserved" 6 "reserved" 5 "reserved" 4 "reserved" 3 "Fai
 VAL_ 311 PDCU_VehDrvMotMaxElecTqVld 1 "Valid" 0 "Invalid" ;
 VAL_ 311 PDCU_AVAPhandshakeSts 7 "reserved" 6 "reserved" 5 "reserved" 4 "Active_HPA" 3 "Active_MRA" 2 "Active_RPA" 1 "Active_APA" 0 "Not Active" ;
 VAL_ 311 PDCU_GasPedalInhibition 1 "Inhibit" 0 "No inhibition" ;
-VAL_ 311 PDCU_AVAPFltFb 7 "reserved" 6 "reserved" 5 "error5" 4 "error4" 3 "error3" 2 "error2" 1 "error1" 0 "No error" ;
+VAL_ 311 PDCU_AVAPFltFb 7 "reserved" 6 "reserved" 5 "error5" 4 "error4" 3 "trigger without secure" 2 "Message Error" 1 "too high speed" 0 "No error" ;
 VAL_ 311 PdcuApaLeverInterventionVld 3 "Reserved" 2 "Invalid" 1 "Valid" 0 "Initializing" ;
 VAL_ 311 PDCU_LgtReqActiveSts 3 "Reserved" 2 "Active l3" 1 "Active l12" 0 "Not active" ;
 VAL_ 311 PDCU_ADLCFailureSts 7 "reserved" 6 "reserved" 5 "error5" 4 "error4" 3 "error3" 2 "error2" 1 "error1" 0 "No error" ;
@@ -9671,7 +10110,14 @@ VAL_ 1583 TBOX_CrtTi_Mins 59 "Mintue 59" 0 "Mintue 0" ;
 VAL_ 1583 TBOX_CrtTi_Yr 255 "Year2270" 0 "Year 2015" ;
 VAL_ 1583 TBOX_CrtTi_Mth 11 "December" 0 "January" ;
 VAL_ 1583 TBOX_CrtTi_Sec 59 "Second 59" 0 "Second 0" ;
-VAL_ 926 PBM_FltIndcn_EPB 3 "Reserved" 2 "In Diagnosis" 1 "Not Available" 0 "Available" ;
 VAL_ 315 EPS_SteerTorqueVldByADASReq 1 "Valid" 0 "Invalid" ;
 VAL_ 315 EPS_SteerSnsrSts 1 "Failure" 0 "Not Failure" ;
 VAL_ 315 EPS_DrvrSteerTqDir 1 "Negative" 0 "Positive" ;
+VAL_ 315 EPS_SteerDrvrOvrd_J6 1 "Override" 0 "Not override" ;
+VAL_ 410 LatAcce 4095 "Invalid" ;
+VAL_ 410 LgtAcce 4095 "Invalid" ;
+VAL_ 410 YawRate 65535 "Invalid" ;
+VAL_ 410 LatSnsrSts 3 "Reserved" 2 "Invalid" 1 "Valid" 0 "Initializing" ;
+VAL_ 410 LgtSnsrSts 3 "Reserved" 2 "Invalid" 1 "Valid" 0 "Initializing" ;
+VAL_ 410 YawRateSnsrSts 3 "Reserved" 2 "Invalid" 1 "Valid" 0 "Initializing" ;
+VAL_ 410 YawRateSnsrCalSts 1 "Sensor Calibrated" 0 "Sensor Not Calibrated" ;
