@@ -6,7 +6,7 @@
 
 | 分类 | 描述（DBC 注释） | 实现 |
 |------|------------------|------|
-| SUM8/XOR-FF | `Checksum = (byte0+byte1+…+byteN) and 0xFF`（注释省略了 XOR） | 排除 CRC 字节后其余字节求和 `& 0xFF` 再 `XOR 0xFF`（对齐 mcu 端 `crc_calculatecrcxor`，其实现带 `^0xFF`） |
+| SUM8/XOR-FF | `Checksum = (byte0+byte1+…+byteN) and 0xFF`（注释省略了 XOR） | 对注释点名的字节求和 `& 0xFF` 再 `XOR 0xFF`（对齐 mcu 端 `crc_calculatecrcxor`，其实现带 `^0xFF`）。注释里的 byte 编号是**帧内绝对编号**，多段报文逐段给出（`0x393`：byte1..7 / byte9..15 / byte17..23 / …） |
 | Profile 1A | `CRC checksum. …（Profile：1A；DataID：0x00EB）` | CRC8/SAE-J1850-ZERO + DataID（从注释解析，prepend lo_hi） |
 | skip | `算法另附文件` / nibble 亚字节校验 | 不自动校验，保持默认算法 |
 
@@ -18,6 +18,9 @@
   多段报文：`ADC_APA_0x135`（3 段，DataID 0x00E8/9/A）、`ADC_ADAS_0x136`（4 段，0x00EB…EE）、
   `IDC_0x38C`（3 段，0x0042/3/4）
 - 常规报文：CRC 在 byte0 或 byte7，`exclude_crc` 按信号位自动排除
+- RollingCounter 范围：Profile 1A 的 4bit 计数器是 **0..14**（E2E 规定 14 之后回 0，0xF 为
+  invalid，DBC 里写 `[0|14]`）；SUM8/XOR-FF 报文的是普通 4bit 0..15。工具按分类结果分别取
+  `max_valid`，不要给 Profile 1A 报文配 15，否则每次回绕都会误报
 - 3 通道：ADASBUS / BJEVCR / FR60（`dbc/` 目录多 DBC，按通道自动选择）
 - ADASBUS 矩阵为 GBK 编码，注释里的全角标点（`（Profile：1A；DataID：…）`）用于解析
   DataID；解析器会自动识别文件编码（utf-8 → gbk → latin-1），DBC 可原样使用

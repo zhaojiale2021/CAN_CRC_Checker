@@ -1,5 +1,7 @@
 """Tests for signal name resolution and DBC parsing."""
 
+import os
+
 from crc_checker.crc.classify import parse_dataid_from_comment
 from crc_checker.crc.engine import CRCEngine
 from crc_checker.crc.models import CRCRange
@@ -8,6 +10,7 @@ from crc_checker.dbc.parser import DBCParser, parse_dbc
 from crc_checker.dbc.resolver import SignalResolver
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
 from crc_checker.dataid.parser import DataIDMap
+from crc_checker.protect.checksum import CRCVerifier
 from crc_checker.trace.models import CanFrame
 
 # Minimal DBC whose Profile 1A comment (full-width punctuation) only survives
@@ -504,3 +507,62 @@ class TestDBCEncoding:
         assert crc_range.start_byte == 8
         assert engine.compute_for_frame(frame, crc_range, 71, 8, "big_endian") == \
             engine.compute(bytes([0xE9, 0x00]) + payload[9:16])
+
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+B81VS_DBC = os.path.join(
+    REPO_ROOT, "customers", "baic", "b81vs", "dbc",
+    "BAIC_B81VS_ADASBUS_IDC_CANFD_V1.4_20260915.dbc")
+
+# One captured ADAS2_ACANFD (0x393) frame: 5 SUM8/XOR-FF segments in a 64-byte
+# frame, tail padded with 0xFF. The checksum bytes are the firmware's own.
+_ADAS2_FRAME = bytes.fromhex(
+    "ED FC FF FF 0F 02 00 07 F3 0C 00 00 00 00 00 00 "
+    "33 0C 20 00 80 00 00 20 EB 0C 00 00 00 00 00 08 "
+    "37 0C 00 80 3F FF FF FF") + b"\xFF" * 24
+
+
+class TestB81vsCommentConfig:
+    """Comment-driven E2E settings on the shipped BAIC B81VS matrix."""
+
+    @staticmethod
+    def _classified(frame_id: int) -> list[MessageProtection]:
+        prot_map = parse_dbc(B81VS_DBC)
+        prot_map.apply_comment_classification()
+        return prot_map.messages[frame_id]
+
+    def test_profile1a_counter_max_is_14(self):
+        """Profile 1 counters run 0..14 — the 4-bit default (15) flags every wrap."""
+        for frame_id in (0x135, 0x136, 0x38C):
+            groups = self._classified(frame_id)
+            assert groups
+            assert all(g.rc_max_valid == 14 for g in groups), hex(frame_id)
+
+    def test_multisegment_sum_checksum_ranges(self):
+        """0x393's five checksums cover the bytes named by their own comments."""
+        groups = [g for g in self._classified(0x393) if g.checksum_signal]
+        ranges = sorted((g.checksum_signal.name, g.crc_range.start_byte,
+                         g.crc_range.end_byte) for g in groups)
+        assert ranges == [
+            ("ADAS2_Checksum1", 1, 8),
+            ("ADAS2_Checksum2", 9, 16),
+            ("ADAS2_Checksum3", 17, 24),
+            ("ADAS2_Checksum4", 25, 32),
+            ("ADAS2_Checksum5", 33, 40),
+        ]
+
+    def test_sum_checksums_match_firmware_frame(self):
+        """The captured frame's five checksums are reproduced exactly.
+
+        The whole-frame fallback ("sum the 64 bytes minus this checksum's byte")
+        yields 0x09/0x0F/0x4F/0x07/0x53 and fails all five.
+        """
+        assert len(_ADAS2_FRAME) == 64
+        frame = CanFrame(timestamp=0.0, arbitration_id=0x393, dlc=64,
+                         data=_ADAS2_FRAME)
+        verifier = CRCVerifier(get_preset("SUM8/XOR-FF"))
+        for group in self._classified(0x393):
+            if group.checksum_signal is None:
+                continue
+            verdict = verifier.verify(frame, group)
+            assert verdict is not None and verdict.is_pass, verdict.detail
