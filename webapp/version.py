@@ -28,10 +28,16 @@ _GIT_TIMEOUT = 3
 
 
 def _git(root: Path, *args: str) -> str:
-    """Run one git command against ``root`` and return stripped stdout."""
+    """Run one git command against ``root`` and return stripped stdout.
+
+    Git always writes UTF-8; decoding with the process locale (GBK on a Chinese
+    Windows host) would blow up on a commit subject like "修复…" and leave
+    ``stdout`` as None, so the encoding is pinned explicitly.
+    """
     return subprocess.run(
         ["git", "-C", str(root), *args],
-        check=True, capture_output=True, text=True, timeout=_GIT_TIMEOUT,
+        check=True, capture_output=True, timeout=_GIT_TIMEOUT,
+        encoding="utf-8", errors="replace",
     ).stdout.strip()
 
 

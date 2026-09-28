@@ -5,6 +5,9 @@ whole path (upload → run → serialise → report) is exercised for real.
 """
 
 import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -96,6 +99,21 @@ class TestVersion:
         assert revision["commit"] and len(revision["commit"]) == 40
         assert revision["branch"]
         assert isinstance(revision["dirty"], bool)
+
+    def test_read_revision_survives_non_ascii_subject(self, tmp_path):
+        """A Chinese commit subject must not break decoding (locale is GBK here)."""
+        if not shutil.which("git"):
+            pytest.skip("git not available")
+        env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, env={**os.environ, **env})
+        (tmp_path / "a.txt").write_text("x", encoding="utf-8")
+        subprocess.run(["git", "add", "a.txt"], cwd=tmp_path, check=True, env={**os.environ, **env})
+        subprocess.run(["git", "commit", "-q", "-m", "修复:CRC 校验中文标题"],
+                       cwd=tmp_path, check=True, env={**os.environ, **env})
+        revision = read_revision(tmp_path)
+        assert revision["commit"] and len(revision["commit"]) == 40
+        assert "修复" in revision["subject"]
 
     def test_info_shape(self):
         """The /api/version payload keeps its contract."""
