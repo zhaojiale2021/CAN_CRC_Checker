@@ -85,6 +85,11 @@ class VerifyEngine:
             if target_ids and frame.arbitration_id not in target_ids:
                 continue
 
+            # Checked before any `continue` below, so the cap is exact:
+            # frames without a protection group must still count towards it.
+            if max_frames and frame_count >= max_frames:
+                break
+
             frame_count += 1
             report.total_frames += 1
 
@@ -113,9 +118,6 @@ class VerifyEngine:
             if progress_callback:
                 progress_callback(frame_count, None)
 
-            if max_frames and frame_count >= max_frames:
-                break
-
         return report
 
     def run_stream(self, reader: TraceReader,
@@ -132,7 +134,10 @@ class VerifyEngine:
             if target_ids and frame.arbitration_id not in target_ids:
                 continue
 
+            if max_frames and frame_count >= max_frames:
+                break
             frame_count += 1
+
             protections = self.protection_map.get_protections(
                 frame.arbitration_id, channel=frame.channel)
             if not protections:
@@ -146,9 +151,6 @@ class VerifyEngine:
                             yield from result
                         else:
                             yield result
-
-            if max_frames and frame_count >= max_frames:
-                break
 
     def reset(self):
         """Reset all stateful algorithms (e.g., RC state)."""

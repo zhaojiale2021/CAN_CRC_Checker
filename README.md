@@ -16,6 +16,21 @@ DBC-aware CAN bus CRC/Rolling Counter verification tool. Supports E2E Profile 5 
 
 ## Quick Start
 
+### Web version (内网网页工具)
+
+```bash
+pip install -r requirements.txt
+./run_web.sh 8000          # Windows: run_web.bat 8000
+# 浏览器访问 http://<服务器IP>:8000
+```
+
+选客户项目 → 上传 trace → 校验 → 看汇总/失败明细并下载 HTML 报告。
+导航栏「版本」入口显示服务运行的 commit(commit 节点):运行 commit 在服务加载时
+固定,部署目录 commit 每次单独读取,`git pull` 后未重启会提示两者不一致。
+
+前端是 Vue 3 + Element Plus,产物 `frontend/dist` 已提交进 git(部署机无需 Node);
+改前端见 [docs/web-api.md](docs/web-api.md)。
+
 ### From source
 
 ```bash
@@ -65,9 +80,11 @@ crc_checker/          # Core Python package
   dataid/             # DataID Excel parser (5 builtin mappings)
   trace/              # Trace reader (BLF/ASC/MF4/TRC)
   protect/            # CRC + Rolling Counter verifiers
-  verify/             # Verification orchestration
+  verify/             # Verification orchestration (+ runner.py: shared by CLI & web)
   report/             # HTML report generator
 cli/                  # Click CLI
+webapp/               # FastAPI backend (网页版)
+frontend/             # Vue 3 + Element Plus; dist/ is committed
 customers/            # Per-customer configs
   gac/eea40/          # GAC EEA4.0 platform (T75/V20/T996D)
   gac/eea30-hev/      # GAC EEA3.0 hybrid platform (s52/t68/t09)
@@ -103,9 +120,10 @@ tests/                # pytest test suite
 ## Testing
 
 ```bash
-pytest                          # 115 tests
+pytest                          # 161 tests
 pytest --cov=crc_checker        # With coverage
-pylint crc_checker/ cli/        # Must score 10.00/10
+pylint crc_checker/ cli/ webapp/   # Must score 10.00/10
+cd frontend && npm test         # frontend unit tests (node --test)
 ```
 
 ## License

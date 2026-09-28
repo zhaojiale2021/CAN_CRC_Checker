@@ -8,7 +8,6 @@ import click
 
 from crc_checker.crc.models import CRCParams, CRCRange
 from crc_checker.crc.presets import get_preset, list_presets
-from crc_checker.config import apply_crc_config
 from crc_checker.dbc.parser import parse_dbc
 from crc_checker.trace.reader import TraceReader
 from crc_checker.verify.engine import VerifyEngine
@@ -68,12 +67,8 @@ def _expand_trace_paths(trace_files: list[str]) -> list[str]:
 def _build_algorithms(crc_params: CRCParams | None):
     """Build protection algorithm list from CRC params."""
     # pylint: disable=import-outside-toplevel
-    from crc_checker.protect.checksum import CRCVerifier
-    from crc_checker.protect.rolling_counter import RollingCounterVerifier
-    algos = [RollingCounterVerifier()]
-    if crc_params:
-        algos.insert(0, CRCVerifier(crc_params, None))
-    return algos
+    from crc_checker.verify.runner import build_algorithms
+    return build_algorithms(crc_params)
 
 
 def _output_report(report, output_fmt: str, output_file: str,
@@ -294,14 +289,15 @@ def list_presets_cmd():
 @click.option("--config", "-c", "config_path", required=True,
               type=click.Path(exists=True), help="Path to JSON config file")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements,import-outside-toplevel
 def run_cmd(config_path, verbose):
     """Run verification from a JSON config file.
 
     Generate an example config:  crc-check gen-config example.json
     Then edit and run:           crc-check run -c example.json
     """
+    # pylint: disable=import-outside-toplevel
     from crc_checker.config import load_config
+    from crc_checker.verify.runner import RunnerError, run_config
 
     cfg = load_config(config_path)
 
@@ -320,141 +316,26 @@ def run_cmd(config_path, verbose):
         elif cfg.dataid_xlsx:
             click.echo(f"DataID xlsx: {cfg.dataid_xlsx}")
 
-    # fx12fl: auto-classify needs a fallback algorithm when the config omits one
-    if cfg.crc_auto_classify and not cfg.crc_preset and not cfg.crc_custom:
-        cfg.crc_preset = "CRC8/SAE-J1850"
-    crc_params = cfg.build_crc_params()
-
-    if not crc_params:
+    if not cfg.crc_preset and not cfg.crc_custom and not cfg.crc_auto_classify:
         click.echo("Warning: No CRC algorithm configured. RC-only verification.", err=True)
 
-    patterns = None
-    if cfg.checksum_pattern or cfg.rc_pattern:
-        patterns = {}
-        if cfg.checksum_pattern:
-            patterns["checksum"] = cfg.checksum_pattern
-        if cfg.rc_pattern:
-            patterns["rolling_counter"] = cfg.rc_pattern
-
-    # Collect DBC paths
-    dbc_paths = cfg.get_dbc_paths()
-    if not dbc_paths:
-        raise click.UsageError("No DBC files found. Check 'dbc' or 'dbcs' in config.")
-    if verbose:
-        click.echo(f"DBC files: {len(dbc_paths)} file(s)")
-        for p in dbc_paths:
-            click.echo(f"  {p}")
-
-    # Parse all DBCs individually (no merge)
-    from crc_checker.dbc.parser import (
-        parse_all_dbc, select_best_dbc_per_channel, sample_trace_channels,
-    )
-    from crc_checker.dbc.models import ChannelProtectionMap
-    dbc_maps = parse_all_dbc(dbc_paths, patterns)
-
-    # If single DBC, use it directly
-    if len(dbc_maps) == 1:
-        protection_map = dbc_maps[0]
-        if verbose:
-            click.echo(f"Using DBC: {dbc_maps[0].dbc_paths[0]}")
-    elif cfg.dbc_merge:
-        # Merge all DBCs into one map (t1lfl1: B_CAN/C1_CAN IDs appear on
-        # every trace channel, so per-channel selection would drop a DBC)
-        protection_map = dbc_maps[0]
-        for other in dbc_maps[1:]:
-            protection_map.merge(other)
-        if verbose:
-            click.echo(f"Merged {len(dbc_maps)} DBCs into one protection map")
-    else:
-        # Per-channel DBC selection
-        trace_paths = cfg.get_trace_paths()
-        ch_ids = sample_trace_channels(trace_paths[0], max_frames=1000)
-        ch_dbc = select_best_dbc_per_channel(dbc_maps, ch_ids)
-        if not ch_dbc:
-            raise click.UsageError("No DBC matches any trace channel.")
-
-        channel_map = ChannelProtectionMap()
-        for ch, pm in ch_dbc.items():
-            channel_map.set_channel(ch, pm)
-        protection_map = channel_map
-        if verbose:
-            for ch, pm in sorted(ch_dbc.items()):
-                name = Path(pm.dbc_paths[0]).name
-                n_ids = len(ch_ids.get(ch, set()))
-                n_match = len(set(pm.all_frame_ids()) & ch_ids.get(ch, set()))
-                click.echo(
-                    f"  CH{ch} -> {name} "
-                    f"({n_match}/{len(pm.all_frame_ids())} IDs, "
-                    f"{n_ids} trace IDs)"
-                )
-
-    # Load DataID per-channel: each channel's DBC auto-matches its own sheet
-    ch0_dataid_map = None  # Saved for fallback to CH1/CH2
-    has_dataid = cfg.dataid_xlsx or cfg.dataid_json
-    if has_dataid and isinstance(protection_map, ChannelProtectionMap):
-        for ch, pm in sorted(ch_dbc.items()):
-            ch_dbc_name = Path(pm.dbc_paths[0]).name if pm.dbc_paths else ""
-            ch_dataid = cfg.load_dataid(dbc_name=ch_dbc_name)
-            if ch_dataid and len(ch_dataid) > 0:
-                pm.apply_dataid_map(ch_dataid)
-                if ch == 0:
-                    ch0_dataid_map = ch_dataid
-                if verbose:
-                    click.echo(
-                        f"  CH{ch} DataID: {len(ch_dataid)} entries "
-                        f"(sheet: {ch_dataid.sheet_name})"
-                    )
-        # Fallback: CH1/CH2 borrow CH0's DataID for messages without their own
-        if ch0_dataid_map:
-            fallback_total = 0
-            for ch, pm in sorted(ch_dbc.items()):
-                if ch == 0:
-                    continue
-                n = pm.apply_dataid_map_fallback(ch0_dataid_map)
-                fallback_total += n
-            if fallback_total > 0 and verbose:
-                click.echo(f"  DataID fallback from CH0: {fallback_total} entries")
-    elif has_dataid:
-        dbc_name = Path(list(protection_map.dbc_paths)[0]).name if protection_map.dbc_paths else ""
-        dataid_map = cfg.load_dataid(dbc_name=dbc_name)
-        if dataid_map:
-            protection_map.apply_dataid_map(dataid_map)
-        if verbose and dataid_map:
-            click.echo(f"DataID: {len(dataid_map)} entries (sheet: {dataid_map.sheet_name})")
-
-    # Fill unmatched DataID with default (0x0000) if configured
-    if cfg.dataid_default is not None:
-        n = protection_map.apply_dataid_default(cfg.dataid_default)
-        if verbose and n > 0:
-            click.echo(f"DataID default (0x{cfg.dataid_default:04X}): {n} groups")
-
-    # CRC params / range / E2E profiles / overrides / skip list — see
-    # crc_checker.config.apply_crc_config for the exact order of application.
-    counts = apply_crc_config(cfg, protection_map)
-    if verbose:
-        if counts["profiles"]:
-            click.echo(f"E2E profiles applied: {counts['profiles']} groups")
-        if counts["range_overrides"]:
-            click.echo(f"CRC range overrides applied: {counts['range_overrides']} groups")
-        if counts["skip"]:
-            click.echo(f"CRC skip list removed: {counts['skip']} groups")
-        if counts["auto_classify"]:
-            click.echo(f"CRC auto-classify (DBC comments): {counts['auto_classify']} groups")
-        if counts["overrides"]:
-            click.echo(f"CRC overrides applied: {counts['overrides']} groups")
-
     trace_paths = cfg.get_trace_paths()
+
+    # Everything below (DBC selection → DataID → CRC config → verify) lives in
+    # crc_checker.verify.runner so the web API cannot drift from the CLI.
+    try:
+        setup, reports = run_config(cfg, trace_paths)
+    except RunnerError as exc:
+        raise click.UsageError(str(exc)) from exc
+
     if verbose:
+        for note in setup.notes:
+            click.echo(note)
         click.echo(f"Trace files: {len(trace_paths)} file(s)")
         for p in trace_paths:
             click.echo(f"  {p}")
 
-    algorithms = _build_algorithms(crc_params)
-    for trace_path in trace_paths:
-        engine = VerifyEngine(protection_map, algorithms)
-        with TraceReader(trace_path) as reader:
-            report = engine.run(reader, frame_ids=cfg.frame_ids, max_frames=cfg.max_frames)
-        report.dbc_paths = protection_map.dbc_paths
+    for report in reports:
         _output_report(report, cfg.output_format, cfg.output_file, cfg.only_failures)
 
 

@@ -23,7 +23,12 @@ pytest tests/test_crc_engine.py::TestCRCEngine::test_crc8_autosar_known_vector
 pytest --cov=crc_checker
 
 # Lint (pylint 10.00/10 required by CI)
-pylint crc_checker/ cli/
+pylint crc_checker/ cli/ webapp/
+
+# Web version (网页版): FastAPI + Vue; frontend/dist is committed
+./run_web.sh 8000          # Windows: run_web.bat 8000  → http://127.0.0.1:8000
+cd frontend && npm run build   # rebuild dist after frontend changes
+cd frontend && npm test        # frontend unit tests (node --test)
 
 # Run the CLI (after pip install -e .)
 crc-check presets                      # List available CRC presets
@@ -90,6 +95,28 @@ To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `ru
 
 - **`crc_checker/report/`** — `html.py` generates self-contained HTML with dark theme, CRC/RC byte highlighting (green/red borders), hover tooltips with expected/actual values, per-segment hex dump with DataID display, channel/DBC source tags, collapsible sections, and filter buttons.
 
+### Web version (网页版)
+
+`webapp/` (FastAPI) + `frontend/` (Vue 3 + Element Plus; `frontend/dist` is committed so
+the deploy machine needs no Node). Start with `./run_web.sh 8000`.
+
+- `webapp/catalog.py` — scans `customers/<oem>/<model>/config.json`. The browser only ever
+  sends a project **id**, never a path; the server resolves everything else.
+- `webapp/service.py` — bridges the shared runner to the web: temp upload → run → JSON +
+  self-contained HTML report. Finished runs are cached LRU (20) under `data/web/`
+  (gitignored); the uploaded trace is deleted right after the run.
+- `webapp/main.py` — `/api/projects`, `/api/verify` (multipart), `/api/runs/{id}/report.html`,
+  `/api/version`; `frontend/dist` is mounted last so every `/api` route wins.
+- `webapp/version.py` — the **commit 节点** view: `running` (commit/branch/subject/dirty) is
+  pinned at import time, `checkout` is re-read on every `/api/version` call so a `git pull`
+  without restart shows "部署目录与服务启动时的版本状态不同"; `dirty` is scoped to runtime
+  paths; git unavailable → all-None "版本未知" (never an error). Mirrors the reference
+  `evm-fault-analyzer` deployment-version design.
+
+`crc_checker/verify/runner.py` is the single implementation of "DBC selection → DataID →
+CRC config → verify" — `crc-check run` and `POST /api/verify` both call it, so the CLI and
+the web cannot drift apart. Details: [docs/web-api.md](docs/web-api.md).
+
 ### CLI
 
 Entry point: `cli/main.py` — Click command group: `verify`, `run`, `gen-config`, `presets`, `inspect`, `preprocess-dataid`. The `run` command uses JSON config via `crc_checker/config.py`.
@@ -147,4 +174,4 @@ coexist on one bus. GAC extras: `crc.range_overrides` (CCU_SRS_1 second segment
 
 ### Testing
 
-134 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), GBK DBC decoding (BAIC comments keep their full-width punctuation, so the Profile 1A DataID parses), comment-derived sum-checksum byte ranges + Profile 1 counter max (b81vs matrix), DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, and GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming).
+161 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), GBK DBC decoding (BAIC comments keep their full-width punctuation, so the Profile 1A DataID parses), comment-derived sum-checksum byte ranges + Profile 1 counter max (b81vs matrix), DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming), and the web layer (`tests/test_webapp.py`: project scan, deployment-version semantics, shared runner, upload → verify → report via the real committed traces). Frontend pure-logic tests run with `cd frontend && npm test` (`node --test`).

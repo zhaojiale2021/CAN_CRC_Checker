@@ -2,26 +2,34 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
-dist/
 build/
 .pytest_cache/
 .idea/
 .vscode/
 
-# Generated reports
+# Generated reports (frontend entry points are real sources, keep them)
 *.html
+!frontend/index.html
+!frontend/dist/index.html
 report*.csv
 report*.json
 
-# Build artifacts
+# Build artifacts (/dist = the standalone exe only; frontend/dist IS committed)
 build/
-dist/
+/dist/
 release/
 *.spec
 *.zip
 
 # Customer exe (built, not committed)
 customers/*/*/crc-check.exe
+
+# Web version runtime artifacts (uploads are deleted after each run;
+# reports and run metadata are regenerated)
+data/
+
+# Frontend dev dependencies (frontend/dist IS committed)
+frontend/node_modules/
 
 # Tool metadata
 .reasonix/
