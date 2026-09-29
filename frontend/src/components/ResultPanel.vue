@@ -44,7 +44,78 @@
       <span class="muted">报告含逐帧十六进制视图与 CRC/RC 字节高亮。</span>
     </div>
 
-    <el-collapse class="setup">
+    <el-collapse class="setup" @change="onSetupChange">
+      <el-collapse-item v-if="source" name="firmware">
+        <template #title>
+          <span class="setup-title">固件 E2E 映射(commit 节点)</span>
+          <el-tag size="small" type="success" class="mono tag-gap">
+            {{ source.repository?.id }}@{{ (source.commit || '').slice(0, 8) }}
+          </el-tag>
+          <span v-if="source.last_commit" class="muted mono small">
+            {{ source.last_commit.subject }}
+          </span>
+        </template>
+        <el-descriptions :column="1" border size="small" class="fw-desc">
+          <el-descriptions-item label="固件 commit(本次校验所用)">
+            <code class="mono">{{ source.commit }}</code>
+            <el-tag v-if="source.requested_ref && source.requested_ref !== source.commit"
+                    size="small" type="info" class="tag-gap mono">
+              {{ source.requested_ref.slice(0, 20) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="source.last_commit" label="该车型 net_cfg 最近提交">
+            <span class="mono">{{ source.last_commit.commit.slice(0, 8) }}</span>
+            <span> {{ source.last_commit.subject }}</span>
+            <span class="muted">（{{ formatDate(source.last_commit.committed_at) }}）</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="车型目录">
+            <code class="mono">{{ source.model_path }}</code>
+          </el-descriptions-item>
+          <el-descriptions-item label="总线 → 通道">
+            <span v-for="(ch, bus) in source.bus_channels" :key="bus" class="mono channel-gap">
+              {{ bus }} → CH{{ ch }}
+            </span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <p class="muted small">
+          以下为固件源码里该车型每报文的实际保护(P05=P05Verify/P05Protect,
+          P01=P01Verify/P01Protect);CRC 校验按这些位位置与 DataID 逐帧计算。
+        </p>
+        <el-table :data="sourceEntries" size="small" max-height="360" class="table">
+          <el-table-column label="报文" width="190">
+            <template #default="{ row }">
+              <span class="mono">{{ row.frame_id_hex }}</span>
+              <span class="frame-name">{{ row.frame_name }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="bus" label="总线" width="150" />
+          <el-table-column prop="direction" label="方向" width="70" />
+          <el-table-column label="Profile" width="90">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.profile === 'P05' ? 'primary' : 'success'">
+                {{ row.profile }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="DataID" width="90">
+            <template #default="{ row }">
+              <span class="mono">{{ row.dataid || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="CRC 范围" width="130">
+            <template #default="{ row }">
+              <span class="mono">
+                {{ row.crc_offset }}..{{ row.crc_len ? row.crc_offset + row.crc_len - 1 : (row.data_length ? row.data_length / 8 - 1 : '?') }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="config_symbol" label="固件符号" min-width="220" show-overflow-tooltip />
+        </el-table>
+        <p v-if="source.entries?.truncated" class="muted">
+          共 {{ source.entries.total }} 条,仅列出前 {{ source.entries.rows.length }} 条。
+        </p>
+      </el-collapse-item>
+
       <el-collapse-item name="setup">
         <template #title>
           <span class="setup-title">运行信息</span>
@@ -189,6 +260,17 @@ const onlyFailingFrames = ref(false)
 
 const report = computed(() => props.result?.reports?.[0] || null)
 const setup = computed(() => props.result?.setup || { dbc_names: [] })
+const source = computed(() => (props.result?.source?.mode === 'firmware'
+  ? props.result.source : null))
+const sourceEntries = computed(() => source.value?.entries?.rows || [])
+
+function onSetupChange() { /* 需要展开行为时可在此记录;当前无副作用 */ }
+
+function formatDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+}
 
 const channelList = computed(() => Object.entries(setup.value.channels || {})
   .map(([channel, dbc]) => ({ channel, dbc })))
@@ -236,6 +318,8 @@ function openReport() {
 .frame-name { margin-left: 6px; }
 .tag-gap { margin-left: 6px; }
 .channel-gap { margin-right: 12px; }
+.fw-desc { margin-bottom: 10px; }
+.small { font-size: 11px; }
 .section-head { display: flex; align-items: center; gap: 12px; margin: 18px 0 8px; }
 .section-head h3 { margin: 0; font-size: 15px; }
 .search { width: 260px; margin-left: auto; }
@@ -243,7 +327,6 @@ function openReport() {
 .fail-text { color: #e74c3c; font-weight: 600; }
 .pass-text { color: #2ecc71; }
 .muted { color: var(--el-text-color-secondary); font-size: 12px; }
-.small { font-size: 11px; }
 .all-pass { margin-bottom: 8px; }
 .signals { padding: 4px 8px; display: flex; flex-direction: column; gap: 6px; }
 .signal-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }

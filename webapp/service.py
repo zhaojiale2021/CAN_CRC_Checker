@@ -182,6 +182,23 @@ def resolve_max_frames(requested: int | None, config_value: int | None) -> int |
     return None if requested <= 0 else requested
 
 
+def make_run_payload(setup: dict, project: dict, reports: list[dict],
+                     elapsed_ms: int, source: dict | None = None) -> dict:
+    """共用结果结构 —— 两种映射来源(配置文件 / 固件源码)同一形状。
+
+    ``source`` 只在固件源码模式携带(commit 节点 + 每报文 E2E 明细)。
+    """
+    payload = {
+        "elapsed_ms": elapsed_ms,
+        "setup": setup,
+        "project": project,
+        "reports": reports,
+    }
+    if source is not None:
+        payload["source"] = source
+    return payload
+
+
 def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
     project: Project,
     trace_path: Path,
@@ -237,9 +254,8 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
         except OSError:
             html_path = None
 
-    payload = {
-        "elapsed_ms": int((time.monotonic() - started) * 1000),
-        "setup": {
+    payload = make_run_payload(
+        setup={
             "dbc_names": setup.dbc_names,
             "channels": {str(ch): name for ch, name in setup.channels.items()},
             "channel_matches": {str(ch): list(v) for ch, v in setup.channel_matches.items()},
@@ -251,9 +267,10 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
             "max_frames": cfg.max_frames,
             "runs": len(reports),
         },
-        "project": project.to_dict(),
-        "reports": [report_to_dict(report) for report in reports],
-    }
+        project=project.to_dict(),
+        reports=[report_to_dict(report) for report in reports],
+        elapsed_ms=int((time.monotonic() - started) * 1000),
+    )
     return RunOutcome(run_id=run_id, created_at=time.time(), project_id=project.id,
                       trace_name=display_name, payload=payload, html_path=html_path)
 

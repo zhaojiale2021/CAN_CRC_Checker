@@ -120,7 +120,7 @@ tests/                # pytest test suite
 ## Testing
 
 ```bash
-pytest                          # 161 tests
+pytest                          # 177 tests
 pytest --cov=crc_checker        # With coverage
 pylint crc_checker/ cli/ webapp/   # Must score 10.00/10
 cd frontend && npm test         # frontend unit tests (node --test)

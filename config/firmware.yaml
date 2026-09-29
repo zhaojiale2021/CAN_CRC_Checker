@@ -1,0 +1,11 @@
+# 固件源码仓库配置(服务端)——「固件源码模式」按 commit 节点读取 E2E 配置。
+#
+# path  : 本机已有工作副本时直接用它(免镜像克隆);相对部署机可用环境变量覆盖:
+#         CRC_FIRMWARE_REPO_<ID大写下划线>_PATH(适合写进 .env,把机器路径挡在 git 之外)
+# url   : 没有 path 时,服务端首次 git clone --mirror 到 data/firmware/git/,
+#         之后增量 fetch;部署机没有远端凭证时 fetch 失败不影响已有 commit 的解析
+firmware_repositories:
+  - id: mcu_app_j6
+    name: mcu_app_j6 (J6 系列 MCU 固件)
+    url: ssh://git@bitbucket.imotion.ai:7999/mcu/mcu_app_j6.git
+    path: D:/work/feature/mcu_app_j6

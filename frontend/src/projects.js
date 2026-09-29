@@ -25,6 +25,34 @@ export function canRun({ projectId, file, running }) {
   return Boolean(projectId && file && !running)
 }
 
+/** 固件源码模式:仓库 + commit + 车型 + 文件。 */
+export function canRunFirmware({ repositoryId, commit, modelId, file, running }) {
+  return Boolean(repositoryId && String(commit || '').trim()
+    && modelId && file && !running)
+}
+
+/** 固件扫描后按 OEM 分组(与配置模式的项目分组同形)。 */
+export function groupFirmwareModels(models) {
+  const groups = []
+  const index = new Map()
+  for (const model of models || []) {
+    let group = index.get(model.oem)
+    if (!group) {
+      group = { label: model.oem.replace(/^cpj_/, '').toUpperCase(), items: [] }
+      index.set(model.oem, group)
+      groups.push(group)
+    }
+    group.items.push(model)
+  }
+  return groups
+}
+
+/** 固件扫描结果的车型下拉文案:名字 + 支持状态。 */
+export function firmwareModelLabel(model) {
+  const suffix = model.supported ? '' : '(暂不支持源码模式)'
+  return `${model.name}${suffix}`
+}
+
 /** 配置摘要里最值得先看到的两三项(用于项目卡片)。 */
 export function summaryHighlights(project) {
   const summary = project?.summary || {}

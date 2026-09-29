@@ -51,3 +51,34 @@ export function verifyTrace({ projectId, file, maxFrames = null, onlyFailures = 
   form.append('only_failures', onlyFailures ? 'true' : 'false')
   return request('/api/verify', { method: 'POST', body: form })
 }
+
+// ---------------------------------------------------------------------------
+// 固件源码模式(mcu_app_j6 commit 节点)
+// ---------------------------------------------------------------------------
+
+export function fetchFirmwareRepos() {
+  return request('/api/firmware/repositories')
+}
+
+/** 扫描一个固件 commit:车型列表 + 每个车型对应的 commit 节点。 */
+export function firmwareScan({ repositoryId, commit }) {
+  return request('/api/firmware/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ repository_id: repositoryId, commit }),
+  })
+}
+
+/** 固件源码模式校验:用该 commit 节点下该车型的固件 E2E 配置跑校验。 */
+export function firmwareVerify({
+  repositoryId, commit, modelId, file, maxFrames = null, onlyFailures = false,
+}) {
+  const form = new FormData()
+  form.append('repository_id', repositoryId)
+  form.append('commit', commit.trim())
+  form.append('model_id', modelId)
+  form.append('file', file)
+  form.append('max_frames', maxFrames === null ? '' : String(maxFrames))
+  form.append('only_failures', onlyFailures ? 'true' : 'false')
+  return request('/api/firmware/verify', { method: 'POST', body: form })
+}
