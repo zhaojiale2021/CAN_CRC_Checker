@@ -31,6 +31,9 @@ data/
 # Frontend dev dependencies (frontend/dist IS committed)
 frontend/node_modules/
 
+# Local CI-parity virtualenvs (uv can recreate: uv venv --python 3.10 .venv-ci)
+.venv*/
+
 # Tool metadata
 .reasonix/
 

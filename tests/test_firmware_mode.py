@@ -4,6 +4,8 @@
 API 测试需要本地配置的固件仓库(config/firmware.yaml 的 path),没有则跳过。
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
