@@ -61,8 +61,14 @@ def max_upload_bytes() -> int:
 
 
 def safe_filename(name: str) -> str:
-    """Reduce an upload name to a safe basename (keeps CJK, strips separators)."""
-    base = Path(name or "").name.strip().replace("\\", "_").replace("/", "_")
+    """Reduce an upload name to a safe basename (keeps CJK, strips separators).
+
+    Upload names may carry the uploader's Windows path; backslashes are
+    normalised to slashes *before* the basename is taken so this works the
+    same on a Linux server (where ``C:\\logs\\x.blf`` would otherwise be a
+    legal single filename).
+    """
+    base = Path((name or "").replace("\\", "/")).name.strip()
     cleaned = _SAFE_NAME.sub("_", base).strip("._")
     return cleaned or "trace.blf"
 

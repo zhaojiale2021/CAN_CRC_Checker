@@ -234,10 +234,13 @@ class TestRepoConfig:
                  "url": "ssh://x/y.git"},
             ],
         }), encoding="utf-8")
+        # local_root() requires a .git inside, so build a throwaway checkout.
+        checkout = tmp_path / "mcu_app_j6"
+        (checkout / ".git").mkdir(parents=True)
         repos = load_firmware_repos(cfg, env={
-            "CRC_FIRMWARE_REPO_MCU_APP_J6_PATH": "D:/work/feature/mcu_app_j6"})
-        assert repos[0].path == "D:/work/feature/mcu_app_j6"
-        assert repos[0].local_root() is not None
+            "CRC_FIRMWARE_REPO_MCU_APP_J6_PATH": str(checkout)})
+        assert repos[0].path == str(checkout)
+        assert repos[0].local_root() == checkout
 
     def test_to_dict_never_leaks_paths(self):
         """The API shape carries names, never local paths."""
@@ -249,10 +252,13 @@ class TestRepoConfig:
 # API (needs the configured local firmware repo; skipped on CI)
 # ---------------------------------------------------------------------------
 
-pytestmark_repo = pytest.mark.skipif(_configured_repo() is None,
-                                     reason="config/firmware.yaml 无可用的本地固件仓库")
+# pytest.mark.skipif only applies when bound to the name `pytestmark`; binding
+# it to any other name silently does nothing and the tests run everywhere.
+_FIRMWARE_REPO_AVAILABLE = _configured_repo() is not None
 
 
+@pytest.mark.skipif(not _FIRMWARE_REPO_AVAILABLE,
+                    reason="config/firmware.yaml 无可用的本地固件仓库")
 class TestFirmwareApi:
     """固件源码模式的接口(需要本地固件仓库)。"""
 
