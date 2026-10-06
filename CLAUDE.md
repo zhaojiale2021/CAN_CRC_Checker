@@ -23,7 +23,12 @@ pytest tests/test_crc_engine.py::TestCRCEngine::test_crc8_autosar_known_vector
 pytest --cov=crc_checker
 
 # Lint (pylint 10.00/10 required by CI)
-pylint crc_checker/ cli/
+pylint crc_checker/ cli/ webapp/
+
+# Web version (网页版): FastAPI + Vue; frontend/dist is committed
+./run_web.sh 8000          # Windows: run_web.bat 8000  → http://127.0.0.1:8000
+cd frontend && npm run build   # rebuild dist after frontend changes
+cd frontend && npm test        # frontend unit tests (node --test)
 
 # Run the CLI (after pip install -e .)
 crc-check presets                      # List available CRC presets
@@ -90,6 +95,59 @@ To add a new customer: create `customers/<oem>/<model>/` with `config.json`, `ru
 
 - **`crc_checker/report/`** — `html.py` generates self-contained HTML with dark theme, CRC/RC byte highlighting (green/red borders), hover tooltips with expected/actual values, per-segment hex dump with DataID display, channel/DBC source tags, collapsible sections, and filter buttons.
 
+### Web version (网页版)
+
+`webapp/` (FastAPI) + `frontend/` (Vue 3 + Element Plus; `frontend/dist` is committed so
+the deploy machine needs no Node). Start with `./run_web.sh 8000`.
+
+- `webapp/catalog.py` — scans `customers/<oem>/<model>/config.json`. The browser only ever
+  sends a project **id**, never a path; the server resolves everything else.
+- `webapp/service.py` — bridges the shared runner to the web: temp upload → run → JSON +
+  self-contained HTML report. Finished runs are cached LRU (20) under `data/web/`
+  (gitignored); the uploaded trace is deleted right after the run.
+- `webapp/main.py` — `/api/projects`, `/api/verify` (multipart), `/api/runs/{id}/report.html`,
+  `/api/version`; `frontend/dist` is mounted last so every `/api` route wins.
+- `webapp/version.py` — the **commit 节点** view: `running` (commit/branch/subject/dirty) is
+  pinned at import time, `checkout` is re-read on every `/api/version` call so a `git pull`
+  without restart shows "部署目录与服务启动时的版本状态不同"; `dirty` is scoped to runtime
+  paths; git unavailable → all-None "版本未知" (never an error). Mirrors the reference
+  `evm-fault-analyzer` deployment-version design.
+
+`crc_checker/verify/runner.py` is the single implementation of "DBC selection → DataID →
+CRC config → verify" — `crc-check run` and `POST /api/verify` both call it, so the CLI and
+the web cannot drift apart. Details: [docs/web-api.md](docs/web-api.md).
+
+### Firmware source mode (固件源码模式 / mcu_app_j6 commit 节点)
+
+`webapp/firmware/` — a second mapping source next to the config files: the web picks
+**mcu_app_j6 + commit**, and the server derives each message's actual protection from the
+firmware's generated net_cfg at that node (no DBC needed — firmware is the source of truth
+for both algorithm and positions).
+
+- `webapp/firmware/config.py` — `config/firmware.yaml`: repo id/name + `path` (local
+  working copy wins) or `url` (mirror-clone into `data/firmware/git/`, best-effort fetch);
+  `CRC_FIRMWARE_REPO_<ID>_PATH` env override.
+- `webapp/firmware/gitops.py` — array-argv git only (`run_git`/`ensure_repo`/`resolve_commit`/
+  `list_tree`/`read_blob`/`last_commit`); git output decoded as UTF-8 explicitly (GBK locale
+  host); credentials never leave the server.
+- `webapp/firmware/e2e.py` — parses the generated callouts: `/* Name: X, ID: 0xNNN, ... */`
+  comment headers (CAN ID!), `E2E_P0XVerify`/`ZX_E2E_P0XProtect` calls (profile + CRC byte
+  range), `NetE2E_Cfg.cpp` `Config_*_st` initializers (positional fields: CounterOffset/
+  CRCOffset/DataID/...), `NetE2E_Cfg.hpp` constexpr tables incl. `NIBBLE_REVERSE_16(0x430)`
+  macros evaluated per their definition.
+- `webapp/firmware/catalog.py` — entries → `MessageProtection` (CRC16/CCITT + DataID append
+  lo_hi byte_swap for P05; CRC8/SAE-J1850-ZERO + prepend + 4-bit counter 0..14 for P01) and
+  **bus→trace-channel assignment by ID-hit-rate sampling** (radar buses absent from the bench
+  trace are dropped with a diagnostic — never guessed).
+- `webapp/firmware/store.py` — per-commit scan (models + `last_commit` = the node where that
+  model's net_cfg last changed) and cached per (repo, sha, model) catalogs.
+
+**Known limitation (honest, not guessed):** PduId-table-driven generators (GWM/BAIC/Chery
+and GAC t75/t88/t996d/v20) carry no CAN-ID comments — the ID needs a Com/CanIf join that is
+not implemented, so those models scan as `supported: false` with a reason and firmware mode
+is refused for them (400). The GAC callout family (s52/s52-e046/t09/t68 at develop) is fully
+supported.
+
 ### CLI
 
 Entry point: `cli/main.py` — Click command group: `verify`, `run`, `gen-config`, `presets`, `inspect`, `preprocess-dataid`. The `run` command uses JSON config via `crc_checker/config.py`.
@@ -147,4 +205,4 @@ coexist on one bus. GAC extras: `crc.range_overrides` (CCU_SRS_1 second segment
 
 ### Testing
 
-134 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), GBK DBC decoding (BAIC comments keep their full-width punctuation, so the Profile 1A DataID parses), comment-derived sum-checksum byte ranges + Profile 1 counter max (b81vs matrix), DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, and GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming).
+177 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), GBK DBC decoding (BAIC comments keep their full-width punctuation, so the Profile 1A DataID parses), comment-derived sum-checksum byte ranges + Profile 1 counter max (b81vs matrix), DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming), the web layer (`tests/test_webapp.py`: project scan, deployment-version semantics, shared runner, upload → verify → report via the real committed traces), and the firmware source mode (`tests/test_firmware_mode.py`: parser on synthetic net_cfg artifacts, bus→channel assignment, repo config env override; API tests need the configured local firmware repo and skip otherwise). Frontend pure-logic tests run with `cd frontend && npm test` (`node --test`).

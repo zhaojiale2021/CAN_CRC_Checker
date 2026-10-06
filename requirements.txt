@@ -6,6 +6,13 @@ bitstruct>=8.19
 openpyxl>=3.0
 xlrd>=2.0
 
+# Web version (webapp/ + frontend/dist)
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+httpx>=0.27
+PyYAML>=6.0
+
 # Development
 pytest>=8
 pytest-cov
