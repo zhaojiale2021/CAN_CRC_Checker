@@ -20,7 +20,7 @@ from crc_checker.dbc.models import (
     MessageProtection,
     SignalInfo,
 )
-from webapp.firmware.e2e import E2ECatalog, FirmwareE2E
+from webapp.firmware.e2e import E2ECatalog, FirmwareE2E, PROFILE_PRESETS
 
 # P05: CRC16 写在 (Offset>>3) 起 LE 两个字节;DBC 定义为 BE 16 位,
 # 工具按 byte_swap 比对 —— 与既有 GAC 配置路径完全一致。
@@ -28,6 +28,10 @@ from webapp.firmware.e2e import E2ECatalog, FirmwareE2E
 # P01: CRC8 在 CRCOffset>>3,Counter 4 bit 在 CounterOffset>>3(低位半字节)。
 _P01_MAX_COUNTER = 14  # components/E2E/inc/E2E_P01.h E2E_P01_MAX_COUNTER_VALUE
 DEFAULT_MIN_BUS_COVERAGE = 0.3
+# 结果视图/HTML 里的家族标签:P05/P01 沿用既有 Profile 标签,新家族用预设名。
+_PROFILE_LABELS = {"P05": "Profile 5", "P01": "Profile 1"}
+# 源码模式支持的家族(callout 注释头/PduId 表/原始 CRC 调用三路解析都能出)。
+SUPPORTED_PROFILES = ("P05", "P01", "CRC8", "CRCXOR")
 
 
 def _counter_signal(entry: FirmwareE2E) -> SignalInfo | None:
@@ -39,6 +43,15 @@ def _counter_signal(entry: FirmwareE2E) -> SignalInfo | None:
         if offset is None:
             return None
         return SignalInfo(f"{entry.frame_name}_Counter", offset, 4, "little_endian")
+    if entry.profile in ("CRC8", "CRCXOR"):
+        # CRC8/CRCXOR:计数器位域在解析期换算成绝对 bit(fx12fl 来自 SysDesc
+        # CSV 的 IsRcSignal 行,b81vs 来自 Crcxor seg 的 rc_local_byte/rc_shift)。
+        offset = entry.counter_offset
+        if offset is None:
+            return None
+        width = entry.counter_width or 4
+        return SignalInfo(f"{entry.frame_name}_Counter", offset, width,
+                          "little_endian")
     return None
 
 
@@ -48,6 +61,12 @@ def _checksum_signal(entry: FirmwareE2E) -> SignalInfo | None:
                           "big_endian")
     if entry.profile == "P01":
         return SignalInfo(f"{entry.frame_name}_CRC", entry.crc_offset * 8, 8,
+                          "little_endian")
+    if entry.profile in ("CRC8", "CRCXOR"):
+        # CRC 字节在区域基址 + crc_index 处(CRCXOR 的 crc_index 即固件
+        # crc_calculatecrcxor 的第三实参)。
+        return SignalInfo(f"{entry.frame_name}_CRC",
+                          (entry.crc_offset + entry.crc_index) * 8, 8,
                           "little_endian")
     return None
 
@@ -61,36 +80,70 @@ def _crc_range(entry: FirmwareE2E) -> CRCRange:
             end_byte=length if length else -1,
             dataid=entry.dataid, dataid_position="append",
             dataid_byte_order="lo_hi", crc_byte_swap=True)
-    # P01:受保护范围到 DataLength>>3(雷达 240bit → 30 字节),DataID 前置。
+    if entry.profile == "CRCXOR":
+        # CRCXOR:求和区间是 seg 的 [offset, offset+crc_len),CRC 字节位
+        # (offset+crc_index)由引擎排除 —— 与 crc_calculatecrcxor 的
+        # skip-index 语义一致。
+        return CRCRange(
+            mode="custom_range", start_byte=entry.crc_offset,
+            end_byte=(entry.crc_offset + entry.crc_len) if entry.crc_len else -1,
+            dataid=entry.dataid, dataid_position="append",
+            dataid_byte_order="lo_hi", crc_byte_swap=False)
+    # P01/CRC8:受保护范围是 [crc_offset, crc_offset + DataLength/8) —— 固件
+    # E2E_P01Verify 以 DataPtr = SduDataPtr + seg.offset 起算 Config 的
+    # DataLength,多段报文每段只覆盖自己的块(雷达 240bit → 30 字节)。
+    # CRC8(fx12fl)无 DataID,exclude_crc 同客户路径。
     length = (entry.data_length or 0) // 8
+    if entry.profile == "CRC8":
+        return CRCRange(mode="exclude_crc")
     return CRCRange(
-        mode="custom_range", start_byte=0,
-        end_byte=length if length else -1,
+        mode="custom_range", start_byte=entry.crc_offset,
+        end_byte=(entry.crc_offset + length) if length else -1,
         dataid=entry.dataid, dataid_position="prepend",
         dataid_byte_order="lo_hi", crc_byte_swap=False)
 
 
 def entry_to_protection(entry: FirmwareE2E) -> MessageProtection | None:
     """One firmware entry → one protection group (None for non-E2E entries)."""
-    if entry.profile not in ("P05", "P01"):
+    # preset 字段(解析期按 profile/固件调用定死)优先。四种家族:P05(GAC
+    # CRC16)、P01(SAE-J1850-ZERO)、CRC8(fx12fl J1850)、CRCXOR(SUM8/XOR-FF)。
+    preset = entry.preset or PROFILE_PRESETS.get(entry.profile, "")
+    if not preset or entry.profile not in ("P05", "P01", "CRC8", "CRCXOR"):
         return None
+    label = _PROFILE_LABELS.get(entry.profile, preset)
     return MessageProtection(
         frame_id=entry.frame_id,
         frame_name=entry.frame_name,
-        dlc=(entry.data_length or 0) // 8 if entry.data_length else 0,
+        dlc=entry.dlc or ((entry.data_length or 0) // 8 if entry.data_length else 0),
         pair_suffix="CRC" if entry.profile == "P05" else entry.frame_name,
         checksum_signal=_checksum_signal(entry),
         rolling_counter_signal=_counter_signal(entry),
-        crc_params=get_preset("CRC16/CCITT" if entry.profile == "P05"
-                              else "CRC8/SAE-J1850-ZERO"),
+        crc_params=get_preset(preset),
         crc_range=_crc_range(entry),
         dataid=entry.dataid,
         dataid_name=entry.frame_name,
-        crc_profile="Profile 5" if entry.profile == "P05" else "Profile 1",
-        e2e_profile="Profile 5" if entry.profile == "P05" else "Profile 1",
-        rc_max_valid=_P01_MAX_COUNTER if entry.profile == "P01" else None,
+        crc_profile=label,
+        e2e_profile=label,
+        rc_max_valid=(_P01_MAX_COUNTER if entry.profile == "P01" else None),
         dbc_source=entry.config_symbol,
     )
+
+
+def _disambiguate_counter_names(protections: list[MessageProtection]) -> None:
+    """同一 frame_id 的多组保护计数器同名时,RC 跟踪按信号名串线(STALE 误报)。
+
+    多段帧(如 GWM 0x2AB 五个 Checksum_*)每组各有自己的 counter,按 CRC 字节
+    偏移给信号名加后缀区分;单段帧不动(保持既有展示)。
+    """
+    names = [p.rolling_counter_signal.name for p in protections
+             if p.rolling_counter_signal is not None]
+    duplicated = {name for name in names if names.count(name) > 1}
+    if not duplicated:
+        return
+    for protection in protections:
+        signal = protection.rolling_counter_signal
+        if signal is not None and signal.name in duplicated:
+            signal.name = f"{signal.name}@{protection.crc_range.start_byte:02X}"
 
 
 def _bus_maps(catalog: E2ECatalog) -> dict[str, DBCProtectionMap]:
@@ -102,6 +155,9 @@ def _bus_maps(catalog: E2ECatalog) -> dict[str, DBCProtectionMap]:
             continue
         bus_map = maps.setdefault(entry.bus or "", DBCProtectionMap())
         bus_map.messages.setdefault(entry.frame_id, []).append(protection)
+    for bus_map in maps.values():
+        for protections in bus_map.messages.values():
+            _disambiguate_counter_names(protections)
     return maps
 
 
@@ -117,7 +173,7 @@ def assign_bus_channels(  # pylint: disable=too-many-locals
     """
     bus_ids: dict[str, set[int]] = {}
     for entry in catalog.entries:
-        if entry.profile in ("P05", "P01"):
+        if entry.profile in SUPPORTED_PROFILES:
             bus_ids.setdefault(entry.bus or "", set()).add(entry.frame_id)
 
     assignment: dict[str, int] = {}
