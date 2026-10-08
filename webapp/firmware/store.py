@@ -180,7 +180,7 @@ class FirmwareStore:
             "last_commit": node,
         }
 
-    def _sysdesc_csv_path(self, git_dir, cwd, sha: str, oem: str,
+    def _sysdesc_csv_path(self, git_dir, cwd, sha: str, oem: str,  # pylint: disable=too-many-arguments,too-many-positional-arguments
                           model_name: str) -> str | None:
         """同 commit 的 SysDesc CSV 路径(车型名优先,其次该目录第一份 cpj_*.csv)。
 
