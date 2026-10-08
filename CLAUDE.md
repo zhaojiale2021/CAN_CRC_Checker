@@ -132,21 +132,39 @@ for both algorithm and positions).
   host); credentials never leave the server.
 - `webapp/firmware/e2e.py` — parses the generated callouts: `/* Name: X, ID: 0xNNN, ... */`
   comment headers (CAN ID!), `E2E_P0XVerify`/`ZX_E2E_P0XProtect` calls (profile + CRC byte
-  range), `NetE2E_Cfg.cpp` `Config_*_st` initializers (positional fields: CounterOffset/
+  range), **fx12fl raw CRC calls** (`crc_calculatecrc8h1d` → CRC8/SAE-J1850,
+  `crc_calculatecrcxor` → SUM8/XOR-FF; counter position filled from the SysDesc CSV),
+  `NetE2E_Cfg.cpp` `Config_*_st` initializers (positional fields: CounterOffset/
   CRCOffset/DataID/...), `NetE2E_Cfg.hpp` constexpr tables incl. `NIBBLE_REVERSE_16(0x430)`
-  macros evaluated per their definition.
-- `webapp/firmware/catalog.py` — entries → `MessageProtection` (CRC16/CCITT + DataID append
-  lo_hi byte_swap for P05; CRC8/SAE-J1850-ZERO + prepend + 4-bit counter 0..14 for P01) and
-  **bus→trace-channel assignment by ID-hit-rate sampling** (radar buses absent from the bench
-  trace are dropped with a diagnostic — never guessed).
+  macros evaluated per their definition (type may be `uint16` or `uint16_t`).
+- `webapp/firmware/tabled.py` — PduId-table-driven generator family (GWM/BAIC/Chery and
+  GAC t75/t88/t996d/v20): walks the `g_rx/g_tx_e2e_cfg_ast` PduId-indexed tables (three
+  field-layout variants: GWM inline 7-field segs, GAC inline 9-field segs with `is_p05`,
+  BAIC `CRC_ALGO_*` + typed `E2E_P01RxSeg`/`E2E_CrcxorRxSeg` arrays), follows each seg's
+  `Config_*_st`/`m_u*_Rfc` reference to the message symbol, and joins the **SysDesc CSV**
+  for the CAN ID + Can Channel. CAN ID lookup failures are skipped with a diagnostic —
+  never guessed.
+- `webapp/firmware/csv_map.py` — `cpj_<oem>/autosar/<model>/BswRta/SysDesc/DBC/
+  cpj_<oem>_<model>.csv` → Msg Name ↔ CAN ID/Can Channel map (column names located via
+  the header, `IsCrcSignal`/`IsRcSignal` rows carry CRC/RC signal positions; the net code
+  is generated from this DBC so symbol names match CSV Msg Names — longest contiguous
+  token match resolves `Config_<BUS>_<MSG>_<Signal>_st` → `<MSG>`).
+- `webapp/firmware/catalog.py` — entries → `MessageProtection` (four families: P05 =
+  CRC16/CCITT + DataID append lo_hi byte_swap; P01 = CRC8/SAE-J1850-ZERO + prepend +
+  4-bit counter 0..14, per-segment range `crc_offset..crc_offset+DataLength/8`;
+  CRC8 = SAE-J1850 exclude_crc; CRCXOR = SUM8/XOR-FF over the seg with the crc byte
+  excluded) and **bus→trace-channel assignment by ID-hit-rate sampling** (radar buses
+  absent from the bench trace are dropped with a diagnostic — never guessed). Multi-seg
+  frames (GWM 0x2AB five `Checksum_*`) get per-seg counter names (`@offset` suffix) so
+  the RC tracker doesn't cross-wire.
 - `webapp/firmware/store.py` — per-commit scan (models + `last_commit` = the node where that
-  model's net_cfg last changed) and cached per (repo, sha, model) catalogs.
+  model's net_cfg last changed) and cached per (repo, sha, model) catalogs; support = callout
+  headers (GAC callout / fx12fl families) OR PduId E2E tables (tabled family, joined with the
+  SysDesc CSV at the same commit).
 
-**Known limitation (honest, not guessed):** PduId-table-driven generators (GWM/BAIC/Chery
-and GAC t75/t88/t996d/v20) carry no CAN-ID comments — the ID needs a Com/CanIf join that is
-not implemented, so those models scan as `supported: false` with a reason and firmware mode
-is refused for them (400). The GAC callout family (s52/s52-e046/t09/t68 at develop) is fully
-supported.
+**Trust chain (what "source mode" means):** firmware is the source of truth for algorithm,
+positions and DataID; the CAN ID derives from the firmware build's DBC snapshot (the SysDesc
+CSV/DBC in the same repo at the same commit), not the customer-maintained DBC in `customers/`.
 
 ### CLI
 
@@ -205,4 +223,4 @@ coexist on one bus. GAC extras: `crc.range_overrides` (CCU_SRS_1 second segment
 
 ### Testing
 
-177 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), GBK DBC decoding (BAIC comments keep their full-width punctuation, so the Profile 1A DataID parses), comment-derived sum-checksum byte ranges + Profile 1 counter max (b81vs matrix), DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming), the web layer (`tests/test_webapp.py`: project scan, deployment-version semantics, shared runner, upload → verify → report via the real committed traces), and the firmware source mode (`tests/test_firmware_mode.py`: parser on synthetic net_cfg artifacts, bus→channel assignment, repo config env override; API tests need the configured local firmware repo and skip otherwise). Frontend pure-logic tests run with `cd frontend && npm test` (`node --test`).
+196 tests in `tests/` — CRC engine known vectors (incl. SUM8/XOR-FF + XOR8/SEED), fx12fl + b81vs comment auto-classification (Profile 1A DataID / SUM8 / skip), GBK DBC decoding (BAIC comments keep their full-width punctuation, so the Profile 1A DataID parses), comment-derived sum-checksum byte ranges + Profile 1 counter max (b81vs matrix), DBC resolver signal matching, suffix extraction, custom patterns, protection map merge logic, GAC E2E (`tests/test_gac_e2e.py`: profile selection by CRC width, multi-CRC messages, per-message ranges, skip list, legacy `.xls` DataID workbooks, radar `_Msg_CheckSum_CanNN` / block-counter naming), the web layer (`tests/test_webapp.py`: project scan, deployment-version semantics, shared runner, upload → verify → report via the real committed traces), and the firmware source mode (`tests/test_firmware_mode.py`: callout/E2E parser on synthetic net_cfg artifacts, SysDesc CSV map + symbol resolution (longest token match), the three PduId-table variants (GWM inline / GAC is_p05 / BAIC typed segs), fx12fl raw CRC calls, bus→channel assignment, repo config env override; API tests need the configured local firmware repo and skip otherwise). Frontend pure-logic tests run with `cd frontend && npm test` (`node --test`).
