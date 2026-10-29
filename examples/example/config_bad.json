@@ -1,0 +1,39 @@
+{
+  "_comment": "Synthetic example. crc-check run -c examples/example/config.json -v",
+  "dbc": "dbc",
+  "traces": [
+    "trace/example_bad.blf"
+  ],
+  "crc": {
+    "preset": "CRC8/SAE-J1850",
+    "auto_classify": true,
+    "profile_by_width": true,
+    "profiles": {
+      "p01": {
+        "preset": "CRC8/SAE-J1850-ZERO",
+        "dataid_position": "prepend",
+        "byte_swap": false,
+        "counter_max_valid": 14,
+        "range": {
+          "mode": "exclude_crc"
+        }
+      }
+    }
+  },
+  "range": {
+    "mode": "exclude_crc"
+  },
+  "dataid": {
+    "json": "dbc/dataid.json",
+    "mapping": "hi_lo_two_cols",
+    "position": "prepend",
+    "byte_order": "lo_hi"
+  },
+  "filter": {
+    "max_frames": 0
+  },
+  "output": {
+    "format": "html",
+    "file": "report.html"
+  }
+}

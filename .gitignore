@@ -14,16 +14,9 @@ build/
 report*.csv
 report*.json
 
-# Build artifacts (/dist = the standalone exe only; frontend/dist IS committed)
+# Python build artifacts (frontend/dist IS committed)
 build/
 /dist/
-release/
-*.spec
-*.zip
-
-# Project exe (built, not committed)
-projects/*/*/crc-check.exe
-examples/*/crc-check.exe
 
 # Web version runtime artifacts (uploads are deleted after each run;
 # reports and run metadata are regenerated)
@@ -43,3 +36,6 @@ AGENTS.md
 
 # Local git history backups
 *.bundle
+
+# Claude Code project settings (local only)
+.claude/

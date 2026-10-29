@@ -10,7 +10,7 @@ Run from the repository root:
 
 It writes ``dbc/network.dbc``, ``dbc/dataid.json``, ``trace/example.blf``
 (all checks pass), ``trace/example_bad.blf`` (deliberate CRC/RC errors) and
-``config.json`` next to this file.
+``config.json`` / ``config_bad.json`` next to this file.
 """
 
 from __future__ import annotations
@@ -221,6 +221,9 @@ def main() -> None:
         json.dumps(DATAID, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (HERE / "config.json").write_text(
         json.dumps(CONFIG, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    bad_config = dict(CONFIG, traces=["trace/example_bad.blf"])
+    (HERE / "config_bad.json").write_text(
+        json.dumps(bad_config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     _write_trace(HERE / "trace" / "example.blf")
     _write_trace(HERE / "trace" / "example_bad.blf", bad=True)
     print(f"example written to {HERE}")

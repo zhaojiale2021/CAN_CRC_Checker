@@ -21,6 +21,3 @@ pytest-cov
 # R0913/R0917 参数上限(5)比 pylint 4.x 严;固定同一版本保证本地预推送
 # 钩子与 CI 拦同样的东西。CI 换掉 py3.9 前不要升。
 pylint==3.3.9
-
-# Build (for standalone .exe)
-pyinstaller>=6.0
