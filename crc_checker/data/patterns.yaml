@@ -1,0 +1,40 @@
+# Signal-name matching rules for automatic CRC / rolling-counter detection.
+#
+# Every entry is a Python regular expression. Lists are combined with OR, so
+# extending the file is enough to support a new naming convention — no code
+# changes are required.
+#
+# Resolution order (highest first):
+#   1. config.json  signals.checksum_pattern / signals.rc_pattern
+#      (a single custom regex, replaces prefix+suffix matching)
+#   2. config.json  signals.patterns_file  (a file in this format)
+#   3. this file
+#
+# A signal is a checksum when it matches any `checksum.prefix` pattern or any
+# `checksum.suffix` pattern. Rolling counters work the same way, except that a
+# name matching `rolling_counter.exclude` is never a counter (block counters
+# count data blocks, not frames).
+
+checksum:
+  prefix:
+    - '(?i)^(checksum|check_sum|crc|e2e_crc)'
+  suffix:
+    - '(?i)(_crc$|_checksum$|_e2e_crc$|_crc[0-9]*$|_crc_[0-9]+$|_e2e_crc_[0-9]+$|_crc[0-9]+_[0-9]+[a-z]*$|_checksum[0-9]*$|_checksum_[0-9]+$|_crccheck$|_chks$|_chks[0-9]*$|chks$|chks[0-9]*$)'
+
+rolling_counter:
+  prefix:
+    - '(?i)^(rolling.?counter|rolling_?cntr|rc_|live.?counter|alive.?counter|alive_)'
+  suffix:
+    - '(?i)(_counter$|_counter_[0-9]+$|_alive$|_alive_[0-9]+$|_msgcntr$|_msgcntr[0-9]*$|_messagecounter$|_messagecounter[0-9]*$|_message_counter$|_message_counter[0-9]*$|_alivecounter[0-9]*$|_alivecnt[0-9]*$|_cntr$|_cntr[0-9]*$|cntr$|cntr[0-9]*$|_rollgcntr$|_rollgcntr[0-9]*$|_rollgcntr[0-9]+_[0-9]+[a-z]*$|_rollingcounter$|_rollingcounter_[0-9]+$|_rollingcounter[0-9]*$)'
+  exclude:
+    - '(?i)block_?counter'
+
+# Some sensor protocols put the source bus in the signal name
+# ("SGU1_Msg_CheckSum_Can03"). The marker is stripped before matching so the
+# checksum and its counter still pair up.
+bus_suffix: '_Can[0-9]+$'
+
+# Auto-detection of the dominant naming convention: suffix mode is enabled only
+# when there are no prefix matches and at least this many suffix matches.
+detect:
+  min_suffix_matches: 3

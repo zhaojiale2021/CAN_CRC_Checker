@@ -1,0 +1,74 @@
+# DataID workbook column layouts.
+#
+# A mapping describes where the signal name, message id and DataID live in an
+# Excel sheet. Add your own entry here (or point `dataid.mapping` in config.json
+# at a JSON object / a custom file) — no code changes are required.
+#
+# All column fields are 0-based indices, unless `use_header_names: true`, in
+# which case they are header texts.
+#
+# dataid_format:
+#   hi_lo_two_cols       high byte in one column, low byte in another
+#   two_cols_lsb_first   same, but the low byte comes first
+#   single_16bit         one column holding "0x0054"
+#   single_8bit          one column holding an 8-bit value
+#   description_regex    DataID embedded in a free-text description column
+#
+# signal_name_filter: case-insensitive substrings used to keep only checksum
+# rows. An empty list accepts every row.
+
+mappings:
+  # Default: signal name, message id, DataID high/low bytes in separate columns.
+  hi_lo_two_cols:
+    col_signal_name: 1
+    col_message_id: 3
+    col_dataid_hi: 12
+    col_dataid_lo: 13
+    dataid_format: hi_lo_two_cols
+    data_row_start: 3
+    message_id_base: 16
+
+  # One 16-bit DataID column, optional remark column.
+  single_16bit:
+    col_signal_name: 2
+    col_message_id: 3
+    col_dataid_hi: 4
+    col_dataid_lo: -1
+    col_remark: 5
+    dataid_format: single_16bit
+    data_row_start: 3
+    message_id_base: 16
+    signal_name_filter: []
+
+  # A=Signal, B=MessageID, C=DataID (16-bit hex)
+  generic_abc:
+    col_signal_name: 0
+    col_message_id: 1
+    col_dataid_hi: 2
+    col_dataid_lo: -1
+    dataid_format: single_16bit
+    data_row_start: 2
+    message_id_base: 16
+
+  # A=MessageID, B=Signal, C=DataID (8-bit, decimal message id)
+  simple_8bit:
+    col_signal_name: 1
+    col_message_id: 0
+    col_dataid_hi: 2
+    col_dataid_lo: -1
+    dataid_format: single_8bit
+    data_row_start: 2
+    message_id_base: 10
+
+  # One row per signal; the message id is only present on the first row of a
+  # message and the DataID is embedded in the description column.
+  description_regex:
+    col_signal_name: 11
+    col_message_id: 0
+    col_dataid_hi: 29
+    col_dataid_lo: -1
+    col_remark: 29
+    dataid_format: description_regex
+    data_row_start: 1
+    message_id_base: 16
+    signal_name_filter: []

@@ -1,0 +1,26 @@
+# Core dependencies
+python-can>=4.5
+canmatrix>=1.1
+click>=8.1
+bitstruct>=8.19
+openpyxl>=3.0
+xlrd>=2.0
+
+# Web version (webapp/ + frontend/dist)
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+httpx>=0.27
+PyYAML>=6.0
+
+# Development
+pytest>=8
+pytest-cov
+
+# Lint — CI 的 py3.9 作业最高只能装 pylint 3.3.9(py3.9 末版),其
+# R0913/R0917 参数上限(5)比 pylint 4.x 严;固定同一版本保证本地预推送
+# 钩子与 CI 拦同样的东西。CI 换掉 py3.9 前不要升。
+pylint==3.3.9
+
+# Build (for standalone .exe)
+pyinstaller>=6.0

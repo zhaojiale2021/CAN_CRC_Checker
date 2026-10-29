@@ -1,0 +1,711 @@
+"""HTML report generator — segment hex view with inline CRC/RC highlighting."""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import datetime
+from html import escape
+from pathlib import Path
+
+from crc_checker.bit_utils import _canmatrix_to_physical_msb
+from crc_checker.report.trends import (
+    RC_X0,
+    RC_X1,
+    RC_Y0,
+    RC_Y1,
+    _build_rc_charts,
+    format_rate,
+    rc_sample_stats,
+)
+from crc_checker.verify.models import VerifyReport, VerifyVerdict
+
+CSS = """
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         margin: 20px; background: #1a1a2e; color: #e0e0e0; }
+  .container { max-width: 1600px; margin: 0 auto; }
+  h1 { color: #e0e0e0; margin-bottom: 16px; font-size: 22px; }
+  .info-bar { background: #16213e; border-radius: 8px; padding: 10px 20px;
+              margin-bottom: 16px; font-size: 12px; color: #8899aa; }
+  .summary-cards { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .card { background: #16213e; border-radius: 8px; padding: 12px 20px;
+          min-width: 130px; text-align: center; }
+  .card .label { font-size: 11px; color: #8899aa; text-transform: uppercase;
+                 letter-spacing: 0.5px; }
+  .card .value { font-size: 26px; font-weight: bold; margin-top: 2px; }
+  .card.fail .value { color: #e74c3c; }
+  .card.pass .value { color: #2ecc71; }
+
+  .frame-section { background: #16213e; border-radius: 8px; margin-bottom: 12px;
+                   overflow: hidden; }
+  .frame-header { display: flex; align-items: center; padding: 10px 16px;
+                  background: #0f3460; cursor: pointer; user-select: none;
+                  gap: 16px; }
+  .frame-header .id { font-weight: bold; font-size: 15px; font-family: 'SF Mono',
+                      'Consolas', monospace; min-width: 80px; }
+  .frame-header .name { font-weight: bold; font-size: 15px; color: #e0e0e0;
+                     font-family: 'SF Mono', 'Consolas', monospace; margin-left: 2px; }
+  .frame-header .ts { color: #8899aa; font-size: 12px; font-family: 'SF Mono',
+                      'Consolas', monospace; }
+  .frame-header .stats { margin-left: auto; font-size: 12px; display: flex; gap: 8px; }
+  .frame-header .stats .ok { color: #2ecc71; }
+  .frame-header .stats .err { color: #e74c3c; }
+  .frame-header .arrow { transition: transform .2s; font-size: 12px; color: #8899aa; }
+  .frame-section.collapsed .frame-body { display: none; }
+  .frame-section.collapsed .arrow { transform: rotate(-90deg); }
+  .frame-body { padding: 12px 16px; }
+
+  .channel-tag { display: inline-block; padding: 1px 8px; border-radius: 3px;
+                 font-size: 11px; font-weight: bold; font-family: 'SF Mono', 'Consolas', monospace; }
+  .channel-0 { background: #1a3a5c; color: #4a8ac9; }
+  .channel-1 { background: #1a4a3a; color: #4ac98a; }
+  .channel-2 { background: #4a3a1a; color: #c99a4a; }
+  .channel-3 { background: #3a1a4a; color: #9a4ac9; }
+  .dbc-tag { display: inline-block; padding: 1px 6px; border-radius: 3px;
+             font-size: 10px; color: #667788; background: #1a1a2e;
+             font-family: 'SF Mono', 'Consolas', monospace;
+             max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .algo-tag { display: inline-block; padding: 1px 6px; border-radius: 3px;
+              font-size: 10px; color: #9a8ad8; background: #241a3a;
+              font-family: 'SF Mono', 'Consolas', monospace; }
+
+  .hex-grid { display: flex; flex-direction: column; gap: 2px;
+              font-family: 'SF Mono', 'Consolas', 'Courier New', monospace; }
+  .hex-row { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+  .hex-offset { color: #556677; min-width: 45px; text-align: right;
+                font-size: 11px; }
+  .hex-bytes { display: flex; gap: 2px; }
+  .hex-byte { display: inline-block; width: 28px; text-align: center;
+              padding: 2px 4px; border-radius: 3px; border: 1px solid transparent;
+              position: relative; cursor: default; }
+  .hex-byte.crc-pass { border-color: #2ecc71; background: rgba(46,204,113,0.12); }
+  .hex-byte.crc-fail { border-color: #e74c3c; background: rgba(231,76,60,0.18);
+                       color: #e74c3c; font-weight: bold; }
+  .hex-byte.rc-pass { border-bottom: 2px solid #2ecc71; }
+  .hex-byte.rc-fail { border-bottom: 2px solid #e74c3c; background: rgba(231,76,60,0.12); }
+  .hex-byte.has-crc.rc-pass { border: 1px solid #2ecc71; background: rgba(46,204,113,0.15); }
+  .hex-byte.has-crc.rc-fail { border: 1px solid #e74c3c; background: rgba(231,76,60,0.2); }
+  .hex-byte .tooltip { visibility: hidden; position: absolute; bottom: 110%;
+                       left: 50%; transform: translateX(-50%); background: #333;
+                       color: #fff; font-size: 11px; padding: 3px 8px;
+                       border-radius: 4px; white-space: nowrap; z-index: 10; }
+  .hex-byte:hover .tooltip { visibility: visible; }
+
+  .segment-label { color: #556677; font-size: 10px; min-width: 85px;
+                   text-align: right; margin-right: 4px; }
+  .segment-label .did { color: #ffd700; font-weight: bold;
+                        background: rgba(255, 215, 0, 0.16);
+                        padding: 1px 5px; border-radius: 3px;
+                        cursor: default; position: relative;
+                        border: 1px solid rgba(255, 215, 0, 0.4); }
+  .segment-label .did .tooltip { visibility: hidden; position: absolute;
+                                 bottom: 110%; left: 50%;
+                                 transform: translateX(-50%);
+                                 background: #333; color: #fff; font-size: 11px;
+                                 padding: 3px 8px; border-radius: 4px;
+                                 white-space: nowrap; z-index: 10; }
+  .segment-label .did:hover .tooltip { visibility: visible; }
+
+  .verdict-table { margin-top: 12px; border-top: 1px solid #1a1a2e; padding-top: 8px; }
+  .verdict-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .verdict-table th { color: #8899aa; text-align: left; padding: 4px 8px;
+                      font-weight: normal; border-bottom: 1px solid #1a1a2e; }
+  .verdict-table td { padding: 3px 8px; font-family: 'SF Mono', 'Consolas', monospace; }
+  .verdict-table .pass td { color: #2ecc71; }
+  .verdict-table .fail td { color: #e74c3c; }
+
+  .filter-bar { margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .filter-bar button { padding: 6px 14px; border: 1px solid #0f3460;
+                       background: #16213e; color: #e0e0e0; border-radius: 4px;
+                       cursor: pointer; font-size: 12px; }
+  .filter-bar button.active { background: #0f3460; border-color: #e94560; }
+  .filter-bar button:hover { background: #0f3460; }
+  .filter-bar input { padding: 6px 12px; border: 1px solid #0f3460;
+                      background: #16213e; color: #e0e0e0; border-radius: 4px;
+                      font-size: 12px; width: 240px; outline: none; }
+  .filter-bar input:focus { border-color: #e94560; }
+  .filter-bar input::placeholder { color: #556677; }
+  .filter-bar .sep { color: #334455; margin: 0 4px; font-size: 12px; }
+
+  /* RC trend charts */
+  .rc-charts { margin-bottom: 20px; }
+  .rc-charts h2 { font-size: 15px; margin: 0 0 10px; }
+  .rc-chart-card { background: #16213e; border-radius: 8px; margin-bottom: 10px;
+                   overflow: hidden; }
+  .rc-chart-header { display: flex; align-items: center; padding: 8px 16px;
+                     background: #0f3460; cursor: pointer; user-select: none; gap: 12px; }
+  .rc-chart-header .id { font-weight: bold; font-size: 14px; font-family: 'SF Mono',
+                         'Consolas', monospace; min-width: 70px; }
+  .rc-chart-header .name { font-weight: bold; font-size: 14px; color: #e0e0e0;
+                           font-family: 'SF Mono', 'Consolas', monospace; }
+  .rc-chart-header .frame-name { font-size: 12px; color: #8899aa;
+                                 font-family: 'SF Mono', 'Consolas', monospace; }
+  .rc-chart-header .stats { margin-left: auto; font-size: 12px; color: #8899aa; }
+  .rc-chart-header .stats .err { color: #e74c3c; font-weight: bold; }
+  .rc-chart-header .stats .ok { color: #2ecc71; }
+  .rc-chart-header .arrow { transition: transform .2s; font-size: 12px; color: #8899aa; }
+  .rc-chart-card.collapsed .rc-chart-body { display: none; }
+  .rc-chart-card.collapsed .arrow { transform: rotate(-90deg); }
+  .rc-chart-body { position: relative; padding: 10px 12px 4px; }
+  .rc-svg { width: 100%; height: auto; display: block; }
+  .rc-line { fill: none; stroke: #3987e5; stroke-width: 2;
+             stroke-linejoin: round; stroke-linecap: round; }
+  .rc-grid { stroke: #22355c; stroke-width: 1; }
+  .rc-axis { stroke: #2c3e63; stroke-width: 1; }
+  .rc-tick { fill: #8899aa; font-size: 10px; font-family: 'SF Mono', 'Consolas', monospace;
+             font-variant-numeric: tabular-nums; }
+  .rc-threshold { stroke: #fab219; stroke-width: 1; }
+  .rc-thr-label { fill: #8899aa; font-size: 9px;
+                  font-family: 'SF Mono', 'Consolas', monospace; }
+  .rc-err-dot { fill: #e74c3c; stroke: #16213e; stroke-width: 2; cursor: default; }
+  .rc-crosshair { stroke: #8899aa; stroke-width: 1; visibility: hidden; }
+  .rc-readout { position: absolute; top: 16px; right: 20px; visibility: hidden;
+                font-size: 11px; color: #e0e0e0; background: rgba(15, 52, 96, 0.9);
+                padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+                max-width: 80%; overflow: hidden; text-overflow: ellipsis;
+                font-family: 'SF Mono', 'Consolas', monospace; pointer-events: none; }
+  .rc-chart-note { font-size: 10px; color: #667788; padding: 2px 4px 6px;
+                   font-family: 'SF Mono', 'Consolas', monospace; }
+
+  /* Split pages */
+  .report-note { background: #4a3a1a; border-left: 4px solid #fab219; color: #f0c674;
+                 border-radius: 6px; padding: 10px 16px; margin-bottom: 16px; font-size: 13px; }
+  .page-nav { background: #16213e; border-radius: 8px; padding: 10px 16px;
+              margin-bottom: 20px; font-size: 13px; color: #8899aa; }
+  .page-nav a { color: #3987e5; text-decoration: none; margin: 0 2px; }
+  .page-nav a:hover { text-decoration: underline; }
+  .page-nav .cur { color: #e0e0e0; font-weight: bold; margin: 0 2px; }
+  .split-notice { margin-left: 14px; color: #fab219; font-size: 12px; }
+"""
+
+
+def _bit_to_byte_pos(start_bit: int, bit_index: int, byte_order: str) -> tuple[int, int]:
+    """Convert signal start_bit + bit_index to (byte_offset, bit_in_byte).
+
+    For Motorola (big-endian) signals the MSB sits at the converted physical
+    position and bits run downward; after bit 0 of a byte the sequence
+    continues at bit 7 of the next byte.
+    """
+    if byte_order == "big_endian":
+        physical_msb = _canmatrix_to_physical_msb(start_bit)
+        msb_byte = physical_msb // 8
+        msb_bit = physical_msb % 8
+        if bit_index <= msb_bit:
+            return msb_byte, msb_bit - bit_index
+        offset = bit_index - (msb_bit + 1)
+        return msb_byte + 1 + offset // 8, 7 - (offset % 8)
+    phys_bit = start_bit + bit_index
+    return phys_bit // 8, phys_bit % 8
+
+
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
+                      frame_name: str = "", channel: int = 0,
+                      dbc_source: str = "") -> str:
+    """Build HTML for one frame: hex dump with highlights + verdict table."""
+    if not verdicts:
+        return ""
+
+    frame_id = verdicts[0].frame_id
+    ts = verdicts[0].timestamp
+    dlc = len(frame_data)
+
+    # Collect signal positions for highlighting
+    byte_styles: dict[int, dict] = {}
+    signals_info: list[dict] = []
+
+    for v in verdicts:
+        if v.start_bit is None or not v.length:
+            continue
+        for bit_i in range(v.length):
+            byte_idx, _ = _bit_to_byte_pos(v.start_bit, bit_i, v.byte_order)
+            if 0 <= byte_idx < dlc:
+                if byte_idx not in byte_styles:
+                    byte_styles[byte_idx] = {}
+                key = "crc" if v.algorithm == "crc" else "rc"
+                status = "pass" if v.is_pass else "fail"
+                existing = byte_styles[byte_idx].get(key)
+                if existing is None or (existing == "pass" and status == "fail"):
+                    byte_styles[byte_idx][key] = status
+
+        signals_info.append({
+            "name": v.signal_name,
+            "algorithm": v.algorithm,
+            "expected": v.expected_value,
+            "actual": v.actual_value,
+            "pass": v.is_pass,
+            "detail": v.detail,
+        })
+
+    seg_size = 8 if dlc > 8 else dlc
+    num_segments = (dlc + seg_size - 1) // seg_size
+
+    seg_dataid: dict[int, tuple[int, str, str]] = {}  # seg_idx -> (dataid, name, profile)
+    for v in verdicts:
+        if v.dataid is not None and v.start_bit is not None:
+            seg_idx = v.start_bit // (seg_size * 8)
+            seg_dataid[seg_idx] = (v.dataid, v.dataid_name, v.dataid_profile)
+
+    crc_ok = sum(1 for v in verdicts if v.algorithm == "crc" and v.is_pass)
+    crc_err = sum(1 for v in verdicts if v.algorithm == "crc" and not v.is_pass)
+    rc_ok = sum(1 for v in verdicts if v.algorithm != "crc" and v.is_pass)
+    rc_err = sum(1 for v in verdicts if v.algorithm != "crc" and not v.is_pass)
+
+    hex_rows = []
+    for seg_idx in range(num_segments):
+        seg_start = seg_idx * seg_size
+        seg_end = min(seg_start + seg_size, dlc)
+        seg_bytes = frame_data[seg_start:seg_end]
+
+        bytes_html = ""
+        for i, b in enumerate(seg_bytes):
+            byte_idx = seg_start + i
+            styles = byte_styles.get(byte_idx, {})
+            css_class = ""
+
+            crc_status = styles.get("crc")
+            rc_status = styles.get("rc")
+            if crc_status and rc_status:
+                if crc_status == "pass":
+                    css_class = f"has-crc rc-{rc_status}"
+                else:
+                    css_class = "has-crc crc-fail"
+            elif crc_status:
+                css_class = f"crc-{crc_status}"
+            elif rc_status:
+                css_class = f"rc-{rc_status}"
+
+            tooltip = ""
+            if crc_status or rc_status:
+                parts = []
+                for v in verdicts:
+                    sig_start_byte, _ = _bit_to_byte_pos(v.start_bit, 0, v.byte_order)
+                    sig_end_byte, _ = _bit_to_byte_pos(v.start_bit, v.length - 1, v.byte_order)
+                    byte_min = min(sig_start_byte, sig_end_byte)
+                    byte_max = max(sig_start_byte, sig_end_byte)
+                    if byte_min <= byte_idx <= byte_max:
+                        status = "OK" if v.is_pass else "ERR"
+                        parts.append(
+                            f"{v.signal_name}: exp=0x{v.expected_value:X} "
+                            f"act=0x{v.actual_value:X} [{status}]"
+                        )
+                tooltip = " | ".join(parts)
+
+            tooltip_html = f'<span class="tooltip">{tooltip}</span>' if tooltip else ""
+            bytes_html += f'<span class="hex-byte {css_class}">{b:02X}{tooltip_html}</span>'
+
+        offset = f"0x{seg_start:04X}"
+        did_info = seg_dataid.get(seg_idx)
+        if did_info is not None:
+            did, did_name, did_profile = did_info
+            tip = f"DataID 0x{did:04X}"
+            if did_name:
+                tip += f" · {did_name}"
+            if did_profile:
+                tip += f" · {did_profile}"
+            label = (f'Seg{seg_idx} '
+                     f'<span class="did">0x{did:04X}'
+                     f'<span class="tooltip">{escape(tip)}</span></span>')
+        else:
+            label = f"Seg{seg_idx}"
+        hex_rows.append(
+            f'<div class="hex-row">'
+            f'<span class="segment-label">{label}</span>'
+            f'<span class="hex-offset">{offset}</span>'
+            f'<span class="hex-bytes">{bytes_html}</span>'
+            f'</div>'
+        )
+
+    verdict_rows = ""
+    for s in signals_info:
+        row_class = "pass" if s["pass"] else "fail"
+        exp_w = max(2, (s["expected"].bit_length() + 7) // 8 * 2)
+        act_w = max(2, (s["actual"].bit_length() + 7) // 8 * 2)
+        detail_html = escape(s["detail"]) if s["detail"] else ""
+        verdict_rows += (
+            f'<tr class="{row_class}">'
+            f'<td>{escape(s["name"])}</td>'
+            f'<td>{s["algorithm"]}</td>'
+            f'<td>0x{s["expected"]:0{exp_w}X}</td>'
+            f'<td>0x{s["actual"]:0{act_w}X}</td>'
+            f'<td>{"PASS" if s["pass"] else "FAIL"}</td>'
+            f'<td>{detail_html}</td>'
+            f'</tr>'
+        )
+
+    stats_html = ""
+    if crc_ok + crc_err > 0:
+        stats_html += f'<span class="ok">CRC:{crc_ok}</span>' if crc_ok > 0 else ""
+        stats_html += f'<span class="err">CRC:{crc_err}</span>' if crc_err > 0 else ""
+    if rc_ok + rc_err > 0:
+        stats_html += f'<span class="ok">RC:{rc_ok}</span>' if rc_ok > 0 else ""
+        stats_html += f'<span class="err">RC:{rc_err}</span>' if rc_err > 0 else ""
+
+    # Channel tag (always show, channel 0 is valid)
+    ch_tag = f'<span class="channel-tag channel-{channel % 4}">CH{channel}</span>'
+
+    # CRC algorithm tags (deduped, e.g. mixed Profile 5 + Profile 1A)
+    algo_tags = "".join(
+        f'<span class="algo-tag">{escape(a)}</span>'
+        for a in sorted({v.crc_algorithm for v in verdicts if v.crc_algorithm})
+    )
+
+    # DBC source tag
+    if dbc_source:
+        dbc_tag = f'<span class="dbc-tag" title="{escape(dbc_source)}">{escape(dbc_source)}</span>'
+    else:
+        dbc_tag = ""
+
+    collapsed = ""
+    name_html = f'<span class="name">({frame_name})</span>' if frame_name else ""
+
+    return f"""
+    <div class="frame-section{collapsed}" data-channel="{channel}">
+      <div class="frame-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span class="arrow">&#9660;</span>
+        {ch_tag}
+        <span class="id">0x{frame_id:03X}</span>
+        {name_html}
+        {algo_tags}
+        {dbc_tag}
+        <span class="ts">@{ts:.6f}s</span>
+        <span class="stats">{stats_html}</span>
+      </div>
+      <div class="frame-body">
+        <div class="hex-grid">{''.join(hex_rows)}</div>
+        <div class="verdict-table">
+          <table>
+            <tr><th>Signal</th><th>Type</th><th>Expected</th><th>Actual</th><th>Verdict</th><th>Detail</th></tr>
+            {verdict_rows}
+          </table>
+        </div>
+      </div>
+    </div>"""
+
+
+# 单文件帧段数上限 —— 超过则拆分为多份完整页面(report.html + report_p2.html…),
+# 每份 ≤ SPLIT_MAX_SECTIONS 个帧段,浏览器可加载;各份之间相对链接互跳。
+SPLIT_MAX_SECTIONS = 20000
+
+# 单次报告(所有分片合计)的帧段上限 —— 逐帧十六进制转储约 1KB/段,不限帧的大
+# trace(几十万帧)会写出几百 MB 的报告:超限时先自动降级成「只保留失败帧」,
+# 仍超限再截断,并在报告顶部写明。0 = 不限(也见 config.output.max_report_sections)。
+REPORT_FULL_MAX_SECTIONS = 30000
+
+def _split_part_path(file_path: str, page_no: int) -> str:
+    """report.html → report_p2.html(与主文件同目录,页面内相对链接互跳)。"""
+    path = Path(file_path)
+    return str(path.with_name(f"{path.stem}_p{page_no}{path.suffix}"))
+
+
+def _split_nav(page_no: int, total: int, file_path: str) -> str:
+    """拆分页导航条(第一页是提示 + 下一页;其余是 上一页/下一页)。"""
+    stem = Path(file_path).stem
+
+    def part_name(n: int) -> str:
+        return f"{stem}.html" if n == 1 else f"{stem}_p{n}.html"
+
+    links = [f"第 {page_no}/{total} 页"]
+    if page_no > 1:
+        links.append(f'<a class="page-link" href="{part_name(page_no - 1)}">上一页</a>')
+    if page_no < total:
+        links.append(f'<a class="page-link" href="{part_name(page_no + 1)}">下一页</a>')
+    notice = ('<span class="split-notice">报告帧数超过单文件上限,'
+              '已按帧段拆分 — 使用顶部链接在分页间跳转</span>'
+              if page_no == 1 else "")
+    return f'<div class="page-nav">{" · ".join(links)}{notice}</div>'
+
+
+# pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+def _page_html(report: VerifyReport, sections: list[str], stats: dict,
+               channels: set[int], dbc_display: str, charts_html: str,
+               ch_buttons: str, nav: str, note: str = "") -> str:
+    """One report page: shared chrome (summary/filter/JS) + its slice of frames."""
+    note_html = (f'<div class="report-note">{escape(note)}</div>' if note else "")
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAN CRC Check Report</title>
+<style>
+{CSS}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>CAN CRC Check Report</h1>
+<div class="info-bar">
+  DBC: {dbc_display}<br>
+  Trace: {report.trace_path}<br>
+  Channels: {len(channels)}<br>
+  Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}{stats['dlc_note_html']}
+</div>
+{note_html}
+<div class="summary-cards">
+  <div class="card"><div class="label">Frames</div>
+    <div class="value">{report.total_frames}</div></div>
+  <div class="card"><div class="label">Total Verdicts</div>
+    <div class="value">{report.total_verdicts}</div></div>
+  <div class="card{'' if stats['crc_fail'] else ' pass'}"><div class="label">CRC Pass</div>
+    <div class="value">{stats['crc_pass']}/{stats['crc_total']}</div></div>
+  <div class="card"><div class="label">CRC Rate</div>
+    <div class="value">{stats['crc_rate']}</div></div>
+  <div class="card{'' if stats['rc_fail'] else ' pass'}"><div class="label">RC Pass</div>
+    <div class="value">{stats['rc_pass']}/{stats['rc_total']}</div></div>
+  <div class="card"><div class="label">RC Rate</div>
+    <div class="value">{stats['rc_rate']}</div></div>
+</div>
+
+{charts_html}
+{nav}
+
+<div class="filter-bar">
+  <button class="active" onclick="showAll()">All frames</button>
+  <button onclick="showErrors()">Errors only</button>
+  {ch_buttons}
+  <span class="sep">|</span>
+  <input id="searchInput" type="text" placeholder="Search ID / signal / frame name"
+         oninput="searchFrames()">
+  <span class="sep">|</span>
+  <button onclick="expandAll()">Expand all</button>
+  <button onclick="collapseAll()">Collapse all</button>
+</div>
+
+{''.join(sections)}
+
+</div>
+<script>
+function showAll() {{
+  document.querySelectorAll('.frame-section').forEach(el => el.style.display = '');
+  updateBtns('all');
+}}
+function showErrors() {{
+  document.querySelectorAll('.frame-section').forEach(el => {{
+    el.style.display = el.querySelector('.fail') ? '' : 'none';
+  }});
+  updateBtns('errors');
+}}
+function showChannel(ch) {{
+  document.querySelectorAll('.frame-section').forEach(el => {{
+    el.style.display = el.dataset.channel == ch ? '' : 'none';
+  }});
+  updateBtns('ch'+ch);
+}}
+function searchFrames() {{
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  document.querySelectorAll('.frame-section').forEach(el => {{
+    if (!q) {{ el.style.display = ''; return; }}
+    const id = (el.querySelector('.id')?.textContent || '').toLowerCase();
+    const name = (el.querySelector('.name')?.textContent || '').toLowerCase();
+    const dbc = (el.querySelector('.dbc-tag')?.textContent || '').toLowerCase();
+    const sigs = Array.from(el.querySelectorAll('.verdict-table td:first-child'))
+                      .map(td => td.textContent.toLowerCase()).join(' ');
+    const hit = id.includes(q) || name.includes(q) || dbc.includes(q) || sigs.includes(q);
+    el.style.display = hit ? '' : 'none';
+  }});
+  updateBtns('search');
+}}
+function expandAll() {{
+  document.querySelectorAll('.frame-section').forEach(el => el.classList.remove('collapsed'));
+}}
+function collapseAll() {{
+  document.querySelectorAll('.frame-section').forEach(el => el.classList.add('collapsed'));
+}}
+function updateBtns(activeId) {{
+  document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+}}
+const RC_X0 = {RC_X0}, RC_X1 = {RC_X1}, RC_Y0 = {RC_Y0}, RC_Y1 = {RC_Y1};
+function rcData(svg) {{
+  // Build once per chart on first hover — iterating SVGPointList and
+  // querying dots on every pointermove is what makes hovering janky.
+  if (svg._rcData) return svg._rcData;
+  const poly = svg.querySelector('.rc-line');
+  const pts = [];
+  if (poly) {{
+    for (let i = 0; i < poly.points.length; i++) {{
+      pts.push(poly.points[i].x, poly.points[i].y);
+    }}
+  }}
+  const dots = [];
+  svg.querySelectorAll('.rc-err-dot').forEach(c => {{
+    dots.push({{ x: +c.getAttribute('cx'), y: +c.getAttribute('cy'),
+                cat: c.dataset.cat || '' }});
+  }});
+  svg._rcData = {{ pts, dots, out: svg.parentElement.querySelector('.rc-readout'),
+                  cross: svg.querySelector('.rc-crosshair'),
+                  t0: +svg.dataset.t0, span: +svg.dataset.tspan,
+                  vmax: +svg.dataset.vmax, sig: svg.dataset.sig || '' }};
+  return svg._rcData;
+}}
+function rcNearestIdx(pts, x) {{
+  // Points are x-sorted: binary search over the flat [x0,y0,x1,y1,...] array
+  let lo = 0, hi = pts.length / 2 - 1;
+  while (lo < hi) {{
+    const mid = (lo + hi) >> 1;
+    if (pts[mid * 2] < x) lo = mid + 1; else hi = mid;
+  }}
+  if (lo > 0 && Math.abs(pts[(lo - 1) * 2] - x) < Math.abs(pts[lo * 2] - x)) lo -= 1;
+  return lo;
+}}
+function rcChartHover(svg, evt) {{
+  const d = rcData(svg);
+  if (!d.pts.length) return;
+  const rect = svg.getBoundingClientRect();
+  if (!rect.width) return;
+  const vx = (evt.clientX - rect.left) * (1000 / rect.width);
+  const p = rcNearestIdx(d.pts, vx);
+  const px = d.pts[p * 2], py = d.pts[p * 2 + 1];
+  const t = d.t0 + (px - RC_X0) / (RC_X1 - RC_X0) * d.span;
+  const v = Math.round(d.vmax * (RC_Y0 - py) / (RC_Y0 - RC_Y1));
+  let cat = '', ed = 8;
+  for (const c of d.dots) {{
+    const dist = Math.hypot(c.x - px, c.y - py);
+    if (dist < ed) {{ ed = dist; cat = c.cat; }}
+  }}
+  if (d.out) {{
+    d.out.textContent = d.sig + ' · t=' + t.toFixed(4) + 's · value=' + v +
+                        (cat ? ' · ' + cat : '');
+    d.out.style.visibility = 'visible';
+  }}
+  if (d.cross) {{
+    d.cross.setAttribute('x1', px);
+    d.cross.setAttribute('x2', px);
+    d.cross.style.visibility = 'visible';
+  }}
+}}
+function rcChartLeave(svg) {{
+  const d = svg._rcData;
+  if (d) {{
+    if (d.out) d.out.style.visibility = 'hidden';
+    if (d.cross) d.cross.style.visibility = 'hidden';
+  }}
+}}
+document.querySelectorAll('.rc-svg').forEach(svg => {{
+  let raf = 0;
+  svg.addEventListener('pointermove', evt => {{
+    if (raf) return;
+    raf = requestAnimationFrame(() => {{ raf = 0; rcChartHover(svg, evt); }});
+  }});
+  svg.addEventListener('pointerleave', () => {{
+    if (raf) {{ cancelAnimationFrame(raf); raf = 0; }}
+    rcChartLeave(svg);
+  }});
+}});
+</script>
+</body>
+</html>"""
+    return html
+
+
+def _group_verdicts(verdicts: list) -> dict[tuple[float, int], list]:
+    """Group verdicts into frame sections keyed by (timestamp, frame_id)."""
+    grouped: dict[tuple[float, int], list] = defaultdict(list)
+    for verdict in verdicts:
+        grouped[(verdict.timestamp, verdict.frame_id)].append(verdict)
+    return grouped
+
+
+def write_html(report: VerifyReport, file_path: str, only_failures: bool = False,
+               max_sections: int | None = None) -> str:
+    """Write verification results to self-contained HTML file(s) with hex-dump view.
+
+    Features:
+    - Channel display and per-channel filtering
+    - DBC source tag for each frame
+    - Full payload hex dump with CRC/RC highlighting
+    - Hover tooltips, collapsible sections, filter buttons
+
+    帧段超过 ``SPLIT_MAX_SECTIONS`` 时拆分为多份完整页面:主文件(带 RC 趋势图
+    和拆分提示)+ ``<stem>_p2.html``… 每份之间相对链接互跳(CLI 同目录;
+    web 由 /api/runs/<id>/<filename> 路由映射到缓存目录里的同名分片)。
+
+    ``max_sections`` 是**单次报告**的帧段上限(``None`` → ``REPORT_FULL_MAX_SECTIONS``,
+    0 = 不限)。逐帧十六进制转储约 1KB/段,不限帧的大 trace 会生成几百 MB:超限时
+    先自动降级成「只保留失败帧」,仍然超限才截断前 N 段 —— 两种情况都在报告顶部
+    写明,不静默丢数据。
+
+    Returns:
+        给调用方看的提示文本(空串 = 没有降级/截断),web 结果页直接展示。
+    """
+
+    limit = REPORT_FULL_MAX_SECTIONS if max_sections is None else max_sections
+    verdicts = report.failed if only_failures else report.verdicts
+    note = ""
+
+    grouped = _group_verdicts(verdicts)
+    if limit and not only_failures and len(grouped) > limit and report.failed:
+        # 大 trace 默认给逐帧全量报告会写出几百 MB;失败帧视图才是要看的
+        note = (f"帧段 {len(grouped)} 超过单份报告上限 {limit},"
+                f"已自动改为只保留失败帧(完整逐帧视图请分段校验或调大 output.max_report_sections)")
+        verdicts = report.failed
+        grouped = _group_verdicts(verdicts)
+
+    truncated = bool(limit) and len(grouped) > limit
+    if truncated:
+        kept = sorted(grouped.items(), key=lambda x: (x[0][1], x[0][0]))[:limit]
+        grouped = dict(kept)
+        extra = f"帧段仍超过上限,已截断为前 {limit} 段(完整数据请减小帧上限或分批校验)"
+        note = f"{note};{extra}" if note else extra
+
+    # Collect unique channels
+    channels: set[int] = set()
+
+    # Build frame HTML sections
+    frame_sections = []
+    for (ts, fid), f_verdicts in sorted(grouped.items(), key=lambda x: (x[0][1], x[0][0])):
+        fdata = report.get_frame_data(ts, fid)
+        if fdata is None:
+            continue
+        ch = report.get_frame_channel(ts, fid)
+        channels.add(ch)
+
+        fname = report.get_frame_name(fid)
+        dbc_src = report.get_frame_dbc_source(fid)
+        section_html = _build_frame_html(
+            f_verdicts, fdata, fname, channel=ch, dbc_source=dbc_src
+        )
+        frame_sections.append(section_html)
+
+    # Compute separate CRC and RC stats. RC 用采样口径:失败帧被折叠成一条
+    # verdict,数 verdict 会让 1800 个失败帧只算一个校验项。
+    crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
+    crc_pass = sum(1 for v in report.verdicts if v.algorithm == "crc" and v.is_pass)
+    rc_pass, rc_total = rc_sample_stats(report)
+
+    dbc_display = ", ".join(report.dbc_paths) if report.dbc_paths else report.dbc_path
+
+    # RC trends only live on the main file (part 1) — parts stay lean.
+    rc_charts_html = _build_rc_charts(report)
+    # DLC gate diagnostics — only shown when the gate actually skipped frames
+    dlc_note = (f"DLC mismatch skipped: {report.dlc_mismatch_skipped} frames"
+                if report.dlc_mismatch_skipped else "")
+    stats = {
+        "crc_total": crc_total, "crc_pass": crc_pass,
+        "crc_rate": format_rate(crc_pass, crc_total),
+        "rc_total": rc_total, "rc_pass": rc_pass,
+        "rc_rate": format_rate(rc_pass, rc_total),
+        "crc_fail": crc_total - crc_pass,
+        "rc_fail": rc_total - rc_pass,
+        "dlc_note": dlc_note,
+        "dlc_note_html": f"<br>{dlc_note}" if dlc_note else "",
+    }
+
+    # Build channel filter buttons
+    ch_buttons = ""
+    if len(channels) > 1:
+        ch_buttons = '<span class="sep">|</span>'
+        for ch in sorted(channels):
+            ch_buttons += f'<button onclick="showChannel({ch})">CH{ch}</button>'
+
+    pages = [frame_sections[i:i + SPLIT_MAX_SECTIONS]
+             for i in range(0, len(frame_sections), SPLIT_MAX_SECTIONS)] or [[]]
+    for page_no, page in enumerate(pages, start=1):
+        path = file_path if page_no == 1 else _split_part_path(file_path, page_no)
+        nav = _split_nav(page_no, len(pages), file_path) if len(pages) > 1 else ""
+        html = _page_html(report, page, stats, channels, dbc_display,
+                          rc_charts_html if page_no == 1 else "", ch_buttons,
+                          nav, note)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+    return note

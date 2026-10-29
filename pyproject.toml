@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crc-checker"
+version = "0.2.0"
+description = "CAN bus CRC / rolling-counter verification from DBC files and trace logs"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "python-can>=4.5",
+    "canmatrix>=1.1",
+    "click>=8.1",
+    "bitstruct>=8.19",
+    "openpyxl>=3.0",
+    "xlrd>=2.0",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+]
+
+[project.scripts]
+crc-check = "cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["crc_checker*", "cli*"]
+
+[tool.setuptools.package-data]
+crc_checker = ["data/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
