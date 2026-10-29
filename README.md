@@ -8,6 +8,8 @@ DBC-aware CAN bus CRC / rolling-counter verification for BLF, ASC, MF4 and TRC t
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/pylint.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/pylint.yml)
 
+[English](./README.md) | [🌍 中文](./docs/zh-CN/README.md)
+
 </div>
 
 ---
