@@ -1,6 +1,9 @@
 name: CI
 
-on: [push]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 jobs:
   build:
@@ -27,3 +30,19 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --tb=short
+
+  # 汇总门禁:分支 ruleset 只要求 "CI required" 这一个稳定的检查名,
+  # 以后增删矩阵维度或给作业改名,都不用回头改 ruleset。
+  gate:
+    name: CI required
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always()
+    steps:
+      - name: 所有上游作业都成功才算通过
+        run: |
+          echo "build=${{ needs.build.result }}"
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "::error::上游作业失败或被取消,门禁不通过"
+            exit 1
+          fi
