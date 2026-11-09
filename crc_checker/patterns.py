@@ -67,7 +67,28 @@ def join_patterns(patterns: tuple[str, ...]) -> str:
         return _NEVER_MATCH
     if len(patterns) == 1:
         return patterns[0]
-    return "|".join(f"(?:{pattern})" for pattern in patterns)
+    # An inline global flag (e.g. ``(?i)``) is only legal at the very start of
+    # the whole pattern. Each YAML pattern starts with its own ``(?i)``, so
+    # wrapping them in ``(?:...)`` made ``(?i)`` a *group* flag on Python 3.11+
+    # ("global flags not at the start of the expression") and every multi-pattern
+    # category crashed on load. Hoist each leading global flag into a scoped
+    # group ``(?i:...)`` instead, which is legal inside an alternation.
+    return "|".join(_scope_global_flags(pattern) for pattern in patterns)
+
+
+_GLOBAL_FLAGS = re.compile(r"^\(\?([aiLmsux]+)(?:-([aiLmsux]+))?\)")
+
+
+def _scope_global_flags(pattern: str) -> str:
+    """Turn a leading global inline flag ``(?i)`` into a scoped one ``(?i:...)``."""
+    match = _GLOBAL_FLAGS.match(pattern)
+    if not match:
+        return f"(?:{pattern})"
+    flags = match.group(1)
+    off = match.group(2)
+    if off:
+        flags += "-" + off
+    return f"(?{flags}:{pattern[match.end():]})"
 
 
 @dataclass(frozen=True)

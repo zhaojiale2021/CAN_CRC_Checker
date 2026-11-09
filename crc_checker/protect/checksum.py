@@ -20,14 +20,18 @@ class CRCVerifier(ProtectionAlgorithm):
 
     algorithm_type = "crc"
 
-    def __init__(self, params: CRCParams, crc_range: CRCRange | None = None):
-        self.engine = CRCEngine(params)
+    def __init__(self, params: CRCParams | None = None, crc_range: CRCRange | None = None):
         self.params = params
         self._explicit_range = crc_range  # None = auto-detect
         # Per-message parameters → engine cache. Building the 256-entry table
         # is a shift loop; rebuilding it per frame dominated large-trace runs.
         # CRCParams is a frozen dataclass, so it is a safe value key.
-        self._engines: dict[CRCParams, CRCEngine] = {params: self.engine}
+        # ``params`` may be None when CRC is configured only per-message via
+        # profiles/overrides; engines are then built lazily on first use.
+        self.engine = CRCEngine(params) if params is not None else None
+        self._engines: dict[CRCParams, CRCEngine] = {}
+        if params is not None:
+            self._engines[params] = self.engine
 
     def _engine_for(self, params: CRCParams) -> CRCEngine:
         """CRC engine for this (per-message) parameter set, built at most once."""
@@ -37,7 +41,7 @@ class CRCVerifier(ProtectionAlgorithm):
             self._engines[params] = engine
         return engine
 
-    def verify(self, frame: CanFrame, protection: MessageProtection) -> VerifyVerdict | None:
+    def verify(self, frame: CanFrame, protection: MessageProtection) -> VerifyVerdict | None:  # pylint: disable=too-many-branches
         """Verify CRC for a frame."""
         cs_signal = protection.checksum_signal
         if cs_signal is None:
@@ -45,6 +49,10 @@ class CRCVerifier(ProtectionAlgorithm):
 
         # Determine CRC parameters (use message-level override if set, else default)
         params = protection.crc_params or self.params
+        if params is None:
+            # No CRC configured for this group (RC-only run, or every CRC
+            # algorithm lives in per-message config that didn't match).
+            return None
 
         # Determine CRC range: explicit > message-level > auto-detect
         crc_range = protection.crc_range or self._explicit_range
@@ -63,7 +71,9 @@ class CRCVerifier(ProtectionAlgorithm):
             crc_range = CRCRange.for_segment(
                 cs_signal.start_bit, dataid=protection.dataid,
                 dataid_position=crc_range.dataid_position,
-                dataid_byte_order=crc_range.dataid_byte_order)
+                dataid_byte_order=crc_range.dataid_byte_order,
+                dataid_width=crc_range.dataid_width,
+                crc_byte_swap=crc_range.crc_byte_swap)
 
         # Inject DataID into CRC range if available on this protection group
         if protection.dataid is not None and crc_range.dataid is None:

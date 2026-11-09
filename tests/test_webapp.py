@@ -112,11 +112,17 @@ class TestVersion:
             pytest.skip("git not available")
         env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
-        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, env={**os.environ, **env})
+        # Under the pre-push hook GIT_DIR / GIT_WORK_TREE are inherited and
+        # would redirect these commands at the outer repository instead of
+        # the temporary one.
+        clean_env = {k: v for k, v in os.environ.items()
+                     if not k.startswith("GIT_")}
+        env = {**clean_env, **env}
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, env=env)
         (tmp_path / "a.txt").write_text("x", encoding="utf-8")
-        subprocess.run(["git", "add", "a.txt"], cwd=tmp_path, check=True, env={**os.environ, **env})
+        subprocess.run(["git", "add", "a.txt"], cwd=tmp_path, check=True, env=env)
         subprocess.run(["git", "commit", "-q", "-m", "修复:CRC 校验中文标题"],
-                       cwd=tmp_path, check=True, env={**os.environ, **env})
+                       cwd=tmp_path, check=True, env=env)
         revision = read_revision(tmp_path)
         assert revision["commit"] and len(revision["commit"]) == 40
         assert "修复" in revision["subject"]

@@ -357,7 +357,8 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         dbc_tag = ""
 
     collapsed = ""
-    name_html = f'<span class="name">({frame_name})</span>' if frame_name else ""
+    name_html = (f'<span class="name">({escape(frame_name)})</span>'
+                 if frame_name else "")
 
     return f"""
     <div class="frame-section{collapsed}" data-channel="{channel}">

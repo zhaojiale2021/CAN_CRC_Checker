@@ -155,7 +155,11 @@ class CRCEngine:
         """
         data = bytearray(frame.data)
 
-        # Compute the CRC byte position(s) so we can exclude them
+        # Compute the CRC byte position(s) so we can exclude them.
+        # The checksum field occupies ceil(length/8) contiguous bytes from
+        # crc_byte_start. Using (start_bit + length + 7)//8 over-counts for a
+        # start_bit that is not byte-aligned (e.g. a Motorola 8-bit signal at
+        # start_bit 71), dropping one extra data byte from the CRC input.
         crc_byte_start = checksum_start_bit // 8
         if self.params.checksum_type != "crc" and checksum_length > 8:
             # 8-bit checksum on a >8-bit field: skip only
@@ -163,7 +167,7 @@ class CRCEngine:
             # of the field participates in the sum.
             crc_byte_end = crc_byte_start + 1
         else:
-            crc_byte_end = (checksum_start_bit + checksum_length + 7) // 8
+            crc_byte_end = crc_byte_start + (checksum_length + 7) // 8
 
         # Determine which bytes to use for CRC (exclude CRC bytes)
         compute_bytes = self._extract_range(bytes(data), crc_range, len(data),
@@ -208,6 +212,13 @@ class CRCEngine:
             else:
                 end = crc_range.start_byte + crc_range.segment_size
             payload = data[crc_range.start_byte:end]
-            # Exclude CRC byte (first byte of segment) from input
-            return payload[1:]  # skip CRC byte, use rest of segment
+            # Exclude the CRC byte(s) at their real position within the
+            # segment — not the segment head. A checksum is not always the
+            # first byte of its 8-byte block (e.g. CRC at byte13 of a segment
+            # starting at byte8, or a 16-bit CRC spanning bytes 0-1).
+            rel_start = crc_byte_start - crc_range.start_byte
+            rel_end = crc_byte_end - crc_range.start_byte
+            if 0 <= rel_start < len(payload):
+                return payload[:rel_start] + payload[rel_end:]
+            return payload
         return data

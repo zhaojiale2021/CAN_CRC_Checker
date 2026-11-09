@@ -39,7 +39,9 @@ class CRCRange:
     def for_segment(cls, checksum_start_bit: int, segment_size: int = 8,
                     dataid: int | None = None,
                     dataid_position: str = "prepend",
-                    dataid_byte_order: str = "lo_hi") -> "CRCRange":
+                    dataid_byte_order: str = "lo_hi",
+                    dataid_width: int = 2,
+                    crc_byte_swap: bool = False) -> "CRCRange":
         """Create a CRCRange that covers the segment containing the checksum signal.
 
         The segment is an aligned block of `segment_size` bytes. The checksum
@@ -51,6 +53,8 @@ class CRCRange:
             dataid: optional DataID for AUTOSAR E2E.
             dataid_position: "prepend" (Profile 1) or "append" (Profile 5).
             dataid_byte_order: "lo_hi" or "hi_lo".
+            dataid_width: bytes of DataID entering the CRC (P02 = 1 byte).
+            crc_byte_swap: True = byte-swap computed CRC before comparison.
         """
         seg_start_byte = (checksum_start_bit // (segment_size * 8)) * segment_size
         return cls(
@@ -61,4 +65,6 @@ class CRCRange:
             dataid=dataid,
             dataid_position=dataid_position,
             dataid_byte_order=dataid_byte_order,
+            dataid_width=dataid_width,
+            crc_byte_swap=crc_byte_swap,
         )

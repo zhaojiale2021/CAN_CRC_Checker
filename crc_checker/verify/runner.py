@@ -59,10 +59,17 @@ def build_patterns(cfg: RunConfig) -> dict[str, str] | None:
 
 
 def build_algorithms(crc_params: CRCParams | None) -> list:
-    """Build the protection algorithm list (CRC when configured, always RC)."""
+    """Build the protection algorithm list (CRC + RC).
+
+    The CRC verifier is always present: it resolves the algorithm per message
+    (``MessageProtection.crc_params`` overrides the default), so a run whose CRC
+    is configured only through ``crc.profiles``/``crc.overrides`` — with no
+    global ``crc.preset``/``crc.custom`` — still verifies CRC instead of
+    silently dropping it. It returns no verdict for groups without a checksum
+    signal or without any CRC parameters.
+    """
     algorithms: list = [RollingCounterVerifier()]
-    if crc_params:
-        algorithms.insert(0, CRCVerifier(crc_params, None))
+    algorithms.insert(0, CRCVerifier(crc_params, None))
     return algorithms
 
 

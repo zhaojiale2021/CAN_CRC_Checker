@@ -390,26 +390,6 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
     id_col = mapping.col_message_id
     hi_col = mapping.col_dataid_hi
     lo_col = mapping.col_dataid_lo
-
-    for i, cell in enumerate(header_row):
-        if cell is None:
-            continue
-        s = str(cell).strip()
-        if not s:
-            continue
-        if _match(s, sig_patterns):
-            sig_col = i
-        elif _match(s, id_patterns):
-            id_col = i
-        elif _match(s, did_combined):
-            # Combined DataID column: Hi in this col, Lo in next
-            hi_col = i
-            lo_col = i + 1
-        elif _match(s, hi_patterns):
-            hi_col = i
-        elif _match(s, lo_patterns):
-            lo_col = i
-
     remark_col = mapping.col_remark if mapping.col_remark >= 0 else -1
 
     for i, cell in enumerate(header_row):
@@ -422,14 +402,17 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
             sig_col = i
         elif _match(s, id_patterns):
             id_col = i
-        elif _match(s, did_combined):
-            # Combined DataID column: Hi in this col, Lo in next
-            hi_col = i
-            lo_col = i + 1
+        # Hi/Lo before the bare "data_id" combined pattern: "DataID High Byte"
+        # / "DataID Low Byte" headers contain "data_id" as a substring and were
+        # hijacked by the combined branch (hi = the "low" column, lo = next).
         elif _match(s, hi_patterns):
             hi_col = i
         elif _match(s, lo_patterns):
             lo_col = i
+        elif _match(s, did_combined):
+            # Combined DataID column: Hi in this col, Lo in next
+            hi_col = i
+            lo_col = i + 1
         elif _match(s, ["remark", "remarks", "comment", "comments", "profile", "note"]):
             remark_col = i
 
@@ -604,13 +587,24 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
         shared_strings: list[str] = []
         try:
             ss_tree = ET.parse(z.open('xl/sharedStrings.xml'))
-            for si in ss_tree.findall('.//s:t', ns):
-                shared_strings.append(si.text or '')
+            # One <si> element per string; a rich-text string spans several
+            # <r>/<t> runs under the same <si>. Iterating <t> directly would
+            # split rich-text cells into extra entries and shift every later
+            # string index — concatenate each <si>'s runs instead.
+            for si in ss_tree.findall('.//s:si', ns):
+                texts = [t.text or '' for t in si.findall('.//s:t', ns)]
+                shared_strings.append(''.join(texts))
         except KeyError:
             pass
 
-        def _resolve_cell(cell_el) -> str | None:
-            """Resolve a cell element to its string/number value."""
+        def _resolve_cell(cell_el) -> str | int | float | None:  # pylint: disable=too-many-return-statements
+            """Resolve a cell element to its string/number value.
+
+            Returns the same Python types ``openpyxl`` yields (str for shared /
+            inline strings, int/float for numeric cells) so the raw fallback path
+            parses numbers identically to the openpyxl path — a numeric cell held
+            as text would otherwise be read as hex (int("616", 16) == 1558).
+            """
             t = cell_el.get('t', '')
             v_el = cell_el.find('.//s:v', ns)
             is_el = cell_el.find('.//s:is', ns)
@@ -620,7 +614,15 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
                     if idx < len(shared_strings):
                         return shared_strings[idx]
                     return ''
-                return v_el.text
+                if t in ('b', 'e'):
+                    # Boolean / error cell — not a DataID value.
+                    return None
+                # Numeric cell (t is '' or 'n' or 'str'): return a number.
+                raw = v_el.text
+                try:
+                    return float(raw) if ('.' in raw or 'e' in raw.lower()) else int(raw)
+                except ValueError:
+                    return raw
             if is_el is not None:
                 t_el = is_el.find('s:t', ns)
                 return t_el.text if t_el is not None else ''
