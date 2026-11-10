@@ -314,10 +314,14 @@ def load_dataid_mappings(path: str | Path | None = None) -> dict[str, ColumnMapp
 BUILTIN_MAPPINGS = load_dataid_mappings()
 
 
-def resolve_mapping(mapping: ColumnMapping | str | None) -> ColumnMapping:
-    """Resolve a mapping name / JSON string / instance to a ColumnMapping."""
+def resolve_mapping(mapping: ColumnMapping | str | dict | None) -> ColumnMapping:
+    """Resolve a mapping name / JSON string / dict / instance to a ColumnMapping."""
     if isinstance(mapping, ColumnMapping):
         return mapping
+    if isinstance(mapping, dict):
+        # ``dataid.mapping`` documents "name ... or JSON object"; a dict used
+        # to reach ``mapping in BUILTIN_MAPPINGS`` and raise TypeError.
+        return ColumnMapping.from_dict(mapping)
     if mapping is None:
         return BUILTIN_MAPPINGS[DEFAULT_MAPPING_NAME]
     if mapping in BUILTIN_MAPPINGS:
@@ -630,24 +634,45 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
 
         # Find the correct sheet index
         wb_tree = ET.parse(z.open('xl/workbook.xml'))
+        # Resolve the worksheet file through the workbook relationships. The
+        # ``sheetId`` attribute is a stable workbook ID, not the file order:
+        # after deleting/reordering sheets it can point at a different
+        # ``sheetN.xml`` (or at a missing file). Relationship targets are
+        # authoritative; fall back to sheetId/position for malformed packages.
+        rel_ns = {
+            'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+        }
+        targets: dict[str, str] = {}
+        try:
+            rels_tree = ET.parse(z.open('xl/_rels/workbook.xml.rels'))
+            for rel in rels_tree.findall('.//r:Relationship', {
+                    'r': 'http://schemas.openxmlformats.org/package/2006/relationships'}):
+                targets[rel.get('Id', '')] = rel.get('Target', '')
+        except KeyError:
+            pass
+
         sheet_idx = 0
+        position = 0
+        sheet_path = ""
         for s_el in wb_tree.findall('.//s:sheet', ns):
-            name = s_el.get('name', '')
-            if name == sheet_name:
-                # sheetId is 1-based, sheet files are 1-based
-                sheet_idx_str = s_el.get('sheetId', '1')
-                sheet_idx = int(sheet_idx_str)
-                break
-        if sheet_idx == 0:
-            # Fallback: try match by position
-            sheets_list = wb_tree.findall('.//s:sheet', ns)
-            for i, s_el in enumerate(sheets_list):
-                if s_el.get('name', '') == sheet_name:
-                    sheet_idx = i + 1
-                    break
+            position += 1
+            if s_el.get('name', '') != sheet_name:
+                continue
+            target = targets.get(s_el.get(f'{{{rel_ns["r"]}}}id', ''), '')
+            if target:
+                sheet_path = target.lstrip('/')
+                if not sheet_path.startswith('xl/'):
+                    sheet_path = f'xl/{sheet_path}'
+            else:
+                # Fallback: sheetId is 1-based for well-formed workbooks.
+                sheet_idx = int(s_el.get('sheetId', position))
+                sheet_path = f'xl/worksheets/sheet{sheet_idx}.xml'
+            break
+
+        if not sheet_path:
+            raise ValueError(f"Sheet '{sheet_name}' not found in {xlsx_path}")
 
         # Parse sheet data
-        sheet_path = f'xl/worksheets/sheet{sheet_idx}.xml'
         try:
             sheet_tree = ET.parse(z.open(sheet_path))
         except KeyError:
@@ -715,15 +740,15 @@ def _parse_description_regex(ws, mapping, dataid_map, sheet_name, wb) -> DataIDM
         if len(row) <= max_col:
             continue
 
-        # Track current message ID and name (inherited from parent row)
+        # Track current message ID and name (inherited from parent row).
+        # Use the shared parser so numeric cells ("301") and string forms
+        # ("0x100", "100" in message_id_base) all work; the old check only
+        # accepted "0x…" strings and silently inherited the previous ID.
         msg_id_raw = row[mapping.col_message_id]
-        if msg_id_raw is not None:
-            msg_id_str = str(msg_id_raw).strip()
-            if msg_id_str.lower().startswith("0x"):
-                try:
-                    current_msg_id = int(msg_id_str, 16)
-                except ValueError:
-                    pass
+        if msg_id_raw is not None and str(msg_id_raw).strip():
+            parsed_id = _parse_message_id(msg_id_raw, mapping.message_id_base)
+            if parsed_id is not None:
+                current_msg_id = parsed_id
 
         # Column D (index 3) typically contains the message name in this layout
         if len(row) > 3 and row[3] is not None:
@@ -879,8 +904,10 @@ def parse_dataid_xlsx(  # pylint: disable=too-many-locals,too-many-branches,too-
     if mapping.dataid_format == "description_regex":
         return _parse_description_regex(ws, mapping, dataid_map, sheet_name, wb)
 
-    # Auto-detect columns from header row (row 1 by default)
-    header_row_num = 1 if mapping.data_row_start > 1 else None
+    # Auto-detect columns from the header row (one row above data_row_start,
+    # matching the raw-xlsx and .xls paths). Scanning row 1 unconditionally let
+    # a title row hijack the Hi/Lo detection and dropped every entry.
+    header_row_num = mapping.data_row_start - 1 if mapping.data_row_start > 1 else None
     if header_row_num:
         header_row = list(ws.iter_rows(
             min_row=header_row_num, max_row=header_row_num, values_only=True))
@@ -976,12 +1003,23 @@ def parse_dataid_xlsx_multi(xlsx_path: str,
         Merged DataIDMap with entries from all sheets.
     """
     # Get sheet names (handles both .xlsx and legacy .xls)
-    all_sheets = get_sheet_names(xlsx_path)
+    existing_sheets = get_sheet_names(xlsx_path)
 
     if sheet_names:
-        all_sheets = [s for s in all_sheets if s in sheet_names]
+        missing = [s for s in sheet_names if s not in existing_sheets]
+        all_sheets = [s for s in sheet_names if s in existing_sheets]
         if not all_sheets:
-            all_sheets = sheet_names  # try as-is, let downstream fail
+            # A typo in dataid.sheet used to parse nothing and return an empty
+            # map silently, disabling every DataID (CRC then failed on every
+            # frame). Fail loudly instead.
+            raise ValueError(
+                f"Sheet(s) not found: {', '.join(missing)}. "
+                f"Available: {', '.join(existing_sheets)}")
+        if missing:
+            logger.warning("DataID sheet(s) not found, skipped: %s",
+                           ", ".join(missing))
+    else:
+        all_sheets = existing_sheets
 
     combined: DataIDMap | None = None
     parsed_sheets: list[str] = []
@@ -989,20 +1027,23 @@ def parse_dataid_xlsx_multi(xlsx_path: str,
     for sname in all_sheets:
         try:
             dm = parse_dataid_xlsx(xlsx_path, sname, mapping=mapping)
-            if len(dm) == 0:
-                continue
-            parsed_sheets.append(sname)
-            if combined is None:
-                combined = dm
-            else:
-                overwritten = combined.update(dm)
-                if overwritten > 0:
-                    logger.warning(
-                        "DataID sheet '%s': %s duplicate(s) overwritten",
-                        sname, overwritten,
-                    )
-        except ValueError:
-            continue  # skip sheets that don't match
+        except ValueError as exc:
+            # A sheet exists but uses a different layout; keep the others but
+            # say so instead of silently dropping it.
+            logger.warning("DataID sheet '%s' skipped: %s", sname, exc)
+            continue
+        if len(dm) == 0:
+            continue
+        parsed_sheets.append(sname)
+        if combined is None:
+            combined = dm
+        else:
+            overwritten = combined.update(dm)
+            if overwritten > 0:
+                logger.warning(
+                    "DataID sheet '%s': %s duplicate(s) overwritten",
+                    sname, overwritten,
+                )
 
     if combined is not None:
         combined.sheet_name = ", ".join(parsed_sheets)

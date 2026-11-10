@@ -237,7 +237,10 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             "detail": v.detail,
         })
 
-    seg_size = 8 if dlc > 8 else dlc
+    # A zero-length payload (DLC 0) still reaches this function when a verdict
+    # exists; keep the segment size at least 1 so the grid loop does not divide
+    # by zero (it simply renders no bytes).
+    seg_size = 8 if dlc > 8 else max(dlc, 1)
     num_segments = (dlc + seg_size - 1) // seg_size
 
     seg_dataid: dict[int, tuple[int, str, str]] = {}  # seg_idx -> (dataid, name, profile)
@@ -286,7 +289,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
                     if byte_min <= byte_idx <= byte_max:
                         status = "OK" if v.is_pass else "ERR"
                         parts.append(
-                            f"{v.signal_name}: exp=0x{v.expected_value:X} "
+                            f"{escape(v.signal_name)}: exp=0x{v.expected_value:X} "
                             f"act=0x{v.actual_value:X} [{status}]"
                         )
                 tooltip = " | ".join(parts)
@@ -401,10 +404,13 @@ def _split_part_path(file_path: str, page_no: int) -> str:
 
 def _split_nav(page_no: int, total: int, file_path: str) -> str:
     """拆分页导航条(第一页是提示 + 下一页;其余是 上一页/下一页)。"""
-    stem = Path(file_path).stem
+    path = Path(file_path)
+    stem = path.stem
 
     def part_name(n: int) -> str:
-        return f"{stem}.html" if n == 1 else f"{stem}_p{n}.html"
+        # Part files keep the configured suffix (``report.htm`` → ``report_p2.htm``);
+        # linking to ``.html`` regardless produced dead 上一页/下一页 links.
+        return path.name if n == 1 else f"{stem}_p{n}{path.suffix}"
 
     links = [f"第 {page_no}/{total} 页"]
     if page_no > 1:
@@ -437,8 +443,8 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
 <div class="container">
 <h1>CAN CRC Check Report</h1>
 <div class="info-bar">
-  DBC: {dbc_display}<br>
-  Trace: {report.trace_path}<br>
+  DBC: {escape(dbc_display)}<br>
+  Trace: {escape(report.trace_path or '')}<br>
   Channels: {len(channels)}<br>
   Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}{stats['dlc_note_html']}
 </div>
@@ -599,11 +605,12 @@ document.querySelectorAll('.rc-svg').forEach(svg => {{
     return html
 
 
-def _group_verdicts(verdicts: list) -> dict[tuple[float, int], list]:
-    """Group verdicts into frame sections keyed by (timestamp, frame_id)."""
-    grouped: dict[tuple[float, int], list] = defaultdict(list)
+def _group_verdicts(verdicts: list) -> dict[tuple[float, int, int], list]:
+    """Group verdicts into frame sections keyed by (timestamp, frame_id, channel)."""
+    grouped: dict[tuple[float, int, int], list] = defaultdict(list)
     for verdict in verdicts:
-        grouped[(verdict.timestamp, verdict.frame_id)].append(verdict)
+        grouped[(verdict.timestamp, verdict.frame_id,
+                 getattr(verdict, "channel", 0))].append(verdict)
     return grouped
 
 
@@ -654,11 +661,11 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 
     # Build frame HTML sections
     frame_sections = []
-    for (ts, fid), f_verdicts in sorted(grouped.items(), key=lambda x: (x[0][1], x[0][0])):
-        fdata = report.get_frame_data(ts, fid)
+    for (ts, fid, ch), f_verdicts in sorted(
+            grouped.items(), key=lambda x: (x[0][1], x[0][0], x[0][2])):
+        fdata = report.get_frame_data(ts, fid, ch)
         if fdata is None:
             continue
-        ch = report.get_frame_channel(ts, fid)
         channels.add(ch)
 
         fname = report.get_frame_name(fid)

@@ -29,24 +29,23 @@ class VerifyEngine:
     def create_default(cls,
                        protection_map: DBCProtectionMap,
                        crc_params: CRCParams | None = None,
-                       crc_range: CRCRange | None = None) -> "VerifyEngine":  # pylint: disable=unused-argument
+                       crc_range: CRCRange | None = None) -> "VerifyEngine":
         """Factory: create engine with default CRC + RC verifiers.
 
         Args:
             protection_map: Parsed DBC protection map.
-            crc_params: CRC algorithm parameters (required for CRC verification).
-            crc_range: Range of data to include in CRC calculation.
+            crc_params: Default CRC parameters (None = algorithm configured
+                per message via profiles/overrides only).
+            crc_range: Explicit range for every group (None = auto-detect, or
+                the per-group range applied on the protection map).
 
         Returns:
             Configured VerifyEngine instance.
         """
         algorithms: list = []
 
-        if crc_params:
-            from crc_checker.protect.checksum import CRCVerifier  # pylint: disable=import-outside-toplevel
-            # Pass None to use auto-detect; explicit ranges are applied via protection_map
-            algorithms.append(CRCVerifier(crc_params, None))
-
+        from crc_checker.protect.checksum import CRCVerifier  # pylint: disable=import-outside-toplevel
+        algorithms.append(CRCVerifier(crc_params, crc_range))
         algorithms.append(RollingCounterVerifier())
 
         return cls(protection_map, algorithms)

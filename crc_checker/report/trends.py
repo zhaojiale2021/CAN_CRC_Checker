@@ -276,15 +276,16 @@ def _build_rc_charts(report: VerifyReport) -> str:
 
     entries = []
     for (fid, sig), ch_lists in grouped.items():
-        errors = sum(1 for _, pts in ch_lists for p in pts if not p[2])
-        samples = sum(len(pts) for _, pts in ch_lists)
-        episodes = sum(count_rc_episodes(pts) for _, pts in ch_lists)
-        entries.append((fid, sig, ch_lists, errors, episodes, samples))
+        # Aggregate only for ordering the signal groups; each card below shows
+        # its own channel's numbers (a clean channel must not inherit another
+        # channel's errors, and its card must stay collapsed).
+        total_errors = sum(1 for _, pts in ch_lists for p in pts if not p[2])
+        entries.append((fid, sig, ch_lists, total_errors))
     # Signals with errors first, then by frame id / signal name
     entries.sort(key=lambda e: (-e[3], e[0], e[1]))
 
     cards = []
-    for fid, sig, ch_lists, errors, episodes, samples in entries:
+    for fid, sig, ch_lists, _total_errors in entries:
         fname = report.get_frame_name(fid)
         name_html = f'<span class="frame-name">({escape(fname)})</span>' if fname else ""
         for ch, points in sorted(ch_lists):
@@ -296,6 +297,9 @@ def _build_rc_charts(report: VerifyReport) -> str:
             svg = _render_rc_chart(points, max_valid, bit_max, signal_name=sig)
             if not svg:
                 continue
+            errors = sum(1 for p in points if not p[2])
+            episodes = count_rc_episodes(points)
+            samples = len(points)
             # Charts with errors start expanded; clean ones stay collapsed
             collapsed = "" if errors else " collapsed"
             cards.append(f"""

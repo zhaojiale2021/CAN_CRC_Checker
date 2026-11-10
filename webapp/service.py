@@ -110,7 +110,7 @@ def _verdict_row(verdict: VerifyVerdict, report: VerifyReport) -> dict:
         "frame_id_hex": f"0x{verdict.frame_id:03X}",
         "frame_name": report.get_frame_name(verdict.frame_id),
         "timestamp": verdict.timestamp,
-        "channel": report.get_frame_channel(verdict.timestamp, verdict.frame_id),
+        "channel": verdict.channel,
         "dbc_source": report.get_frame_dbc_source(verdict.frame_id),
         "signal": verdict.signal_name,
         "algorithm": verdict.algorithm,
@@ -140,7 +140,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     frames: dict[int, dict] = {}
     outcomes: dict[int, dict[float, bool]] = {}
 
-    def frame_entry(frame_id: int, timestamp: float) -> dict:
+    def frame_entry(frame_id: int, _timestamp: float, channel: int = 0) -> dict:
         frame = frames.get(frame_id)
         if frame is None:
             frame = {
@@ -148,7 +148,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
                 "frame_id_hex": f"0x{frame_id:03X}",
                 "frame_name": report.get_frame_name(frame_id),
                 "dbc_source": report.get_frame_dbc_source(frame_id),
-                "channel": report.get_frame_channel(timestamp, frame_id),
+                "channel": channel,
                 "total": 0, "pass": 0, "fail": 0,
                 "signals": {},
                 "failures": [],
@@ -176,7 +176,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     # series 缺失时(理论上只有 run_stream)退回 verdict 计数,别把 RC 行清零
     count_rc_verdicts = not report.rc_series
     for verdict in report.verdicts:
-        frame = frame_entry(verdict.frame_id, verdict.timestamp)
+        frame = frame_entry(verdict.frame_id, verdict.timestamp, verdict.channel)
         results = outcomes.setdefault(verdict.frame_id, {})
         results[verdict.timestamp] = (results.get(verdict.timestamp, True)
                                       and verdict.is_pass)
@@ -194,7 +194,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     # RC 逐帧采样(折叠掉的失败帧只存在于 series 里)
     for (frame_id, _channel, signal_name), points in report.rc_series.items():
         for timestamp, _value, is_pass, _category in points:
-            frame = frame_entry(frame_id, timestamp)
+            frame = frame_entry(frame_id, timestamp, _channel)
             results = outcomes.setdefault(frame_id, {})
             results[timestamp] = results.get(timestamp, True) and is_pass
             entry = frame["signals"].get(signal_name)
@@ -263,7 +263,11 @@ def report_to_dict(report: VerifyReport) -> dict:
         "frames": frames,
         "frames_truncated": frames_truncated,
         "rc_trends": _rc_trend_rows(report),
-        "dbc_paths": list(report.dbc_paths),
+        # File names only — the browser never receives server filesystem paths.
+        # Normalize separators first: on POSIX ``Path(r"C:\x\y.dbc").name`` is
+        # the whole string, so a Windows path would leak through.
+        "dbc_paths": [Path(str(p).replace("\\", "/")).name
+                      for p in report.dbc_paths],
     }
 
 

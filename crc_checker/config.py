@@ -35,7 +35,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.crc.models import CRCParams, CRCRange, VALID_RANGE_MODES
 from crc_checker.crc.presets import get_preset
 from crc_checker.dataid.parser import (
     DataIDMap,
@@ -132,6 +132,10 @@ class RunConfig:
             self.dataid_mapping_file = _resolve(self.dataid_mapping_file)
         if self.patterns_file:
             self.patterns_file = _resolve(self.patterns_file)
+        if self.output_file:
+            # Reports are inputs/config-relative like every other path; leaving
+            # this unresolved wrote them to the process CWD instead.
+            self.output_file = _resolve(self.output_file)
 
     def get_dbc_paths(self) -> list[str]:
         """Get the flat list of DBC file paths (after directory expansion)."""
@@ -165,7 +169,7 @@ class RunConfig:
                 raise FileNotFoundError(f"Trace path not found: {p}")
         return result
 
-    def load_dataid(self, dbc_name: str = ""):  # pylint: disable=too-many-branches
+    def load_dataid(self, dbc_name: str = "", allow_json: bool = True):  # pylint: disable=too-many-branches
         """Load DataID map using smart auto-generate logic.
 
         If dbc_name is provided, auto-match the best sheet to the DBC name.
@@ -175,11 +179,16 @@ class RunConfig:
         2. dataid_json specified but missing + dataid_xlsx present → parse xlsx, save JSON
         3. dataid_xlsx only → slow path (backward compat)
         4. Neither → None
+
+        ``allow_json=False`` skips both the fast path and JSON generation. The
+        per-channel runner uses it when the JSON is missing: the first channel
+        would otherwise generate a JSON for *its* sheet and every later channel
+        would load that same file instead of its own sheet.
         """
         log = logging.getLogger("crc_checker")
 
         # Fast path: JSON exists
-        if self.dataid_json and Path(self.dataid_json).exists():
+        if allow_json and self.dataid_json and Path(self.dataid_json).exists():
             log.debug("Loading DataID from JSON: %s", self.dataid_json)
             return DataIDMap.from_json(self.dataid_json)
 
@@ -206,7 +215,7 @@ class RunConfig:
                 mapping = custom[mapping]
 
         # Auto-generate: JSON specified but missing, xlsx available
-        if self.dataid_json and self.dataid_xlsx:
+        if allow_json and self.dataid_json and self.dataid_xlsx:
             log.info("Generating DataID JSON: %s", self.dataid_json)
             dm = parse_dataid_xlsx_multi(self.dataid_xlsx, sheets, mapping=mapping)
             if len(dm) > 0:
@@ -243,6 +252,41 @@ class RunConfig:
 
         return None
 
+    def load_dataid_for_dbcs(self, dbc_names: list[str]):
+        """Load DataID entries for a merged multi-DBC run.
+
+        A merged protection map has one ``dataid.sheet`` slot but may carry
+        messages from several DBCs. Auto-match one sheet per DBC and merge
+        them, instead of loading only the first DBC's sheet (every other DBC's
+        messages then got no DataID and all their CRCs failed).
+
+        A pre-generated ``dataid_json`` is assumed to already contain the union
+        of the sheets and is used as-is.
+        """
+        if self.dataid_json and Path(self.dataid_json).exists():
+            return DataIDMap.from_json(self.dataid_json)
+        if not self.dataid_xlsx:
+            first = dbc_names[0] if dbc_names else ""
+            return self.load_dataid(dbc_name=first, allow_json=False)
+        if self.dataid_sheet:
+            # Explicit sheet list applies to the whole run.
+            return self.load_dataid(dbc_name="", allow_json=False)
+
+        all_sheets = _get_xlsx_sheet_names(self.dataid_xlsx)
+        sheets: list[str] = []
+        for name in dbc_names:
+            matched = match_sheet_to_dbc(name, all_sheets)
+            if matched and matched not in sheets:
+                sheets.append(matched)
+
+        mapping = self.dataid_mapping or None
+        if mapping and self.dataid_mapping_file:
+            custom = load_dataid_mappings(self.dataid_mapping_file)
+            if isinstance(mapping, str) and mapping in custom:
+                mapping = custom[mapping]
+        return parse_dataid_xlsx_multi(
+            self.dataid_xlsx, sheets or None, mapping=mapping)
+
     def build_crc_params(self) -> CRCParams | None:
         """Build CRCParams from config."""
 
@@ -276,16 +320,32 @@ class RunConfig:
         overrides win over everything.
         """
         naming = load_naming_patterns(self.patterns_file or None)
-        if self.checksum_patterns or self.rc_patterns:
-            checksum_prefix = (tuple(self.checksum_patterns)
-                               if self.checksum_patterns
-                               else naming.checksum_prefix)
-            checksum_suffix = (() if self.checksum_patterns
+
+        def _patterns(value) -> tuple[str, ...]:
+            """Normalize a string/list config value (a bare string is one regex)."""
+            if not value:
+                return ()
+            if isinstance(value, str):
+                return (value,)
+            if isinstance(value, (list, tuple)) and all(
+                    isinstance(item, str) for item in value):
+                return tuple(value)
+            raise ValueError(
+                "signals.checksum_patterns / signals.rc_patterns must be a "
+                "string or a list of strings")
+
+        extra_checksum = _patterns(self.checksum_patterns)
+        extra_rc = _patterns(self.rc_patterns)
+        if extra_checksum or extra_rc:
+            # Documented behaviour: inline patterns *extend* the prefix rules
+            # and replace the suffix rules for that category. ``tuple("^x")``
+            # used to split a bare string into characters, so the ``^`` branch
+            # matched every signal.
+            checksum_prefix = naming.checksum_prefix + extra_checksum
+            checksum_suffix = (() if extra_checksum
                                else naming.checksum_suffix)
-            counter_prefix = (tuple(self.rc_patterns)
-                              if self.rc_patterns
-                              else naming.rolling_counter_prefix)
-            counter_suffix = (() if self.rc_patterns
+            counter_prefix = naming.rolling_counter_prefix + extra_rc
+            counter_suffix = (() if extra_rc
                               else naming.rolling_counter_suffix)
             naming = NamingPatterns(
                 checksum_prefix=checksum_prefix,
@@ -300,6 +360,10 @@ class RunConfig:
 
     def build_crc_range(self) -> CRCRange:
         """Build CRCRange from config."""
+        if self.range_mode not in VALID_RANGE_MODES:
+            raise ValueError(
+                f"Unknown CRC range mode '{self.range_mode}'. Expected one of: "
+                f"{', '.join(sorted(VALID_RANGE_MODES))}")
         return CRCRange(
             mode=self.range_mode,
             start_byte=self.range_start,
@@ -318,9 +382,12 @@ def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
 
     1. global params + range (the baseline for every group),
     2. E2E profiles (per-group algorithm/range/DataID layout),
-    3. per-message range overrides (e.g. a second E2E segment),
-    4. skip list (signals that only look protected),
-    5. DBC-comment auto-classification, then explicit per-message overrides.
+    3. skip list (signals that only look protected),
+    4. DBC-comment auto-classification,
+    5. per-message range overrides, then explicit per-message overrides.
+
+    Range overrides run after auto-classification so an explicit user range
+    always wins over the global range that a reclassified group falls back to.
 
     Returns:
         Counts per step, for verbose logging (keys: profiles, range_overrides,
@@ -338,23 +405,25 @@ def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
         # Legacy profile handling (Profile 1 → CRC8/SAE-J1850-ZERO) kept for
         # configs that predate crc.profiles
         protection_map.apply_profile_crc_params(crc_params)
-    protection_map.apply_crc_range(cfg.build_crc_range())
+    global_range = cfg.build_crc_range()
+    protection_map.apply_crc_range(global_range)
 
     if cfg.crc_profiles or cfg.crc_profile_by_width:
         counts["profiles"] = protection_map.apply_profiles(
             load_profiles(cfg.crc_profiles),
             select_by_width=cfg.crc_profile_by_width)
 
-    if cfg.crc_range_overrides:
-        counts["range_overrides"] = protection_map.apply_range_overrides(
-            cfg.crc_range_overrides)
-
     if cfg.crc_skip:
         counts["skip"] = protection_map.apply_skip(cfg.crc_skip)
 
     # Per-message algorithm from DBC comments (overrides the defaults above)
     if cfg.crc_auto_classify:
-        counts["auto_classify"] = protection_map.apply_comment_classification(crc_params)
+        counts["auto_classify"] = protection_map.apply_comment_classification(
+            crc_params, fallback_range=global_range)
+
+    if cfg.crc_range_overrides:
+        counts["range_overrides"] = protection_map.apply_range_overrides(
+            cfg.crc_range_overrides)
 
     # Explicit per-message overrides win over everything above
     if cfg.crc_overrides:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.crc.models import CRCParams, CRCRange, VALID_RANGE_MODES
 
 
 @dataclass
@@ -75,15 +75,17 @@ class DBCProtectionMap:
             for prot in prot_list:
                 prot.crc_params = params
 
-    def apply_comment_classification(self, default_params: CRCParams | None = None) -> int:
-        """Auto-classify per-message checksum algorithm from DBC comments.
+    def apply_comment_classification(self, default_params=None,
+                                     fallback_range: CRCRange | None = None) -> int:
+        """Auto-classify checksum algorithms from DBC comments.
 
-        Overrides ``crc_params`` for messages whose checksum signal has a DBC
-        comment describing the algorithm ("sum of bytes XOR 0xFF" -> SUM8/XOR-FF,
-        "0xNN XOR ... XOR ByteN" -> XOR8/SEED with parsed seed, else CRC-8).
-
-        Returns:
-            Number of protection groups that received a classified algorithm.
+        ``fallback_range`` is the run-wide range (before any profile was
+        applied). A group whose profile came from the *width* rule only has a
+        guessed layout; the DBC comment is more specific and may reclassify the
+        algorithm, in which case the guessed profile's range/byte-swap must be
+        dropped too (otherwise e.g. a SUM comment keeps Profile 5's 0..56 range
+        and byte-swap and every frame fails). Explicit DataID-Remark profiles
+        (``crc_profile``) still win over the comment.
         """
         # pylint: disable=import-outside-toplevel
         from crc_checker.crc.classify import (
@@ -98,8 +100,8 @@ class DBCProtectionMap:
             for prot in prot_list:
                 if not prot.checksum_signal or not prot.checksum_comment:
                     continue
-                # An explicit DataID profile (e.g. "Profile 5") wins over the
-                # DBC-comment heuristic; only classify groups without a profile.
+                # An explicit DataID-profile hint ("Profile Variant 1A") owns
+                # the algorithm and layout; only classify groups without one.
                 if prot.crc_profile:
                     continue
                 algo = classify_crc_algo(prot.checksum_comment)
@@ -112,6 +114,13 @@ class DBCProtectionMap:
                 if prot.checksum_signal.length < 8:
                     # sub-byte checksum (e.g. nibble) — not auto-verifiable
                     continue
+                if prot.e2e_profile and fallback_range is not None:
+                    # Width-selected profile was a guess; the comment now
+                    # decides the algorithm, so its range/layout no longer
+                    # applies. Reset before the sum byte-range below so the
+                    # comment's own range can take effect.
+                    prot.crc_range = fallback_range
+                    prot.e2e_profile = ""
                 if algo == 'p01':
                     # Profile 1A: CRC8/SAE-J1850-ZERO, DataID parsed
                     # from the comment ("DataID：0x00EB").
@@ -379,6 +388,18 @@ class DBCProtectionMap:
                 profile_range = profile.to_range()
                 if profile_range is not None:
                     prot.crc_range = profile_range
+                else:
+                    # A profile without an explicit range still owns its DataID
+                    # layout (P01 prepends, P05 appends). Keep the configured
+                    # byte range but apply the profile's layout; otherwise the
+                    # global config wins and P01 DataIDs land on the wrong side.
+                    base = prot.crc_range or CRCRange()
+                    prot.crc_range = replace(
+                        base,
+                        dataid_position=profile.dataid_position,
+                        dataid_byte_order=profile.dataid_byte_order,
+                        crc_byte_swap=profile.byte_swap,
+                    )
                 applied += 1
         return applied
 
@@ -423,9 +444,15 @@ class DBCProtectionMap:
                 if spec is None:
                     continue
                 base = prot.crc_range or CRCRange()
+                mode = spec.get("mode", base.mode)
+                if mode not in VALID_RANGE_MODES:
+                    raise ValueError(
+                        f"Unknown CRC range mode '{mode}' for "
+                        f"{prot.frame_name or prot.frame_id}. Expected one of: "
+                        f"{', '.join(sorted(VALID_RANGE_MODES))}")
                 prot.crc_range = replace(
                     base,
-                    mode=spec.get("mode", base.mode),
+                    mode=mode,
                     start_byte=spec.get("start_byte", base.start_byte),
                     end_byte=spec.get("end_byte", base.end_byte),
                 )
@@ -495,7 +522,9 @@ class DBCProtectionMap:
             if frame_id in self.messages:
                 existing_suffixes = {p.pair_suffix for p in self.messages[frame_id]}
                 for prot in prot_list:
-                    if prot.pair_suffix and prot.pair_suffix not in existing_suffixes:
+                    # An empty suffix is a legitimate group (a signal named
+                    # exactly ``CRC``/``Checksum``); only de-duplicate on it.
+                    if prot.pair_suffix not in existing_suffixes:
                         self.messages[frame_id].append(prot)
                         existing_suffixes.add(prot.pair_suffix)
                         added += 1
@@ -574,13 +603,15 @@ class ChannelProtectionMap:
         if self._fallback:
             self._fallback.apply_crc_params(params)
 
-    def apply_comment_classification(self, default_params=None) -> int:
+    def apply_comment_classification(self, default_params=None,
+                                     fallback_range=None) -> int:
         """Auto-classify checksum algorithms from DBC comments on all maps."""
         applied = 0
         for pm in self._maps.values():
-            applied += pm.apply_comment_classification(default_params)
+            applied += pm.apply_comment_classification(default_params, fallback_range)
         if self._fallback:
-            applied += self._fallback.apply_comment_classification(default_params)
+            applied += self._fallback.apply_comment_classification(
+                default_params, fallback_range)
         return applied
 
     def apply_crc_overrides(self, overrides: dict) -> int:

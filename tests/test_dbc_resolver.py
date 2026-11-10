@@ -494,13 +494,15 @@ class TestDBCEncoding:
         assert parse_dataid_from_comment(chks.checksum_comment) == 0x00E8
 
     def test_crc_coverage_is_the_crc_segment(self):
-        """Profile 1A CRC = DataID + the 7 bytes after the CRC byte of its segment."""
+        """Profile 1A CRC = DataID + the bytes after the CRC field in its segment."""
         engine = CRCEngine(get_preset("CRC8/SAE-J1850-ZERO"))
         payload = bytes.fromhex("0102030405060708 F1F2F3F4F5F6F7F8")
         frame = CanFrame(timestamp=0.0, arbitration_id=0x135, dlc=len(payload),
                          data=payload)
-        # Second 8-byte segment: the CRC at byte 8 covers bytes 9..15 only.
+        # Second 8-byte segment. canmatrix start_bit 71 for a Motorola 8-bit
+        # field maps onto byte 8 bit 0 + byte 9 bits 7..1 (confirmed against
+        # cantools), so the CRC input is bytes 10..15.
         crc_range = CRCRange.for_segment(checksum_start_bit=71, dataid=0x00E9)
         assert crc_range.start_byte == 8
         assert engine.compute_for_frame(frame, crc_range, 71, 8, "big_endian") == \
-            engine.compute(bytes([0xE9, 0x00]) + payload[9:16])
+            engine.compute(bytes([0xE9, 0x00]) + payload[10:16])

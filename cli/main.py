@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 import click
 
@@ -85,6 +86,34 @@ def _output_report(report, output_fmt: str, output_file: str,
         _print_table(report, only_failures)
 
 
+def _safe_report_stem(trace_path: str) -> str:
+    """Filesystem-safe stem for the per-trace report suffix (keeps CJK)."""
+    stem = Path(trace_path).stem if trace_path else "trace"
+    cleaned = re.sub(r"[^\w.-]+", "_", stem).strip("._")
+    return cleaned or "trace"
+
+
+def _report_output_path(base_path: str, report, multiple: bool,
+                        index: int | None = None) -> str:
+    """Output path for one report.
+
+    A single trace keeps the configured path untouched. With several traces the
+    configured path would be overwritten by every iteration, so each report gets
+    the trace's file stem (plus its 1-based index, which also disambiguates
+    same-named traces from different directories) appended:
+    ``report.html`` → ``report_1_trace_a.html``. Split parts derive from that
+    unique name too.
+    """
+    if not multiple:
+        return base_path
+    path = Path(base_path or "crc_report.html")
+    suffix = path.suffix or ".html"
+    stem = _safe_report_stem(getattr(report, "trace_path", ""))
+    if index is not None:
+        stem = f"{index}_{stem}"
+    return str(path.with_name(f"{path.stem}_{stem}{suffix}"))
+
+
 # pylint: disable=too-many-locals
 def _print_table(report, only_failures: bool = False):
     """Print results as a formatted table to terminal."""
@@ -128,14 +157,25 @@ def _print_table(report, only_failures: bool = False):
         if not v.is_pass and v.detail:
             click.echo(f"  {click.style(v.detail, fg='yellow')}")
 
-    # Summary
-    summary = report.summary()
+    # Summary. RC checks are counted by sample: consecutive failing frames are
+    # folded into one verdict for display, so verdict counts would understate
+    # both the failure count and the pass rate (and disagree with the HTML/Web
+    # reports, which already use this accounting).
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.report.trends import format_rate, rc_sample_stats
+
+    crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
+    crc_pass = sum(1 for v in report.verdicts
+                   if v.algorithm == "crc" and v.is_pass)
+    rc_pass, rc_total = rc_sample_stats(report)
+    total_checks = crc_total + rc_total
+    passed_checks = crc_pass + rc_pass
     click.echo()
     click.echo("=" * 60)
-    click.echo(f"SUMMARY: {summary['total_frames']} frames, "
-               f"{summary['pass_count']} passed, "
-               f"{summary['fail_count']} failed "
-               f"({summary['pass_rate']} pass rate)")
+    click.echo(f"SUMMARY: {report.total_frames} frames, "
+               f"{passed_checks} passed, "
+               f"{total_checks - passed_checks} failed "
+               f"({format_rate(passed_checks, total_checks)} pass rate)")
 
 
 @click.group()
@@ -198,8 +238,14 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         click.echo("Warning: No CRC algorithm specified. Use --algo or --custom-crc.", err=True)
         click.echo("Only Rolling Counter verification will be performed.", err=True)
 
-    crc_params = _parse_crc_params(algo, custom_crc)
+    try:
+        crc_params = _parse_crc_params(algo, custom_crc)
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        raise click.BadParameter(f"Invalid CRC algorithm: {exc}") from exc
     crc_range = _parse_crc_range(range_mode, range_start, range_end)
+    # Expand directories up front: DBC selection samples trace files, so it
+    # must never be handed a directory.
+    expanded_traces = _expand_trace_paths(list(trace_files))
 
     if verbose and crc_params:
         click.echo(f"CRC Algorithm: {crc_params.name}")
@@ -241,7 +287,7 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         if len(dbc_maps) == 1:
             protection_map = dbc_maps[0]
         else:
-            sample_ids = sample_trace_ids(trace_files[0], max_frames=500)
+            sample_ids = sample_trace_ids(expanded_traces[0], max_frames=500)
             best_map, best_matched, best_total = select_best_dbc(dbc_maps, sample_ids)
             if best_map is None:
                 raise click.UsageError("No DBC matches any frame IDs in trace.")
@@ -272,14 +318,18 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
 
     algorithms = _build_algorithms(crc_params)
 
-    for trace_path in _expand_trace_paths(list(trace_files)):
+    multiple_reports = len(expanded_traces) > 1
+    for index, trace_path in enumerate(expanded_traces, start=1):
         if verbose:
             click.echo(f"Processing trace: {trace_path}")
         engine = VerifyEngine(protection_map, algorithms)
         with TraceReader(trace_path) as reader:
             report = engine.run(reader, frame_ids=id_filter, max_frames=max_frames)
         report.dbc_paths = protection_map.dbc_paths
-        _output_report(report, output_fmt, output_file, only_failures)
+        _output_report(report, output_fmt,
+                       _report_output_path(output_file, report, multiple_reports,
+                                           index=index),
+                       only_failures)
 
 
 @cli.command("presets")
@@ -317,7 +367,10 @@ def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
     from crc_checker.config import load_config
     from crc_checker.verify.runner import RunnerError, run_config
 
-    cfg = load_config(config_path)
+    try:
+        cfg = load_config(config_path)
+    except (OSError, ValueError) as exc:
+        raise click.BadParameter(f"配置文件读取失败: {exc}") from exc
 
     if verbose:
         click.echo(f"Config: {config_path}")
@@ -337,18 +390,24 @@ def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
     if not cfg.crc_preset and not cfg.crc_custom and not cfg.crc_auto_classify:
         click.echo("Warning: No CRC algorithm configured. RC-only verification.", err=True)
     if cfg.crc_preset:
-        status, _note = get_validation(cfg.crc_preset)
+        try:
+            status, _note = get_validation(cfg.crc_preset)
+        except KeyError as exc:
+            raise click.BadParameter(str(exc)) from exc
         if status != "validated":
             click.echo(f"Warning: preset {cfg.crc_preset} is not verified with "
                        "real data.", err=True)
 
-    trace_paths = cfg.get_trace_paths()
+    try:
+        trace_paths = cfg.get_trace_paths()
+    except FileNotFoundError as exc:
+        raise click.BadParameter(str(exc)) from exc
 
     # Everything below (DBC selection → DataID → CRC config → verify) lives in
     # crc_checker.verify.runner so the web API cannot drift from the CLI.
     try:
         setup, reports = run_config(cfg, trace_paths)
-    except RunnerError as exc:
+    except (RunnerError, ValueError, OSError, KeyError) as exc:
         raise click.UsageError(str(exc)) from exc
 
     if verbose:
@@ -358,8 +417,11 @@ def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
         for p in trace_paths:
             click.echo(f"  {p}")
 
-    for report in reports:
-        _output_report(report, cfg.output_format, cfg.output_file,
+    multiple_reports = len(reports) > 1
+    for index, report in enumerate(reports, start=1):
+        _output_report(report, cfg.output_format,
+                       _report_output_path(cfg.output_file, report, multiple_reports,
+                                           index=index),
                        cfg.only_failures, cfg.max_report_sections)
 
 
@@ -400,7 +462,10 @@ def preprocess_dataid(xlsx, sheets, mapping, output, verbose):
         else:
             click.echo("Sheets: all")
 
-    dm = parse_dataid_xlsx_multi(xlsx, sheet_list, mapping=mapping)
+    try:
+        dm = parse_dataid_xlsx_multi(xlsx, sheet_list, mapping=mapping)
+    except (OSError, ValueError, TypeError) as exc:
+        raise click.BadParameter(str(exc)) from exc
 
     if len(dm) == 0:
         click.echo("Warning: No DataID entries found.", err=True)

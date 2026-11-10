@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+VALID_RANGE_MODES = frozenset({
+    "full_payload", "exclude_crc", "custom_range", "segment",
+})
+_CHECKSUM_TYPES = frozenset({"crc", "sum", "sum_xor", "xor_seed"})
+
 
 # pylint: disable=too-many-instance-attributes
 @dataclass(frozen=True)
@@ -18,6 +23,17 @@ class CRCParams:
     name: str = ""
     # "crc" | "sum" | "sum_xor" | "xor_seed" (non-CRC checksums)
     checksum_type: str = "crc"
+
+    def __post_init__(self):
+        # The lookup table shifts by (width - 8); widths below 8 raise an
+        # obscure "negative shift count" from deep inside table construction.
+        if not 8 <= self.width <= 32:
+            raise ValueError(
+                f"CRC width must be between 8 and 32 bits, got {self.width}")
+        if self.checksum_type not in _CHECKSUM_TYPES:
+            raise ValueError(
+                f"Unknown checksum type '{self.checksum_type}'. "
+                f"Expected one of: {', '.join(sorted(_CHECKSUM_TYPES))}")
 
 
 @dataclass
