@@ -2,9 +2,12 @@
 
 CANoe 7.x writes CANFD lines with the id before the direction
 (``CANFD <ch> <id> <dir> <brs> <esi> [<d>] <dlc> <len> <data>``) while
-python-can only expects ``CANFD <ch> <dir> <id> <brs> <esi> <dlc> <len> <data>``;
-the DLC code is a decimal 0-15 code even in hex-base logs. The fixture below
-reproduces the header and line ordering of a CANoe 7.0.0 log.
+python-can only expects ``CANFD <ch> <dir> <id> <brs> <esi> <dlc> <len> <data>``.
+The DLC code's base differs by writer: CANoe 7.x writes it in decimal even in
+hex-base logs (``13`` → 32 bytes), while python-can's own writer emits hex
+(``c`` → 32 bytes). The reader accepts both, using the authoritative decimal
+``<len>`` field to disambiguate. The fixture below reproduces the header and
+line ordering of a CANoe 7.0.0 log.
 """
 
 import os
@@ -52,6 +55,15 @@ class TestCanoe7Asc(unittest.TestCase):
     def test_fd_dlc_code_decimal(self):
         """DLC code 13 → 32 bytes even when the log base is hex ('13' != 0x13)."""
         frames = self._read(CANOE7_ASC.format(data32=FD_DATA_32))
+        big = [f for f in frames if f.dlc == 32]
+        self.assertEqual(len(big), 1)
+        self.assertEqual(big[0].arbitration_id, 0x1E3)
+        self.assertEqual(len(big[0].data), 32)
+
+    def test_fd_dlc_code_hex(self):
+        """DLC code written in hex (python-can's writer: 32 bytes → 'c')."""
+        content = CANOE7_ASC.replace("d 13 32", "d c 32")
+        frames = self._read(content.format(data32=FD_DATA_32))
         big = [f for f in frames if f.dlc == 32]
         self.assertEqual(len(big), 1)
         self.assertEqual(big[0].arbitration_id, 0x1E3)

@@ -123,9 +123,12 @@ class DBCProtectionMap:
                     prot.e2e_profile = ""
                 if algo == 'p01':
                     # Profile 1A: CRC8/SAE-J1850-ZERO, DataID parsed
-                    # from the comment ("DataID：0x00EB").
+                    # from the comment ("DataID：0x00EB"). The DataID workbook
+                    # is applied first and is the explicit artifact, so the
+                    # comment only fills groups the workbook did not cover —
+                    # a parsed comment must not overwrite a loaded entry.
                     dataid = parse_dataid_from_comment(prot.checksum_comment)
-                    if dataid is not None:
+                    if dataid is not None and prot.dataid is None:
                         prot.dataid = dataid
                     # Profile 1 counters are 4-bit 0..14 (15 = invalid), so the
                     # plain 2^n - 1 default would flag every wrap E->0 as a failure.

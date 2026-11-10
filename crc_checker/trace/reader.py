@@ -82,9 +82,8 @@ class _CanoeAscReader(can.ASCReader):  # pylint: disable=too-few-public-methods
         data = parts[idx + 2] if idx + 2 < len(parts) else ""
         msg_kwargs["bitrate_switch"] = brs == "1"
         msg_kwargs["error_state_indicator"] = esi == "1"
-        # The DLC code is a decimal 0-15 code, not a hex value ('13' → 32 bytes)
-        dlc = int(dlc_str)
         data_length = int(data_length_str)
+        dlc = self._parse_fd_dlc(dlc_str, data_length)
         if data_length == 0:
             msg_kwargs["is_remote_frame"] = True
             msg_kwargs["dlc"] = dlc
@@ -99,6 +98,31 @@ class _CanoeAscReader(can.ASCReader):  # pylint: disable=too-few-public-methods
             msg_kwargs["dlc"] = data_length
         self._process_data_string(data, data_length, msg_kwargs)
         return can.Message(**msg_kwargs)
+
+    def _parse_fd_dlc(self, dlc_str: str, data_length: int) -> int:
+        """Parse the FD DLC code, tolerant of both hex- and decimal-written logs.
+
+        python-can writes the DLC code in hex (``{dlc:x}``: 32 bytes → ``c``),
+        while CANoe 7.x writes it in decimal even in hex-base logs
+        (``13`` → 32 bytes). The separate ``<len>`` field is the authoritative
+        byte count, so prefer whichever base makes ``dlc2len(code)`` match it.
+        """
+        candidates: list[int] = []
+        for base in (self._converted_base, 10):
+            try:
+                code = int(dlc_str, base)
+            except ValueError:
+                continue
+            if code not in candidates:
+                candidates.append(code)
+        if not candidates:
+            return 0
+        for code in candidates:
+            if dlc2len(code) == data_length:
+                return code
+        # No interpretation matches the byte count — keep the base-aware parse
+        # and let the caller's mismatch warning fire.
+        return candidates[0]
 
 
 def open_log_reader(file_path: str):
