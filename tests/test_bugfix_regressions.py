@@ -29,12 +29,11 @@ import canmatrix
 import openpyxl
 import pytest
 
-from cli.main import _print_table, _report_output_path
+from cli.main import _print_table, _range_specified, _report_output_path
 from crc_checker.config import RunConfig, apply_crc_config
 from crc_checker.crc.classify import (
     classify_crc_algo, parse_sum_byte_range,
 )
-from cli.main import _range_specified
 from crc_checker.crc.engine import CRCEngine
 from crc_checker.crc.models import CRCParams, CRCRange
 from crc_checker.crc.presets import get_preset
