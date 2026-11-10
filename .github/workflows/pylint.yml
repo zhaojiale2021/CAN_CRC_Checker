@@ -4,7 +4,10 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pin the runner: ubuntu-latest moved to Ubuntu 26.04, which no longer
+    # ships a Python 3.9 build, so setup-python failed before any step ran.
+    # 24.04 still provides 3.9 (the project's floor: requires-python >= 3.9).
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
