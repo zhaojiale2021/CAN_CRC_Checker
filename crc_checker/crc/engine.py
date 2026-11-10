@@ -98,8 +98,11 @@ class CRCEngine:
 
         if self.params.reflect_in:
             crc = self._compute_reflected(data)
-            # Reflected algorithm inherently produces reflected output;
-            # reflect_out is already satisfied by the algorithm itself.
+            # The right-shifting algorithm produces the *reflected* result.
+            # reflect_out=False means the caller wants the non-reflected form,
+            # so undo it (reflect_in and reflect_out are independent).
+            if not self.params.reflect_out:
+                crc = self._reflect_bits(crc, width)
         else:
             crc = self._compute_non_reflected(data)
             if self.params.reflect_out:
@@ -156,10 +159,13 @@ class CRCEngine:
         data = bytearray(frame.data)
 
         # Compute the CRC byte position(s) so we can exclude them.
-        # The checksum field occupies ceil(length/8) contiguous bytes from
-        # crc_byte_start. Using (start_bit + length + 7)//8 over-counts for a
-        # start_bit that is not byte-aligned (e.g. a Motorola 8-bit signal at
-        # start_bit 71), dropping one extra data byte from the CRC input.
+        # A checksum field occupies every byte its bits touch. With canmatrix
+        # start-bit semantics (Intel = LSB, Motorola = inverted MSB) the last
+        # touched byte is (start_bit + length - 1) // 8, so the exclusive end
+        # is (start_bit + length + 7) // 8. Deriving it from ceil(length/8)
+        # alone (``start_bit // 8 + ...``) drops the trailing CRC byte
+        # whenever start_bit is not byte-aligned — the CRC then partially
+        # feeds on its own bits (both Intel and Motorola).
         crc_byte_start = checksum_start_bit // 8
         if self.params.checksum_type != "crc" and checksum_length > 8:
             # 8-bit checksum on a >8-bit field: skip only
@@ -167,7 +173,7 @@ class CRCEngine:
             # of the field participates in the sum.
             crc_byte_end = crc_byte_start + 1
         else:
-            crc_byte_end = crc_byte_start + (checksum_length + 7) // 8
+            crc_byte_end = (checksum_start_bit + checksum_length + 7) // 8
 
         # Determine which bytes to use for CRC (exclude CRC bytes)
         compute_bytes = self._extract_range(bytes(data), crc_range, len(data),
@@ -221,4 +227,4 @@ class CRCEngine:
             if 0 <= rel_start < len(payload):
                 return payload[:rel_start] + payload[rel_end:]
             return payload
-        return data
+        raise ValueError(f"Unknown CRC range mode: {crc_range.mode!r}")

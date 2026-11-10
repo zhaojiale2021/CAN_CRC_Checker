@@ -18,6 +18,7 @@ from crc_checker.dbc.models import ChannelProtectionMap, DBCProtectionMap
 from crc_checker.dbc.parser import (
     parse_all_dbc,
     sample_trace_channels,
+    select_best_dbc,
     select_best_dbc_per_channel,
 )
 from crc_checker.protect.checksum import CRCVerifier
@@ -73,9 +74,30 @@ def build_algorithms(crc_params: CRCParams | None) -> list:
     return algorithms
 
 
+def _basename(path) -> str:
+    """Basename that also handles Windows separators when running on POSIX."""
+    return Path(str(path).replace("\\", "/")).name
+
+
+def _sample_channels(trace_samples) -> dict[int, set[int]]:
+    """Union the per-channel CAN IDs observed across every trace file.
+
+    Sampling only the first trace left channels (or whole traces) with no map,
+    and those frames were then silently unverified while still counted in the
+    report. Accepts a single path or a list for compatibility.
+    """
+    paths = ([trace_samples] if isinstance(trace_samples, str)
+             else list(trace_samples or []))
+    ch_ids: dict[int, set[int]] = {}
+    for path in paths:
+        for ch, ids in sample_trace_channels(path, max_frames=1000).items():
+            ch_ids.setdefault(ch, set()).update(ids)
+    return ch_ids
+
+
 def _select_dbcs(
-    cfg: RunConfig, dbc_maps: list[DBCProtectionMap], trace_sample: str | None,
-    notes: list[str],
+    cfg: RunConfig, dbc_maps: list[DBCProtectionMap],
+    trace_samples: str | list[str] | None, notes: list[str],
 ) -> tuple[DBCProtectionMap | ChannelProtectionMap, dict[int, DBCProtectionMap]]:
     """Pick the protection map: single DBC, merged, or one DBC per trace channel.
 
@@ -95,13 +117,24 @@ def _select_dbcs(
         notes.append(f"Merged {len(dbc_maps)} DBCs into one protection map")
         return merged, {}
 
-    if not trace_sample:
+    if not trace_samples:
         raise RunnerError("Need a trace file to select a DBC per channel.")
 
-    ch_ids = sample_trace_channels(trace_sample, max_frames=1000)
+    ch_ids = _sample_channels(trace_samples)
     ch_dbc = select_best_dbc_per_channel(dbc_maps, ch_ids)
     if not ch_dbc:
         raise RunnerError("No DBC matches any trace channel.")
+
+    # Channels whose sampled IDs matched no DBC (e.g. a trace that starts with
+    # another bus) still get the globally best DBC rather than being silently
+    # left unverified; the DLC/frame-id gates keep false positives out.
+    all_ids: set[int] = set()
+    for ids in ch_ids.values():
+        all_ids.update(ids)
+    best_global, _, _ = select_best_dbc(dbc_maps, all_ids)
+    if best_global is not None:
+        for ch in ch_ids:
+            ch_dbc.setdefault(ch, best_global)
 
     channel_map = ChannelProtectionMap()
     for ch, pm in ch_dbc.items():
@@ -127,10 +160,16 @@ def _apply_dataid(  # pylint: disable=too-many-locals,too-many-branches,too-many
     fallback = 0
 
     if isinstance(protection_map, ChannelProtectionMap) and ch_dbc:
+        # When dataid.json does not exist yet, parse the xlsx directly for each
+        # channel. Letting the first channel generate the JSON would make every
+        # later channel load *its* sheet (wrong/missing DataIDs).
+        json_missing = (bool(cfg.dataid_json)
+                        and not Path(cfg.dataid_json).exists())
         ch0_map = None
         for ch, pm in sorted(ch_dbc.items()):
             ch_dbc_name = Path(pm.dbc_paths[0]).name if pm.dbc_paths else ""
-            ch_dataid = cfg.load_dataid(dbc_name=ch_dbc_name)
+            ch_dataid = cfg.load_dataid(dbc_name=ch_dbc_name,
+                                        allow_json=not json_missing)
             if ch_dataid and len(ch_dataid) > 0:
                 pm.apply_dataid_map(ch_dataid)
                 entries += len(ch_dataid)
@@ -150,11 +189,14 @@ def _apply_dataid(  # pylint: disable=too-many-locals,too-many-branches,too-many
                 notes.append(f"DataID fallback from CH0: {fallback} entries")
         return entries, sheet, fallback
 
-    dbc_name = ""
-    dbc_paths = protection_map.dbc_paths
-    if dbc_paths:
-        dbc_name = Path(list(dbc_paths)[0]).name
-    dataid_map = cfg.load_dataid(dbc_name=dbc_name)
+    dbc_paths = list(protection_map.dbc_paths)
+    if len(dbc_paths) > 1:
+        # Merged multi-DBC map: auto-match one sheet per DBC. Looking only at
+        # the first DBC dropped the DataIDs of every other DBC's messages.
+        dataid_map = cfg.load_dataid_for_dbcs([Path(p).name for p in dbc_paths])
+    else:
+        dbc_name = Path(dbc_paths[0]).name if dbc_paths else ""
+        dataid_map = cfg.load_dataid(dbc_name=dbc_name)
     if dataid_map:
         protection_map.apply_dataid_map(dataid_map)
         entries = len(dataid_map)
@@ -164,15 +206,17 @@ def _apply_dataid(  # pylint: disable=too-many-locals,too-many-branches,too-many
 
 
 def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
-                         trace_sample: str | None = None) -> ProtectionSetup:
+                         trace_sample: str | list[str] | None = None) -> ProtectionSetup:
     """Parse DBCs and apply DataID + CRC configuration.
 
     Mirrors the order used by ``crc-check run`` (see ``apply_crc_config``).
 
     Args:
         cfg: Run configuration (paths already resolved).
-        trace_sample: First trace file, used to pick a DBC per channel. Only
-            needed when several DBCs are configured and ``dbc_merge`` is off.
+        trace_sample: Trace file(s) used to pick a DBC per channel. Pass every
+            configured trace so a channel that only appears later is still
+            mapped. Only needed when several DBCs are configured and
+            ``dbc_merge`` is off.
 
     Raises:
         RunnerError: no DBC configured, or no DBC matches the trace channels.
@@ -185,7 +229,9 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
         raise RunnerError("No DBC files found. Check 'dbc' or 'dbcs' in the config.")
 
     notes: list[str] = [f"DBC files: {len(dbc_paths)} file(s)"]
-    notes.extend(f"  {path}" for path in dbc_paths)
+    # File names only: these notes are serialised to the browser by the web
+    # API, which must never expose server filesystem paths.
+    notes.extend(f"  {_basename(path)}" for path in dbc_paths)
 
     try:
         dbc_maps = parse_all_dbc(dbc_paths, build_patterns(cfg),
@@ -197,7 +243,7 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
     channels: dict[int, str] = {}
     channel_matches: dict[int, tuple[int, int, int]] = {}
     if ch_dbc and trace_sample:
-        ch_ids = sample_trace_channels(trace_sample, max_frames=1000)
+        ch_ids = _sample_channels(trace_sample)
         for ch, pm in sorted(ch_dbc.items()):
             name = Path(pm.dbc_paths[0]).name if pm.dbc_paths else ""
             channels[ch] = name
@@ -274,7 +320,9 @@ def run_config(cfg: RunConfig, trace_paths: list[str] | None = None,
     if not paths:
         raise RunnerError("No trace files to verify.")
 
-    setup = build_protection_map(cfg, trace_sample=paths[0])
+    # Sample every trace (not just the first): a channel that only appears in a
+    # later file would otherwise be silently unmapped/unverified.
+    setup = build_protection_map(cfg, trace_sample=paths)
     algorithms = build_algorithms(cfg.build_crc_params())
 
     reports = []

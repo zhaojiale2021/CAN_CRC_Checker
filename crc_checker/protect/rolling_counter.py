@@ -76,7 +76,7 @@ class RollingCounterVerifier(ProtectionAlgorithm):
         """Short verdict category ("STALE"/"RESET"/"INVALID"/"SKIP") from detail."""
         return detail.split(":", 1)[0] if detail else ""
 
-    def verify(self, frame: CanFrame, protection: MessageProtection) -> VerifyVerdict | None:  # pylint: disable=too-many-locals
+    def verify(self, frame: CanFrame, protection: MessageProtection) -> VerifyVerdict | None:  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
         """Verify rolling counter for a frame."""
         rc_signal = protection.rolling_counter_signal
         if rc_signal is None:
@@ -91,12 +91,24 @@ class RollingCounterVerifier(ProtectionAlgorithm):
         # rc_max_valid: max value before wrapping (e.g., 14 means valid range 0-14, 15=invalid)
         max_valid = protection.rc_max_valid if protection.rc_max_valid is not None else bit_max
 
-        # First time seeing this signal — no baseline to compare
+        # First time seeing this signal — no baseline to compare, but an
+        # out-of-range value is invalid on its own (e.g. a 4-bit counter
+        # reading 15 with max_valid=14, which AUTOSAR Profile 1 reserves as
+        # "invalid"). Reporting PASS here made a single-frame trace look clean.
         if key not in self._first_seen:
             self._first_seen[key] = True
             self._state[key] = actual_value
             valid_note = f" (valid range: 0-{max_valid})" if max_valid < bit_max else ""
-            self._series.setdefault(key, []).append((frame.timestamp, actual_value, True, ""))
+            is_pass = actual_value <= max_valid
+            if is_pass:
+                detail = f"First occurrence — baseline set to {actual_value}{valid_note}"
+                category = ""
+            else:
+                detail = (f"INVALID: value {actual_value} exceeds max valid "
+                          f"{max_valid} (first occurrence)")
+                category = "INVALID"
+            self._series.setdefault(key, []).append(
+                (frame.timestamp, actual_value, is_pass, category))
             self._series_meta[key] = {"length": rc_signal.length, "max_valid": max_valid}
             return VerifyVerdict(
                 frame_id=frame.arbitration_id,
@@ -105,14 +117,15 @@ class RollingCounterVerifier(ProtectionAlgorithm):
                 signal_name=rc_signal.name,
                 expected_value=actual_value,
                 actual_value=actual_value,
-                is_pass=True,
-                detail=f"First occurrence — baseline set to {actual_value}{valid_note}",
+                is_pass=is_pass,
+                detail=detail,
                 start_bit=rc_signal.start_bit,
                 length=rc_signal.length,
                 byte_order=rc_signal.byte_order,
                 dataid=protection.dataid,
                 dataid_name=protection.dataid_name,
                 dataid_profile=protection.crc_profile,
+                channel=frame.channel,
             )
 
         prev_value = self._state[key]
@@ -167,6 +180,7 @@ class RollingCounterVerifier(ProtectionAlgorithm):
             dataid=protection.dataid,
             dataid_name=protection.dataid_name,
             dataid_profile=protection.crc_profile,
+            channel=frame.channel,
         )
         if not is_pass:
             episode = self._open_fail.get(key)

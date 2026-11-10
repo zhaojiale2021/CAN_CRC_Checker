@@ -135,4 +135,5 @@ class CRCVerifier(ProtectionAlgorithm):
             dataid_name=protection.dataid_name,
             dataid_profile=protection.crc_profile,
             crc_algorithm=params.name,
+            channel=frame.channel,
         )

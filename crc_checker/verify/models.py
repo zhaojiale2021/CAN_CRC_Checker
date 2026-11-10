@@ -25,6 +25,7 @@ class VerifyVerdict:  # pylint: disable=too-many-instance-attributes
     dataid_profile: str = ""        # E2E profile hint (e.g. "Profile Variant 1A")
     crc_algorithm: str = ""         # CRC algorithm name used (e.g. "CRC16/CCITT")
     repeat_count: int = 1           # Consecutive failing frames folded into this verdict
+    channel: int = 0                # Trace channel the frame came from
 
     def __str__(self) -> str:
         status = "PASS" if self.is_pass else "FAIL"
@@ -43,9 +44,9 @@ class VerifyReport:  # pylint: disable=too-many-instance-attributes
     total_frames: int = 0
     total_verdicts: int = 0
     dlc_mismatch_skipped: int = 0                   # frames skipped by the DLC gate
-    _frame_data: dict = field(default_factory=dict)  # (timestamp, frame_id) -> bytes
+    _frame_data: dict = field(default_factory=dict)  # (channel, timestamp, frame_id) -> bytes
     _frame_names: dict = field(default_factory=dict)  # frame_id -> frame_name
-    _frame_channels: dict = field(default_factory=dict)  # (timestamp, frame_id) -> channel
+    _frame_channels: dict = field(default_factory=dict)  # (channel, timestamp, frame_id) -> channel
     _frame_dbc_sources: dict = field(default_factory=dict)  # frame_id -> dbc_source
     # (frame_id, channel, signal_name) -> [(timestamp, value, is_pass, category)]
     # Every frame's RC value, recorded per-run — the source for the trend charts.
@@ -56,18 +57,24 @@ class VerifyReport:  # pylint: disable=too-many-instance-attributes
 
     def add_frame_data(self, timestamp: float, frame_id: int, data: bytes,
                        channel: int = 0):
-        """Store raw frame data and channel for hex-dump display."""
-        self._frame_data[(timestamp, frame_id)] = data
-        if channel:
-            self._frame_channels[(timestamp, frame_id)] = channel
+        """Store raw frame data and channel for hex-dump display.
 
-    def get_frame_data(self, timestamp: float, frame_id: int) -> bytes | None:
-        """Get raw frame data by (timestamp, frame_id) key."""
-        return self._frame_data.get((timestamp, frame_id))
+        The channel is part of the key: the same frame ID can appear on several
+        channels at the same timestamp (gateway / mixed-format traces), and
+        keying without it made one channel's bytes overwrite the other's.
+        """
+        self._frame_data[(channel, timestamp, frame_id)] = data
+        self._frame_channels[(channel, timestamp, frame_id)] = channel
 
-    def get_frame_channel(self, timestamp: float, frame_id: int) -> int:
-        """Get channel number for a frame (default 0)."""
-        return self._frame_channels.get((timestamp, frame_id), 0)
+    def get_frame_data(self, timestamp: float, frame_id: int,
+                       channel: int = 0) -> bytes | None:
+        """Get raw frame data by (channel, timestamp, frame_id) key."""
+        return self._frame_data.get((channel, timestamp, frame_id))
+
+    def get_frame_channel(self, timestamp: float, frame_id: int,
+                          channel: int = 0) -> int:
+        """Get the stored channel for a frame (defaults to ``channel``)."""
+        return self._frame_channels.get((channel, timestamp, frame_id), channel)
 
     def set_frame_dbc_source(self, frame_id: int, dbc_source: str):
         """Store which DBC file a frame's protection group came from."""

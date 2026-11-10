@@ -33,6 +33,13 @@ RUNS_DIR = DATA_DIR / "runs"
 
 DEFAULT_MAX_UPLOAD_MB = 200
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._一-鿿 -]+")
+# Windows device names are not valid file names even with an extension
+# (``CON``, ``NUL.blf``, ``COM1`` …); opening them targets the device.
+_WINDOWS_RESERVED = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{i}" for i in range(1, 10)}
+    | {f"LPT{i}" for i in range(1, 10)}
+)
 
 def max_upload_bytes() -> int:
     """Upload cap in bytes (``CRC_WEB_MAX_UPLOAD_MB`` overrides the default)."""
@@ -54,6 +61,9 @@ def safe_filename(name: str) -> str:
     """
     base = Path((name or "").replace("\\", "/")).name.strip()
     cleaned = _SAFE_NAME.sub("_", base).strip("._")
+    # ``CON``/``NUL.blf``/``COM1`` resolve to devices on Windows, not files.
+    if cleaned.split(".", 1)[0].upper() in _WINDOWS_RESERVED:
+        cleaned = f"_{cleaned}"
     return cleaned or "trace.blf"
 
 
@@ -61,9 +71,14 @@ def _parse_frame_limit(max_frames: str) -> int | None:
     """``""``=配置默认, ``0``=不限, ``N``=前 N 帧;非法值是 400 不是 500。"""
     raw = max_frames.strip()
     try:
-        return int(raw) if raw else None
+        value = int(raw) if raw else None
     except ValueError as exc:
         raise HTTPException(400, f"帧数上限必须是整数: {raw}") from exc
+    if value is not None and value < 0:
+        # Negative used to fall through to "unlimited", silently disabling the
+        # cap for an invalid request.
+        raise HTTPException(400, f"帧数上限不能为负数: {value}")
+    return value
 
 
 def _parse_bool(raw: str) -> bool:
