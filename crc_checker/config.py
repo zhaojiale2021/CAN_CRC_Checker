@@ -645,7 +645,16 @@ def load_config(config_path: str) -> RunConfig:
         cfg.dataid_json = did.get("json", "")
         cfg.dataid_position = did.get("position", "prepend")
         cfg.dataid_byte_order = did.get("byte_order", "lo_hi")
-        cfg.dataid_default = did.get("default")
+        # Convert now — a string reaching the verify loop crashes mid-run on
+        # `dataid & 0xFF` instead of failing at load time.
+        raw_default = did.get("default")
+        if isinstance(raw_default, str):
+            cfg.dataid_default = (
+                int(raw_default, 16) if raw_default.lower().startswith("0x")
+                else int(raw_default)
+            )
+        elif raw_default is not None:
+            cfg.dataid_default = raw_default
 
     # Filter
     flt = data.get("filter", {})

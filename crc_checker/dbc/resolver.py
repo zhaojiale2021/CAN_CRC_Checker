@@ -10,10 +10,13 @@ see :mod:`crc_checker.patterns`). This module only applies them:
 
 from __future__ import annotations
 
+import logging
 import re
 
 from crc_checker.dbc.models import SignalInfo, MessageProtection, DBCProtectionMap
 from crc_checker.patterns import DEFAULT_NAMING, NamingPatterns, join_patterns
+
+logger = logging.getLogger("crc_checker")
 
 
 # Kept as plain dicts for callers that imported them before patterns became
@@ -124,7 +127,8 @@ class SignalResolver:
 
         Suffix-based naming:
           "CCU_1_CRC" → "CCU_1"
-          "CCU_1_CRC_1" → "CCU_1_1"  (second E2E instance, index kept)
+          "CCU_1_CRC_1" → "CCU_1_1"  (E2E instance index kept, so the two
+          "CCU_1_CRC_2" → "CCU_1_2"   instances stay separate groups)
           "SGU1_Msg_CheckSum_Can03" → "SGU1_Msg"  (bus marker stripped)
         """
         signal_name = SignalResolver.strip_bus_suffix(signal_name, naming)
@@ -214,6 +218,14 @@ class SignalResolver:
                         frame_id=frame_id, frame_name=frame_name,
                         dlc=dlc, pair_suffix=suffix,
                     )
+                elif groups[suffix].checksum_signal is not None:
+                    # Two checksums collapsing onto one suffix (e.g. bus
+                    # markers stripped) means one of them is never verified.
+                    logger.warning(
+                        "0x%03X %s: checksum '%s' overwrites '%s' "
+                        "(same pair suffix '%s')",
+                        frame_id, frame_name, cs.name,
+                        groups[suffix].checksum_signal.name, suffix)
                 groups[suffix].checksum_signal = cs
                 groups[suffix].checksum_comment = checksum_comments.get(cs.name, "")
 
@@ -224,6 +236,12 @@ class SignalResolver:
                         frame_id=frame_id, frame_name=frame_name,
                         dlc=dlc, pair_suffix=suffix,
                     )
+                elif groups[suffix].rolling_counter_signal is not None:
+                    logger.warning(
+                        "0x%03X %s: rolling counter '%s' overwrites '%s' "
+                        "(same pair suffix '%s')",
+                        frame_id, frame_name, rc.name,
+                        groups[suffix].rolling_counter_signal.name, suffix)
                 groups[suffix].rolling_counter_signal = rc
 
             group_list = list(groups.values())

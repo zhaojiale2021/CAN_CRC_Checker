@@ -234,6 +234,7 @@ class ColumnMapping:  # pylint: disable=too-many-instance-attributes
     dataid_format: str = "hi_lo_two_cols"
     data_row_start: int = 3          # 1-based row where data begins
     message_id_base: int = 16        # Radix for message ID parsing (16 = hex, 10 = decimal)
+    dataid_base: int = 16            # Radix for TEXT DataID cells (16 = hex, 10 = decimal)
     signal_name_filter: list[str] | None = None
     use_header_names: bool = False   # If True, col_* fields are header names, not indices
     # Default filter: common checksum signal prefixes
@@ -266,6 +267,7 @@ class ColumnMapping:  # pylint: disable=too-many-instance-attributes
             dataid_format=self.dataid_format,
             data_row_start=self.data_row_start,
             message_id_base=self.message_id_base,
+            dataid_base=self.dataid_base,
             signal_name_filter=self.signal_name_filter,
             use_header_names=False,
         )
@@ -420,6 +422,12 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
         elif _match(s, ["remark", "remarks", "comment", "comments", "profile", "note"]):
             remark_col = i
 
+    # A "(dec)" header declares decimal DataID text — without this the text
+    # "84" would parse as 0x84 and every DataID would be wrong.
+    dataid_base = 10 if any(
+        isinstance(c, str) and "dec" in str(c).strip().lower()
+        for c in header_row) else mapping.dataid_base
+
     return ColumnMapping(
         col_signal_name=sig_col,
         col_message_id=id_col,
@@ -429,19 +437,31 @@ def _auto_detect_columns(mapping: ColumnMapping, header_row: list) -> ColumnMapp
         dataid_format=mapping.dataid_format,
         data_row_start=mapping.data_row_start,
         message_id_base=mapping.message_id_base,
+        dataid_base=dataid_base,
         signal_name_filter=mapping.signal_name_filter,
         use_header_names=False,
     )
 
 
-def _parse_dataid_value(hi_val, lo_val, fmt: str) -> int | None:
-    """Parse raw Excel cell values into a 16-bit DataID integer."""
+def _parse_dataid_value(hi_val, lo_val, fmt: str, base: int = 16) -> int | None:
+    """Parse raw Excel cell values into a 16-bit DataID integer.
+
+    ``base`` applies to TEXT cells only (numeric cells are already binary);
+    it defaults to hex for backward compatibility and is set to 10 by the
+    column auto-detection when the header says "(dec)".
+    """
     def _to_int(v):
         if v is None:
             return None
         if isinstance(v, str):
+            text = v.strip()
+            if text.lower().startswith("0x"):
+                try:
+                    return int(text, 16)
+                except ValueError:
+                    return None
             try:
-                return int(v, 16)
+                return int(text, base)
             except ValueError:
                 return None
         if isinstance(v, (int, float)):
@@ -562,7 +582,8 @@ def _add_dataid_row(row: list, mapping: ColumnMapping, dataid_map: DataIDMap) ->
     if frame_id is None:
         return False
 
-    dataid = _parse_dataid_value(dataid_hi, dataid_lo, mapping.dataid_format)
+    dataid = _parse_dataid_value(dataid_hi, dataid_lo, mapping.dataid_format,
+                                 mapping.dataid_base)
     if dataid is None:
         return False
 
@@ -585,6 +606,13 @@ def _parse_xlsx_raw(xlsx_path: str, sheet_name: str,
     Falls back from openpyxl when the Excel file has incompatible styles.
     Supports .xlsx only (not .xls).
     """
+    if mapping.dataid_format == "description_regex":
+        # The message-list layout reads merged cells + free-text columns
+        # through openpyxl; parsing it as hi/lo here would silently return
+        # an empty (or garbage) map.
+        raise ValueError(
+            f"{xlsx_path}: the description_regex DataID layout requires a "
+            "readable .xlsx (openpyxl); the raw fallback cannot parse it.")
     import zipfile
     import xml.etree.ElementTree as ET
 
@@ -828,6 +856,13 @@ def _parse_xls(xls_path: str, sheet_name: str, mapping: ColumnMapping) -> DataID
     Same column mapping as the .xlsx path — some suppliers ship their
     E2E DataID configuration only as legacy .xls.
     """
+    if mapping.dataid_format == "description_regex":
+        # The message-list layout reads merged cells + free-text columns
+        # through openpyxl; parsing it as hi/lo here would silently return
+        # an empty (or garbage) map.
+        raise ValueError(
+            f"'{xls_path}': the description_regex DataID layout requires an "
+            ".xlsx workbook (openpyxl). Convert the file to .xlsx.")
     import xlrd
     book = xlrd.open_workbook(xls_path)
     if sheet_name not in book.sheet_names():
