@@ -456,12 +456,11 @@ def _parse_dataid_value(hi_val, lo_val, fmt: str, base: int = 16) -> int | None:
         if isinstance(v, str):
             text = v.strip()
             if text.lower().startswith("0x"):
-                try:
-                    return int(text, 16)
-                except ValueError:
-                    return None
+                text, base_ = text[2:], 16
+            else:
+                base_ = base
             try:
-                return int(text, base)
+                return int(text, base_)
             except ValueError:
                 return None
         if isinstance(v, (int, float)):
