@@ -4,8 +4,9 @@ One bus can mix two E2E profiles (selected per message):
 
 * Profile 5 — 16-bit CRC16/CCITT, DataID appended little-endian, protect
   ``min(frame_len, 56)`` bytes (CAN FD 64 B frames protect bytes 0..55).
-* Profile 1 — 8-bit CRC8/SAE-J1850 (poly 0x1D, init 0xFF, final XOR 0xFF),
-  DataID prepended little-endian, CRC in the first byte of the protected view.
+* Profile 1 — 8-bit CRC8/SAE-J1850-ZERO (poly 0x1D, init 0x00, no final
+  XOR — the AUTOSAR "zero" variant), DataID prepended little-endian,
+  CRC in the first byte of the protected view.
 
 The profile can also be picked from the **CRC signal width** (2 bytes → P05,
 1 byte → P01) instead of the DBC comment; this matches common AUTOSAR
@@ -86,8 +87,10 @@ BUILTIN_PROFILES: dict[str, E2EProfile] = {
 
 # "Profile 1A", "Profile Variant 1A", "E2E Profile 5" → the digit is the profile number
 _PROFILE_NUMBER = re.compile(r'PROFILE[^0-9]{0,12}([0-9]+)', re.IGNORECASE)
-# CRC signal names as used in the DataID Remark column ("CCU_1_CRC2", "ADC_1_CRC")
-_CRC_SIGNAL_NAME = re.compile(r'^[A-Za-z0-9_]*[_]CRC[_]?[0-9]*$', re.IGNORECASE)
+# CRC signal names as used in the DataID Remark column ("CCU_1_CRC2", "ADC_1_CRC").
+# The underscore before CRC is optional — a bare "CRC" / "CRC2" remark names the
+# signal just as well.
+_CRC_SIGNAL_NAME = re.compile(r'^[A-Za-z0-9_]*_?CRC[_]?[0-9]*$', re.IGNORECASE)
 
 # Range fields accepted in a profile override's nested "range" object
 _RANGE_FIELDS = {

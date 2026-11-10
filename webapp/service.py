@@ -45,6 +45,7 @@ class RunOutcome:
     trace_name: str
     payload: dict
     html_path: Path | None = None
+    last_access: float = 0.0  # LRU order, set by RunStore.add/get
 
     def to_dict(self) -> dict:
         """JSON shape returned by ``POST /api/verify``."""
@@ -361,6 +362,10 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
                                      max_sections=cfg.max_report_sections)
         except OSError:
             html_path = None
+            # Every file of this run lives in its own subdirectory — drop the
+            # partially written main file and chunks instead of leaking them
+            # until the next restart's purge.
+            shutil.rmtree(run_dir, ignore_errors=True)
 
     payload = make_run_payload(
         setup={
@@ -401,7 +406,12 @@ def _report_files(html_path: Path) -> list[Path]:
 
 @dataclass
 class RunStore:
-    """Keeps the last ``max_runs`` finished runs' reports, newest first."""
+    """Keeps the last ``max_runs`` finished runs' reports, newest first.
+
+    Eviction is LRU: ``get()`` touches ``last_access`` and ``sweep()`` evicts
+    the least recently *used* run (a report that keeps being downloaded is
+    not dropped just because it is old).
+    """
 
     runs_dir: Path
     max_runs: int = MAX_RUNS
@@ -429,19 +439,23 @@ class RunStore:
                     pass
 
     def add(self, outcome: RunOutcome) -> None:
-        """Record a finished run and evict the oldest beyond ``max_runs``."""
+        """Record a finished run and evict the least recently used beyond max."""
+        outcome.last_access = outcome.created_at
         self._runs[outcome.run_id] = outcome
         self.sweep()
 
     def get(self, run_id: str) -> RunOutcome | None:
-        """Look up a run id (``None`` when unknown)."""
-        return self._runs.get(run_id)
+        """Look up a run id (``None`` when unknown); refreshes LRU order."""
+        outcome = self._runs.get(run_id)
+        if outcome is not None:
+            outcome.last_access = time.time()
+        return outcome
 
     def sweep(self) -> None:
         """Drop reports of evicted runs (keeps the store and disk bounded)."""
         if len(self._runs) <= self.max_runs:
             return
-        ordered = sorted(self._runs.values(), key=lambda r: r.created_at)
+        ordered = sorted(self._runs.values(), key=lambda r: r.last_access)
         for stale in ordered[:len(self._runs) - self.max_runs]:
             self._runs.pop(stale.run_id, None)
             if not stale.html_path:

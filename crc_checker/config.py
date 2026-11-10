@@ -218,7 +218,9 @@ class RunConfig:
         if allow_json and self.dataid_json and self.dataid_xlsx:
             log.info("Generating DataID JSON: %s", self.dataid_json)
             dm = parse_dataid_xlsx_multi(self.dataid_xlsx, sheets, mapping=mapping)
-            if len(dm) > 0:
+            if len(dm) > 0 and not dbc_name:
+                # A per-channel map is sheet-specific — never cache it under
+                # the shared JSON path other channels would then reuse.
                 dm.to_json(
                     self.dataid_json,
                     source=self.dataid_xlsx,
@@ -249,6 +251,12 @@ class RunConfig:
             return parse_dataid_xlsx(
                 self.dataid_xlsx, sheet_name, mapping=mapping,
             )
+
+        # Per-channel request but no xlsx to re-match against — the JSON is
+        # all we have, so use it rather than silently dropping every DataID.
+        if self.dataid_json and Path(self.dataid_json).exists():
+            log.debug("Loading DataID from JSON (no xlsx): %s", self.dataid_json)
+            return DataIDMap.from_json(self.dataid_json)
 
         return None
 
@@ -637,7 +645,16 @@ def load_config(config_path: str) -> RunConfig:
         cfg.dataid_json = did.get("json", "")
         cfg.dataid_position = did.get("position", "prepend")
         cfg.dataid_byte_order = did.get("byte_order", "lo_hi")
-        cfg.dataid_default = did.get("default")
+        # Convert now — a string reaching the verify loop crashes mid-run on
+        # `dataid & 0xFF` instead of failing at load time.
+        raw_default = did.get("default")
+        if isinstance(raw_default, str):
+            cfg.dataid_default = (
+                int(raw_default, 16) if raw_default.lower().startswith("0x")
+                else int(raw_default)
+            )
+        elif raw_default is not None:
+            cfg.dataid_default = raw_default
 
     # Filter
     flt = data.get("filter", {})

@@ -90,11 +90,13 @@ class CRCEngine:
             return result & mask
 
         if self.params.polynomial == 0:
-            # XOR8 simple checksum
-            result = 0
+            # XOR8 simple checksum. Seed with initial_value and apply
+            # final_xor like the xor_seed / sum_xor branches — both default
+            # to 0 in the built-in preset, so its behaviour is unchanged.
+            result = self.params.initial_value & mask
             for byte in data:
                 result ^= byte
-            return result & mask
+            return (result ^ self.params.final_xor) & mask
 
         if self.params.reflect_in:
             crc = self._compute_reflected(data)

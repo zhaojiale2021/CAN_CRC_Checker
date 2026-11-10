@@ -50,6 +50,15 @@ def _parse_crc_range(mode: str, start: int | None, end: int | None) -> CRCRange:
     )
 
 
+def _range_specified(mode: str, start: int | None, end: int | None) -> bool:
+    """True when the user explicitly configured a CRC range.
+
+    ``--range-start``/``--range-end`` default to None; comparing them against
+    0/-1 made the check always true and clobbered every auto-detected range.
+    """
+    return mode != "exclude_crc" or start is not None or end is not None
+
+
 def _expand_trace_paths(trace_files: list[str]) -> list[str]:
     """Expand trace file paths, recursing into directories."""
     result: list[str] = []
@@ -298,8 +307,9 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
 
     if crc_params:
         protection_map.apply_crc_params(crc_params)
-    # Only apply explicit range; if user didn't specify --range, let auto-detect work
-    if range_mode != "exclude_crc" or range_start != 0 or range_end != -1:
+    # Only apply explicit range; if user didn't specify --range, let auto-detect
+    # work (see _range_specified for the always-true condition this replaces).
+    if _range_specified(range_mode, range_start, range_end):
         protection_map.apply_crc_range(crc_range)
 
     # Parse DataID Excel if provided

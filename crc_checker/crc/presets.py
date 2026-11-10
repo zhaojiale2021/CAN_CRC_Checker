@@ -22,6 +22,10 @@ PRESETS: dict[str, CRCParams] = {
         final_xor=0x00, reflect_in=False, reflect_out=False,
         name="CRC8/SAE-J1850-ZERO",
     ),
+    # AUTOSAR Crc-library variant: CRC8H2F_XOR_VALUE = 0xFF (as implemented by
+    # Crc_CalculateCRC8H2F in firmware). Deliberately NOT the catalogue
+    # CRC-8/H2F (xorout 0x00, check("123456789") = 0x12) — the check value here
+    # is 0xDF. Keep 0xFF or per-message CRCs verified against ECU firmware break.
     "CRC8/H2F": CRCParams(
         width=8, polynomial=0x2F, initial_value=0xFF,
         final_xor=0xFF, reflect_in=False, reflect_out=False,
@@ -87,7 +91,11 @@ VALIDATION: dict[str, tuple[str, str]] = {
     "CRC8/AUTOSAR": ("unverified", "no captured trace in this repository"),
     "CRC8/SAE-J1850": ("validated", "captured CAN traces, per-message classification"),
     "CRC8/SAE-J1850-ZERO": ("validated", "captured CAN traces, E2E Profile 1"),
-    "CRC8/H2F": ("unverified", "no captured trace in this repository"),
+    "CRC8/H2F": (
+        "unverified",
+        "AUTOSAR variant (xor 0xFF, check 0xDF), matches firmware "
+        "Crc_CalculateCRC8H2F; no captured trace in this repository",
+    ),
     "CRC16/ARC": ("unverified", "no captured trace in this repository"),
     "CRC16/MODBUS": ("unverified", "no captured trace in this repository"),
     "CRC16/CCITT": ("validated", "captured CAN traces, E2E Profile 5"),

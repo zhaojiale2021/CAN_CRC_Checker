@@ -267,7 +267,9 @@ class DBCProtectionMap:
                     fname = prot.frame_name.lower()
                     for sig, did, prof in rev_index[prot.frame_id]:
                         sig_lower = sig.lower()
-                        if sig_lower in fname or fname in sig_lower:
+                        # An empty frame_name would substring-match ANY signal
+                        # and hand the frame an unrelated DataID.
+                        if fname and (sig_lower in fname or fname in sig_lower):
                             dataid, profile = did, prof
                             matched_name = sig
                             break
@@ -341,8 +343,11 @@ class DBCProtectionMap:
         for prot_list in self.messages.values():
             for prot in prot_list:
                 if prot.crc_profile and "profile 1" in prot.crc_profile.lower():
-                    # Profile 1 → CRC8/SAE-J1850-ZERO
-                    prot.crc_params = profile_overrides["profile 1"]
+                    # Profile 1 → CRC8/SAE-J1850-ZERO. A custom override dict
+                    # may only define some keys — fall back to the default
+                    # instead of raising KeyError mid-map-build.
+                    prot.crc_params = (
+                        profile_overrides.get("profile 1") or default_params)
                 else:
                     # Default → Profile 5 (CRC8/SAE-J1850)
                     prot.crc_params = default_params
