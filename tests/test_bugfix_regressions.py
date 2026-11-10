@@ -812,3 +812,28 @@ def test_raw_xlsx_resolves_sheet_relationships(tmp_path):
         (0x100, "Sig_A_CRC"): 0xAA}
     assert _parse_xlsx_raw(str(path), "B", mapping)._map == {
         (0x200, "Sig_B_CRC"): 0xBB}
+
+
+def test_comment_dataid_fills_only_missing():
+    """The DataID workbook is applied first; the comment must not overwrite it."""
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.crc.classify import build_crc_params_from_comment
+    from crc_checker.crc.presets import PRESETS
+
+    protection_map = DBCProtectionMap()
+    filled = MessageProtection(
+        frame_id=0x100, frame_name="M_A", dlc=8, pair_suffix="A",
+        checksum_signal=SignalInfo(name="Checksum_A", start_bit=0, length=8),
+        checksum_comment="Profile 1A, DataID:0x00EB",
+        dataid=0x1234)  # already loaded from the workbook
+    gapped = MessageProtection(
+        frame_id=0x200, frame_name="M_B", dlc=8, pair_suffix="B",
+        checksum_signal=SignalInfo(name="Checksum_B", start_bit=0, length=8),
+        checksum_comment="Profile 1A, DataID:0x00EB")  # workbook had no entry
+    protection_map.messages[0x100] = [filled]
+    protection_map.messages[0x200] = [gapped]
+
+    protection_map.apply_comment_classification(
+        build_crc_params_from_comment("", PRESETS["CRC8/SAE-J1850"]))
+    assert filled.dataid == 0x1234          # workbook value survives
+    assert gapped.dataid == 0x00EB          # comment fills the gap
