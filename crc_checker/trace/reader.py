@@ -79,7 +79,11 @@ class _CanoeAscReader(can.ASCReader):  # pylint: disable=too-few-public-methods
         if not parts[idx].isdigit():
             idx += 1  # data-frame marker 'd' (FD has no remote frames in practice)
         dlc_str, data_length_str = parts[idx], parts[idx + 1]
-        data = parts[idx + 2] if idx + 2 < len(parts) else ""
+        # Everything after the length token is the payload (space-separated
+        # bytes). With the ``d`` marker maxsplit leaves it in one token; without
+        # it, parts[idx + 2] holds only the FIRST byte and the final token holds
+        # the rest — join them or the frame data is silently truncated.
+        data = " ".join(parts[idx + 2:]) if idx + 2 < len(parts) else ""
         msg_kwargs["bitrate_switch"] = brs == "1"
         msg_kwargs["error_state_indicator"] = esi == "1"
         data_length = int(data_length_str)

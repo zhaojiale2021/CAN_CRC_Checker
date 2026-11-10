@@ -78,6 +78,22 @@ class TestCanoe7Asc(unittest.TestCase):
         self.assertEqual(classic[0].channel, 1)  # channel 2 → 0-based
         self.assertEqual(classic[0].data.hex(), "be3848bfa00a0355")
 
+    def test_fd_line_without_d_marker(self):
+        """FD line without the 'd' marker keeps the FULL payload.
+
+        CANoe 7.x sometimes omits 'd'; the maxsplit then puts only the first
+        data byte in its own token and the rest in a final one — both must
+        end up in the frame data.
+        """
+        content = CANOE7_ASC.format(data32=FD_DATA_32).replace(
+            "CANFD 1 1d3 Rx 1 0 d 8 8",
+            "CANFD 1 1d3 Rx 1 0 8 8",
+        )
+        frames = self._read(content)
+        fd = [f for f in frames if f.is_fd and f.arbitration_id == 0x1D3]
+        self.assertEqual(len(fd), 1)
+        self.assertEqual(fd[0].data.hex(), "7888000000000ce6")
+
 
 if __name__ == "__main__":
     unittest.main()

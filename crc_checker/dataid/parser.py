@@ -519,6 +519,11 @@ def _add_dataid_row(row: list, mapping: ColumnMapping, dataid_map: DataIDMap) ->
         True when the row produced a DataID entry.
     """
     # pylint: disable=too-many-return-statements,too-many-locals
+    # A negative column index means "header name not found" (use_header_names
+    # layouts) — reading row[-1] would silently take the last cell and produce
+    # a wrong mapping, so give up on the row instead.
+    if mapping.col_signal_name < 0 or mapping.col_dataid_hi < 0:
+        return False
     max_col_needed = max(
         mapping.col_signal_name,
         mapping.col_message_id,

@@ -108,9 +108,16 @@ class CRCVerifier(ProtectionAlgorithm):
         )
 
         # Apply byte-swap for comparison if configured (Profile 5: CRC computed LE,
-        # but DBC defines signal as BE; OEM byte-swaps before transmission)
+        # but DBC defines signal as BE; OEM byte-swaps before transmission).
+        # Reverse ALL bytes of the parameter width — a hardcoded 16-bit swap
+        # corrupts CRC32 values and pointlessly moves an 8-bit CRC to the high
+        # byte while the actual value sits in the low byte.
         if crc_range.crc_byte_swap and cs_signal.length > 8:
-            expected_value = ((expected_value & 0xFF) << 8) | ((expected_value >> 8) & 0xFF)
+            width_bytes = max(1, (params.width + 7) // 8)
+            expected_value = int.from_bytes(
+                (expected_value & ((1 << params.width) - 1)).to_bytes(
+                    width_bytes, "little"),
+                "big")
 
         is_pass = expected_value == actual_value
         detail = ""

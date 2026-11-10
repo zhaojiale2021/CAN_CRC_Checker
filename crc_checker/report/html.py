@@ -294,7 +294,8 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
                         )
                 tooltip = " | ".join(parts)
 
-            tooltip_html = f'<span class="tooltip">{tooltip}</span>' if tooltip else ""
+            tooltip_html = (f'<span class="tooltip">{escape(tooltip)}</span>'
+                            if tooltip else "")
             bytes_html += f'<span class="hex-byte {css_class}">{b:02X}{tooltip_html}</span>'
 
         offset = f"0x{seg_start:04X}"

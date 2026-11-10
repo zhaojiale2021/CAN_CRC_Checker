@@ -89,7 +89,17 @@ class RollingCounterVerifier(ProtectionAlgorithm):
         key = (frame.arbitration_id, frame.channel, rc_signal.name)
         bit_max = (1 << rc_signal.length) - 1
         # rc_max_valid: max value before wrapping (e.g., 14 means valid range 0-14, 15=invalid)
+        # A global rc.max_valid (e.g. 14 for 4-bit counters) applied to a wider
+        # counter must not widen its wrap limit — 255→0 would read as RESET.
         max_valid = protection.rc_max_valid if protection.rc_max_valid is not None else bit_max
+        max_valid = min(max_valid, bit_max)
+
+        # Trend-chart metadata must be (re)written on every verify: each report
+        # run calls reset_series(), which clears _series_meta while continuity
+        # state (_first_seen) survives — so the first-seen branch below runs
+        # only once per process and would leave later runs without metadata.
+        if key not in self._series_meta:
+            self._series_meta[key] = {"length": rc_signal.length, "max_valid": max_valid}
 
         # First time seeing this signal — no baseline to compare, but an
         # out-of-range value is invalid on its own (e.g. a 4-bit counter
@@ -109,7 +119,6 @@ class RollingCounterVerifier(ProtectionAlgorithm):
                 category = "INVALID"
             self._series.setdefault(key, []).append(
                 (frame.timestamp, actual_value, is_pass, category))
-            self._series_meta[key] = {"length": rc_signal.length, "max_valid": max_valid}
             return VerifyVerdict(
                 frame_id=frame.arbitration_id,
                 timestamp=frame.timestamp,

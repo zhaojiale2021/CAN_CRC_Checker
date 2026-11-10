@@ -837,3 +837,125 @@ def test_comment_dataid_fills_only_missing():
         build_crc_params_from_comment("", PRESETS["CRC8/SAE-J1850"]))
     assert filled.dataid == 0x1234          # workbook value survives
     assert gapped.dataid == 0x00EB          # comment fills the gap
+
+
+# ---------------------------------------------------------------------------
+# rolling counter: series meta survives reset_series (multi-trace runs)
+# ---------------------------------------------------------------------------
+
+def test_series_meta_restored_after_reset_series():
+    """Each report run clears _series_meta; the next run must repopulate it."""
+    from crc_checker.protect.rolling_counter import RollingCounterVerifier
+
+    verifier = RollingCounterVerifier()
+    prot = MessageProtection(
+        frame_id=0x123, frame_name="M", dlc=8, pair_suffix="M",
+        rolling_counter_signal=SignalInfo(name="M_RC", start_bit=0, length=8),
+    )
+    for value in (1, 2):
+        verifier.verify(
+            CanFrame(arbitration_id=0x123, timestamp=0.1, dlc=8,
+                     data=bytes([value])), prot)
+    key = (0x123, 0, "M_RC")
+    assert verifier.get_series_meta()[key] == {"length": 8, "max_valid": 255}
+
+    verifier.reset_series()
+    # Second trace: continuity state survives, meta must come back (2 -> 3).
+    verifier.verify(
+        CanFrame(arbitration_id=0x123, timestamp=5.0, dlc=8, data=bytes([3])),
+        prot)
+    assert verifier.get_series_meta()[key] == {"length": 8, "max_valid": 255}
+
+
+def test_rc_max_valid_clamped_to_bit_width():
+    """A global max_valid above the counter width must not widen the wrap."""
+    from crc_checker.protect.rolling_counter import RollingCounterVerifier
+
+    prot = MessageProtection(
+        frame_id=0x101, frame_name="W", dlc=8, pair_suffix="W",
+        rolling_counter_signal=SignalInfo(name="W_RC", start_bit=0, length=4),
+        rc_max_valid=255,
+    )
+    verifier = RollingCounterVerifier()
+    verifier.verify(
+        CanFrame(arbitration_id=0x101, timestamp=0.0, dlc=8, data=b"\x0f"), prot)
+    # 15 -> 0 is a normal wrap for a 4-bit counter; an unclamped max_valid=255
+    # turned it into a spurious RESET.
+    verdict = verifier.verify(
+        CanFrame(arbitration_id=0x101, timestamp=0.1, dlc=8, data=b"\x00"), prot)
+    assert verdict.is_pass
+
+
+# ---------------------------------------------------------------------------
+# byte swap: reverse every byte of the parameter width
+# ---------------------------------------------------------------------------
+
+def test_byte_swap_reverses_full_param_width():
+    """CRC32 + byte_swap must reverse all 4 bytes, not just the low 16 bits."""
+    params = get_preset("CRC32/ETHERNET")
+    verifier = CRCVerifier(params)
+    prot = MessageProtection(
+        frame_id=0x100, frame_name="F", dlc=16, pair_suffix="F",
+        checksum_signal=SignalInfo(name="F_CRC", start_bit=0, length=32),
+        crc_params=params,
+        crc_range=CRCRange(mode="exclude_crc", crc_byte_swap=True),
+    )
+    frame = CanFrame(arbitration_id=0x100, timestamp=0.0, dlc=16, data=bytes(16))
+    verdict = verifier.verify(frame, prot)
+    # exclude_crc removes the 32-bit CRC field itself (bytes 0..3) from the input.
+    raw = verifier.engine.compute(bytes(12))
+    expected = int.from_bytes(raw.to_bytes(4, "little"), "big")
+    assert verdict.expected_value == expected
+    legacy = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
+    assert verdict.expected_value != legacy
+
+
+# ---------------------------------------------------------------------------
+# dataid: unresolved header columns must not read row[-1]
+# ---------------------------------------------------------------------------
+
+def test_add_dataid_row_negative_column_is_rejected():
+    """A missing header (-1) drops the row instead of reading the last cell."""
+    from crc_checker.dataid.parser import DataIDMap, _add_dataid_row
+
+    mapping = ColumnMapping(
+        col_signal_name=-1, col_message_id=1, col_dataid_hi=2,
+        col_dataid_lo=-1, dataid_format="single_8bit",
+        data_row_start=2, message_id_base=16,
+    )
+    dm = DataIDMap()
+    assert not _add_dataid_row(["SIG", "0100", 0x42], mapping, dm)
+    assert len(dm) == 0
+
+
+# ---------------------------------------------------------------------------
+# HTML: byte-tooltip signal names are escaped
+# ---------------------------------------------------------------------------
+
+def test_frame_html_escapes_tooltip_signal_name():
+    """A hostile signal name must not inject HTML through the byte tooltip."""
+    verdicts = [VerifyVerdict(
+        frame_id=0x135, timestamp=0.0, algorithm="crc",
+        signal_name="<b>x</b>", expected_value=1, actual_value=2,
+        is_pass=False, detail="mismatch",
+        start_bit=0, length=8, byte_order="big_endian",
+    )]
+    html = _build_frame_html(
+        verdicts, bytes(8), frame_name="F", dbc_source="x.dbc",
+    )
+    assert "<b>x</b>" not in html
+    assert "&lt;b&gt;x&lt;/b&gt;" in html
+
+
+# ---------------------------------------------------------------------------
+# CLI: --range defaults must not clobber auto-detect
+# ---------------------------------------------------------------------------
+
+def test_range_specified_defaults_are_auto_detect():
+    """Unspecified --range options leave auto-detection in place."""
+    from cli.main import _range_specified
+
+    assert not _range_specified("exclude_crc", None, None)
+    assert _range_specified("exclude_crc", 0, None)      # explicit start 0
+    assert _range_specified("custom_range", None, None)  # explicit mode
+    assert _range_specified("exclude_crc", None, 15)     # explicit end
