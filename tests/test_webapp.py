@@ -106,17 +106,22 @@ class TestVersion:
         assert revision["branch"]
         assert isinstance(revision["dirty"], bool)
 
-    def test_read_revision_survives_non_ascii_subject(self, tmp_path):
+    def test_read_revision_survives_non_ascii_subject(self, tmp_path, monkeypatch):
         """A Chinese commit subject must not break decoding (locale is GBK here)."""
         if not shutil.which("git"):
             pytest.skip("git not available")
+        # Under the pre-push hook GIT_DIR / GIT_WORK_TREE are inherited and
+        # would redirect both the subprocesses and read_revision() at the
+        # outer repository instead of the temporary one.
+        for key in [k for k in os.environ if k.startswith("GIT_")]:
+            monkeypatch.delenv(key)
         env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
-        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, env={**os.environ, **env})
+        subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, env=env)
         (tmp_path / "a.txt").write_text("x", encoding="utf-8")
-        subprocess.run(["git", "add", "a.txt"], cwd=tmp_path, check=True, env={**os.environ, **env})
+        subprocess.run(["git", "add", "a.txt"], cwd=tmp_path, check=True, env=env)
         subprocess.run(["git", "commit", "-q", "-m", "修复:CRC 校验中文标题"],
-                       cwd=tmp_path, check=True, env={**os.environ, **env})
+                       cwd=tmp_path, check=True, env=env)
         revision = read_revision(tmp_path)
         assert revision["commit"] and len(revision["commit"]) == 40
         assert "修复" in revision["subject"]

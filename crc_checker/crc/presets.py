@@ -1,5 +1,9 @@
 """Built-in CRC algorithm presets for automotive use."""
 
+from __future__ import annotations
+
+import re
+
 from crc_checker.crc.models import CRCParams
 
 PRESETS: dict[str, CRCParams] = {
@@ -114,9 +118,11 @@ def get_validation(name: str) -> tuple[str, str]:
 
 def get_preset(name: str) -> CRCParams:
     """Get a preset by name (case-insensitive, hyphens/underscores interchangeable)."""
-    normalized = name.upper().replace("-", "/").replace("_", "/")
+    # "CRC-8/AUTOSAR" (canonical CRC catalogue spelling) maps to "CRC8/AUTOSAR":
+    # hyphens/underscores count as separators, "CRC-8" == "CRC8", "XOR-FF" == "XOR_FF".
+    normalized = re.sub(r'[^A-Z0-9]', '', name.upper())
     for key, params in PRESETS.items():
-        if key.upper().replace("-", "/").replace("_", "/") == normalized:
+        if re.sub(r'[^A-Z0-9]', '', key.upper()) == normalized:
             return params
     available = ", ".join(PRESETS.keys())
     raise KeyError(f"Unknown CRC preset '{name}'. Available: {available}")

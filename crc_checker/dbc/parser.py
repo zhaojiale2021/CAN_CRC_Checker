@@ -98,8 +98,12 @@ class DBCParser:
                     "byte_order": "little_endian" if sig.is_little_endian else "big_endian",
                     "comment": getattr(sig, "comment", "") or "",
                 })
+            # ``to_compound_integer()`` sets bit 31 for extended (29-bit) frames
+            # to flag the length; the trace side uses raw ``arbitration_id``
+            # (29-bit, no flag), so mask it off or every extended frame fails
+            # to match its protection group.
             frames.append({
-                "frame_id": frame.arbitration_id.to_compound_integer(),
+                "frame_id": frame.arbitration_id.to_compound_integer() & 0x1FFFFFFF,
                 "frame_name": frame.name,
                 "dlc": frame.size,
                 "signals": signals,

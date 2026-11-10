@@ -27,6 +27,8 @@ _LITERAL_HEX = re.compile(r'0[xX][0-9A-Fa-f]+')
 _DATAID_RE = re.compile(r'DataID\s*[：:=]?\s*0[xX]([0-9A-Fa-f]+)', re.IGNORECASE)
 # Sum-checksum byte list: "byte1+byte2+…+byte 7" / "Byte0+Byte1+...+Byte6"
 _BYTE_INDEX_RE = re.compile(r'BYTE\s*(\d+)', re.IGNORECASE)
+# Compact range "byte1..7" (end index has no leading "byte").
+_BYTE_RANGE_RE = re.compile(r'BYTE\s*(\d+)\s*\.\.\s*(\d+)', re.IGNORECASE)
 
 
 def classify_crc_algo(comment: str) -> str:  # pylint: disable=too-many-return-statements
@@ -43,8 +45,11 @@ def classify_crc_algo(comment: str) -> str:  # pylint: disable=too-many-return-s
     if '另附' in desc or 'NIBBLE' in desc_u:
         return 'skip'
 
-    # E2E Profile 1A: description mentions Profile 1A + DataID
-    if 'PROFILE' in desc_u and '1A' in desc_u:
+    # E2E Profile 1A: description mentions Profile 1A + DataID. Match the
+    # profile *number* ("Profile 1" / "1A"), not the bare substring "1A" —
+    # "Profile 5 ... DataID:0x01A5" contains "1A" inside the DataID literal
+    # and was wrongly classified as Profile 1A.
+    if 'PROFILE' in desc_u and re.search(r'PROFILE[^0-9]{0,12}1[AB]?', desc_u):
         return 'p01'
 
     # AUTOSAR E2E Profile 5 ("E2E Profile 5 CRC"): the description names a
@@ -96,6 +101,11 @@ def parse_sum_byte_range(comment: str) -> tuple[int, int] | None:
     Returns:
         Inclusive (start_byte, end_byte), or None when the comment lists no bytes.
     """
+    # Compact "byte1..7" range form first (the upper bound has no "byte" stem,
+    # so the plain index regex would miss it and read "1" alone).
+    range_hit = _BYTE_RANGE_RE.search(comment or '')
+    if range_hit:
+        return (int(range_hit.group(1)), int(range_hit.group(2)))
     indices = [int(n) for n in _BYTE_INDEX_RE.findall(comment or '')]
     return (min(indices), max(indices)) if indices else None
 
