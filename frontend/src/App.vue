@@ -52,6 +52,12 @@
             />
           </el-option-group>
         </el-select>
+        <div v-if="!projects.length && !loadError" class="empty-projects">
+          <span class="muted">服务端没有扫描到项目。可以直接上传 DBC 和 trace 手动校验。</span>
+          <el-button size="small" type="primary" plain @click="mode = 'manual'">
+            切到手动上传
+          </el-button>
+        </div>
 
         <div v-if="project" class="project-detail">
           <div class="detail-row">
@@ -63,8 +69,20 @@
           <div class="detail-row muted">
             DBC：{{ project.dbc_files.join('、') || '无' }}
           </div>
-          <div v-if="project.sample_traces.length" class="detail-row muted">
-            仓库内示例 trace：{{ project.sample_traces.join('、') }}（请下载后用下方上传）
+          <div v-if="project.sample_traces.length" class="detail-row">
+            <span class="muted">仓库内示例 trace：</span>
+            <el-button
+              v-for="traceName in project.sample_traces"
+              :key="traceName"
+              size="small"
+              link
+              type="primary"
+              :disabled="running"
+              @click="runSample(traceName)"
+            >
+              {{ traceName }}
+            </el-button>
+            <span class="muted">点击直接校验，无需上传</span>
           </div>
         </div>
       </el-card>
@@ -111,6 +129,7 @@
         <el-upload
           drag
           action="#"
+          accept=".blf,.asc,.mf4,.trc,.csv,.log,.txt"
           :auto-upload="false"
           :limit="1"
           :on-change="onFileChange"
@@ -309,7 +328,7 @@
         @close="runError = ''"
       />
 
-      <el-card v-if="result" class="block" shadow="never">
+      <el-card v-if="result" id="result-panel" class="block" shadow="never">
         <template #header>
           <div class="card-head">
             <span class="step">4</span>
@@ -326,11 +345,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import VersionPanel from './components/VersionPanel.vue'
 import ResultPanel from './components/ResultPanel.vue'
-import { fetchPresets, fetchProjects, verifyManual, verifyTrace } from './api.js'
+import { fetchPresets, fetchProjects, verifyManual, verifySample, verifyTrace } from './api.js'
 import {
   canRun,
   findProject,
@@ -344,6 +363,7 @@ import {
 } from './manualConfig.js'
 
 const UPLOAD_LIMIT_MB = 200
+const UPLOAD_LIMIT_BYTES = UPLOAD_LIMIT_MB * 1024 * 1024
 
 const mode = ref('project')
 
@@ -426,6 +446,12 @@ function projectLabel(item) {
 }
 
 function onFileChange(uploadFile) {
+  if (uploadFile.raw && uploadFile.raw.size > UPLOAD_LIMIT_BYTES) {
+    ElMessage.error(`trace 文件超过 ${UPLOAD_LIMIT_MB}MB 上限，请截取日志后重试。`)
+    selectedFile.value = null
+    fileList.value = []
+    return
+  }
   selectedFile.value = uploadFile.raw || null
   fileList.value = uploadFile.raw ? [uploadFile] : []
 }
@@ -497,11 +523,24 @@ function manualConfigPayload() {
 
 function reportMessage(payload) {
   const report = payload.reports?.[0]
-  if (report && report.fail_count === 0) {
-    ElMessage.success(`全部通过：${report.total_verdicts} 项校验`)
-  } else if (report) {
-    ElMessage.warning(`发现 ${report.fail_count} 项失败`)
+  if (!report) return
+  if (report.check_total === 0) {
+    ElMessage.warning('没有执行任何校验：DBC 里没有匹配到保护信号，或没有配置 CRC 算法。')
+  } else if (report.check_fail === 0) {
+    ElMessage.success(`全部通过：${report.check_total} 项校验`)
+  } else {
+    ElMessage.warning(`发现 ${report.check_fail} 项失败（按逐帧采样计数）`)
   }
+}
+
+async function showResult(payload) {
+  result.value = payload
+  reportMessage(payload)
+  await nextTick()
+  document.getElementById('result-panel')?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
 }
 
 async function run() {
@@ -509,23 +548,40 @@ async function run() {
   runError.value = ''
   try {
     if (mode.value === 'manual') {
-      result.value = await verifyManual({
+      await showResult(await verifyManual({
         dbcs: dbcFiles.value,
         trace: selectedFile.value,
         dataid: dataidFile.value,
         config: manualConfigPayload(),
         maxFrames: maxFramesPayload(),
         onlyFailures: onlyFailures.value,
-      })
+      }))
     } else {
-      result.value = await verifyTrace({
+      await showResult(await verifyTrace({
         projectId: projectId.value,
         file: selectedFile.value,
         maxFrames: maxFramesPayload(),
         onlyFailures: onlyFailures.value,
-      })
+      }))
     }
-    reportMessage(result.value)
+  } catch (err) {
+    runError.value = err.message
+    result.value = null
+  } finally {
+    running.value = false
+  }
+}
+
+async function runSample(traceName) {
+  running.value = true
+  runError.value = ''
+  try {
+    await showResult(await verifySample({
+      projectId: projectId.value,
+      traceName,
+      maxFrames: maxFramesPayload(),
+      onlyFailures: onlyFailures.value,
+    }))
   } catch (err) {
     runError.value = err.message
     result.value = null
@@ -538,6 +594,11 @@ async function loadProjects() {
   try {
     const data = await fetchProjects()
     projects.value = data.projects || []
+    // A single project is the common local case; preselect it so the page is
+    // one upload away from a result instead of asking for a pointless choice.
+    if (projects.value.length === 1) {
+      projectId.value = projects.value[0].id
+    }
     loadError.value = ''
   } catch (err) {
     loadError.value = err.message
@@ -577,6 +638,7 @@ onMounted(() => {
         background: var(--el-color-primary); color: #fff; }
 .mode-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .project-select { width: 420px; max-width: 100%; margin-top: 8px; }
+.empty-projects { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .project-detail { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .detail-row { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12px;
               align-items: baseline; }
@@ -595,5 +657,7 @@ onMounted(() => {
 .opt-tag { float: right; margin-left: 10px; }
 .advanced { margin-top: 2px; }
 .dataid-upload { margin-top: 14px; }
-.run-bar { display: flex; align-items: center; gap: 14px; margin-top: 20px; }
+.run-bar { display: flex; align-items: center; gap: 14px; margin-top: 20px;
+           position: sticky; bottom: 0; z-index: 5; padding: 12px 0;
+           background: var(--el-bg-color); border-top: 1px solid var(--el-border-color-lighter); }
 </style>

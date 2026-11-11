@@ -36,7 +36,7 @@ try:
 except ImportError:  # canmatrix <= 1.2 re-exports both classes directly
     from canmatrix import ArbitrationId, Frame
 
-from cli.main import _print_table, _range_specified, _report_output_path
+from cli.main import _print_table, _report_output_path
 from crc_checker.config import RunConfig, apply_crc_config
 from crc_checker.crc.classify import (
     classify_crc_algo, parse_sum_byte_range,
@@ -794,7 +794,7 @@ def test_cli_verify_accepts_trace_directory(tmp_path):
 
     result = CliRunner().invoke(
         cli, ["verify", "--dbc", str(dbc_dir), "--trace", str(trace_dir),
-              "--max-frames", "50"])
+              "--max-frames", "50", "-v"])
     assert result.exit_code == 0, result.output
 
 
@@ -950,12 +950,26 @@ def test_frame_html_escapes_tooltip_signal_name():
 
 
 # ---------------------------------------------------------------------------
-# CLI: --range defaults must not clobber auto-detect
+# CLI: verify shares the runner pipeline
 # ---------------------------------------------------------------------------
 
-def test_range_specified_defaults_are_auto_detect():
-    """Unspecified --range options leave auto-detection in place."""
-    assert not _range_specified("exclude_crc", None, None)
-    assert _range_specified("exclude_crc", 0, None)      # explicit start 0
-    assert _range_specified("custom_range", None, None)  # explicit mode
-    assert _range_specified("exclude_crc", None, 15)     # explicit end
+def test_cli_verify_uses_the_shared_runner(tmp_path):
+    """``verify`` must not maintain a second DBC/DataID pipeline.
+
+    The old command selected one global DBC and applied CRC itself; now it
+    builds a RunConfig and goes through ``run_config`` like ``run``/the web.
+    """
+    import shutil  # pylint: disable=import-outside-toplevel
+    from click.testing import CliRunner  # pylint: disable=import-outside-toplevel
+    from cli.main import cli  # pylint: disable=import-outside-toplevel
+
+    example = Path(__file__).resolve().parent.parent / "examples" / "example"
+    trace = tmp_path / "example.blf"
+    shutil.copy(example / "trace" / "example.blf", trace)
+
+    result = CliRunner().invoke(
+        cli, ["verify", "--dbc", str(example / "dbc"),
+              "--trace", str(trace), "--algo", "CRC8/SAE-J1850",
+              "--range", "exclude_crc", "--max-frames", "50"])
+    assert result.exit_code == 0, result.output
+    assert "SUMMARY:" in result.output

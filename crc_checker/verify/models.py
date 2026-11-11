@@ -44,6 +44,8 @@ class VerifyReport:  # pylint: disable=too-many-instance-attributes
     total_frames: int = 0
     total_verdicts: int = 0
     dlc_mismatch_skipped: int = 0                   # frames skipped by the DLC gate
+    frames_truncated: bool = False                  # stopped at the frame cap
+    frame_limit: int | None = None                  # the cap that was hit
     _frame_data: dict = field(default_factory=dict)  # (channel, timestamp, frame_id) -> bytes
     _frame_names: dict = field(default_factory=dict)  # frame_id -> frame_name
     _frame_channels: dict = field(default_factory=dict)  # (channel, timestamp, frame_id) -> channel
@@ -139,5 +141,7 @@ class VerifyReport:  # pylint: disable=too-many-instance-attributes
             "pass_count": self.pass_count,
             "fail_count": self.fail_count,
             "pass_rate": f"{self.pass_rate:.2%}",
+            "frames_truncated": self.frames_truncated,
+            "frame_limit": self.frame_limit,
             "frame_stats": frame_stats,
         }

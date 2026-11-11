@@ -134,8 +134,14 @@ def count_rc_episodes(points: list) -> int:
 
 
 def format_rate(passed: int, total: int) -> str:
-    """通过率文案:有失败项时绝不四舍五入成 100%(卡片绿 100% 却又列着失败)。"""
-    if total <= 0 or passed >= total:
+    """通过率文案:有失败项时绝不四舍五入成 100%(卡片绿 100% 却又列着失败)。
+
+    ``0/0`` 表示没有执行任何校验,返回 ``-`` 而不是 100% —— 否则 RC-only
+    或未识别到保护信号的运行会显示一个假的满分。
+    """
+    if total <= 0:
+        return "-"
+    if passed >= total:
         return "100.0%"
     rate = passed / total * 100
     for digits in (1, 2, 3, 4, 5):
@@ -304,7 +310,9 @@ def _build_rc_charts(report: VerifyReport) -> str:
             collapsed = "" if errors else " collapsed"
             cards.append(f"""
     <div class="rc-chart-card{collapsed}">
-      <div class="rc-chart-header" onclick="this.parentElement.classList.toggle('collapsed')">
+      <div class="rc-chart-header" role="button" tabindex="0"
+           aria-expanded="{'false' if collapsed else 'true'}"
+           onclick="toggleFrame(this)" onkeydown="activateOnKey(event)">
         <span class="arrow">&#9660;</span>
         <span class="id">0x{fid:03X}</span>
         <span class="name">{escape(sig)}</span>

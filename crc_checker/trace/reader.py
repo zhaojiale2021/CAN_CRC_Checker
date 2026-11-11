@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from pathlib import Path
 
 import can
 from can.util import dlc2len
@@ -134,10 +135,19 @@ def open_log_reader(file_path: str):
 
     Use this for any direct trace-file access that needs one python-can
     reader instance (sampling helpers, ...) — never ``can.LogReader`` directly.
+    Optional-dependency gaps (MF4 needs asammdf) become actionable errors.
     """
     if str(file_path).lower().endswith(".asc"):
         return _CanoeAscReader(file_path)
-    return can.LogReader(file_path)
+    try:
+        return can.LogReader(file_path)
+    except (ImportError, NotImplementedError) as exc:
+        if Path(file_path).suffix.lower() in (".mf4", ".mdf"):
+            raise ValueError(
+                "MF4 support needs the optional asammdf dependency; install it "
+                "with: pip install \"python-can[mf4]\""
+            ) from exc
+        raise ValueError(f"Cannot open trace {file_path}: {exc}") from exc
 
 
 class TraceReader:

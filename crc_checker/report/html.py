@@ -35,6 +35,17 @@ CSS = """
   .card .value { font-size: 26px; font-weight: bold; margin-top: 2px; }
   .card.fail .value { color: #e74c3c; }
   .card.pass .value { color: #2ecc71; }
+  .verdict-banner { display: flex; align-items: baseline; gap: 14px;
+                    padding: 10px 16px; border-radius: 8px; margin-bottom: 16px;
+                    font-weight: bold; letter-spacing: .04em; }
+  .verdict-banner.pass { background: rgba(46,204,113,0.14); color: #2ecc71;
+                         border-left: 4px solid #2ecc71; }
+  .verdict-banner.fail { background: rgba(231,76,60,0.16); color: #e74c3c;
+                         border-left: 4px solid #e74c3c; }
+  .verdict-banner.empty { background: rgba(250,178,25,0.16); color: #fab219;
+                          border-left: 4px solid #fab219; }
+  .verdict-banner .detail { font-weight: normal; letter-spacing: 0;
+                            color: #b8c4d0; font-size: 13px; }
 
   .frame-section { background: #16213e; border-radius: 8px; margin-bottom: 12px;
                    overflow: hidden; }
@@ -90,6 +101,9 @@ CSS = """
                        color: #fff; font-size: 11px; padding: 3px 8px;
                        border-radius: 4px; white-space: nowrap; z-index: 10; }
   .hex-byte:hover .tooltip { visibility: visible; }
+  .hex-legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+                margin: 6px 0 14px; color: #8899aa; font-size: 11px; }
+  .hex-legend .hex-byte { width: auto; padding: 0 5px; }
 
   .segment-label { color: #556677; font-size: 10px; min-width: 85px;
                    text-align: right; margin-right: 4px; }
@@ -366,7 +380,8 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
 
     return f"""
     <div class="frame-section{collapsed}" data-channel="{channel}">
-      <div class="frame-header" onclick="this.parentElement.classList.toggle('collapsed')">
+      <div class="frame-header" role="button" tabindex="0" aria-expanded="true"
+           onclick="toggleFrame(this)" onkeydown="activateOnKey(event)">
         <span class="arrow">&#9660;</span>
         {ch_tag}
         <span class="id">0x{frame_id:03X}</span>
@@ -415,9 +430,9 @@ def _split_nav(page_no: int, total: int, file_path: str) -> str:
 
     links = [f"第 {page_no}/{total} 页"]
     if page_no > 1:
-        links.append(f'<a class="page-link" href="{part_name(page_no - 1)}">上一页</a>')
+        links.append(f'<a class="page-link" href="{escape(part_name(page_no - 1))}">上一页</a>')
     if page_no < total:
-        links.append(f'<a class="page-link" href="{part_name(page_no + 1)}">下一页</a>')
+        links.append(f'<a class="page-link" href="{escape(part_name(page_no + 1))}">下一页</a>')
     notice = ('<span class="split-notice">报告帧数超过单文件上限,'
               '已按帧段拆分 — 使用顶部链接在分页间跳转</span>'
               if page_no == 1 else "")
@@ -430,8 +445,16 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
                ch_buttons: str, nav: str, note: str = "") -> str:
     """One report page: shared chrome (summary/filter/JS) + its slice of frames."""
     note_html = (f'<div class="report-note">{escape(note)}</div>' if note else "")
+    if stats['check_fail']:
+        banner_class, banner_label = "fail", "FAILURES DETECTED"
+    elif stats['check_total'] == 0:
+        banner_class, banner_label = "empty", "NO CHECKS EXECUTED"
+    else:
+        banner_class, banner_label = "pass", "ALL CHECKS PASSED"
+    banner_detail = (f"{stats['check_pass']}/{stats['check_total']} checks "
+                     f"· {stats['check_rate']}")
     html = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -450,18 +473,24 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
   Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}{stats['dlc_note_html']}
 </div>
 {note_html}
+<div class="verdict-banner {banner_class}">
+  {banner_label}
+  <span class="detail">{banner_detail}</span>
+</div>
 <div class="summary-cards">
   <div class="card"><div class="label">Frames</div>
     <div class="value">{report.total_frames}</div></div>
-  <div class="card"><div class="label">Total Verdicts</div>
-    <div class="value">{report.total_verdicts}</div></div>
-  <div class="card{'' if stats['crc_fail'] else ' pass'}"><div class="label">CRC Pass</div>
+  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">Checks</div>
+    <div class="value">{stats['check_pass']}/{stats['check_total']}</div></div>
+  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">Pass Rate</div>
+    <div class="value">{stats['check_rate']}</div></div>
+  <div class="card{' fail' if stats['crc_fail'] else ' pass'}"><div class="label">CRC Pass</div>
     <div class="value">{stats['crc_pass']}/{stats['crc_total']}</div></div>
-  <div class="card"><div class="label">CRC Rate</div>
+  <div class="card{' fail' if stats['crc_fail'] else ' pass'}"><div class="label">CRC Rate</div>
     <div class="value">{stats['crc_rate']}</div></div>
-  <div class="card{'' if stats['rc_fail'] else ' pass'}"><div class="label">RC Pass</div>
+  <div class="card{' fail' if stats['rc_fail'] else ' pass'}"><div class="label">RC Pass</div>
     <div class="value">{stats['rc_pass']}/{stats['rc_total']}</div></div>
-  <div class="card"><div class="label">RC Rate</div>
+  <div class="card{' fail' if stats['rc_fail'] else ' pass'}"><div class="label">RC Rate</div>
     <div class="value">{stats['rc_rate']}</div></div>
 </div>
 
@@ -469,8 +498,8 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
 {nav}
 
 <div class="filter-bar">
-  <button class="active" onclick="showAll()">All frames</button>
-  <button onclick="showErrors()">Errors only</button>
+  <button class="active" data-filter="all" onclick="showAll()">All frames</button>
+  <button data-filter="errors" onclick="showErrors()">Errors only</button>
   {ch_buttons}
   <span class="sep">|</span>
   <input id="searchInput" type="text" placeholder="Search ID / signal / frame name"
@@ -478,6 +507,13 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
   <span class="sep">|</span>
   <button onclick="expandAll()">Expand all</button>
   <button onclick="collapseAll()">Collapse all</button>
+</div>
+
+<div class="hex-legend">
+  <span class="hex-byte crc-pass">00</span> CRC match
+  <span class="hex-byte crc-fail">FF</span> CRC mismatch
+  <span class="hex-byte rc-pass">00</span> RC match
+  <span class="hex-byte rc-fail">FF</span> RC error
 </div>
 
 {''.join(sections)}
@@ -520,8 +556,21 @@ function expandAll() {{
 function collapseAll() {{
   document.querySelectorAll('.frame-section').forEach(el => el.classList.add('collapsed'));
 }}
+function toggleFrame(header) {{
+  const section = header.parentElement;
+  section.classList.toggle('collapsed');
+  header.setAttribute('aria-expanded', String(!section.classList.contains('collapsed')));
+}}
+function activateOnKey(evt) {{
+  if (evt.key === 'Enter' || evt.key === ' ') {{
+    evt.preventDefault();
+    evt.currentTarget.click();
+  }}
+}}
 function updateBtns(activeId) {{
-  document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.filter-bar button').forEach(b => {{
+    b.classList.toggle('active', b.dataset.filter === activeId);
+  }});
 }}
 const RC_X0 = {RC_X0}, RC_X1 = {RC_X1}, RC_Y0 = {RC_Y0}, RC_Y1 = {RC_Y1};
 function rcData(svg) {{
@@ -640,13 +689,19 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 
     limit = REPORT_FULL_MAX_SECTIONS if max_sections is None else max_sections
     verdicts = report.failed if only_failures else report.verdicts
-    note = ""
+    notes: list[str] = []
+    if report.frames_truncated:
+        notes.append(
+            f"只校验了前 {report.frame_limit} 帧(帧上限),"
+            "其余帧未校验 — 通过率仅代表这部分帧")
 
     grouped = _group_verdicts(verdicts)
     if limit and not only_failures and len(grouped) > limit and report.failed:
         # 大 trace 默认给逐帧全量报告会写出几百 MB;失败帧视图才是要看的
-        note = (f"帧段 {len(grouped)} 超过单份报告上限 {limit},"
-                f"已自动改为只保留失败帧(完整逐帧视图请分段校验或调大 output.max_report_sections)")
+        notes.append(
+            f"帧段 {len(grouped)} 超过单份报告上限 {limit},"
+            "已自动改为只保留失败帧(完整逐帧视图请分段校验或调大 "
+            "output.max_report_sections)")
         verdicts = report.failed
         grouped = _group_verdicts(verdicts)
 
@@ -654,8 +709,10 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     if truncated:
         kept = sorted(grouped.items(), key=lambda x: (x[0][1], x[0][0]))[:limit]
         grouped = dict(kept)
-        extra = f"帧段仍超过上限,已截断为前 {limit} 段(完整数据请减小帧上限或分批校验)"
-        note = f"{note};{extra}" if note else extra
+        notes.append(
+            f"帧段仍超过上限,已截断为前 {limit} 段"
+            "(完整数据请减小帧上限或分批校验)")
+    note = ";".join(notes)
 
     # Collect unique channels
     channels: set[int] = set()
@@ -681,6 +738,8 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
     crc_pass = sum(1 for v in report.verdicts if v.algorithm == "crc" and v.is_pass)
     rc_pass, rc_total = rc_sample_stats(report)
+    check_total = crc_total + rc_total
+    check_pass = crc_pass + rc_pass
 
     dbc_display = ", ".join(report.dbc_paths) if report.dbc_paths else report.dbc_path
 
@@ -696,6 +755,10 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
         "rc_rate": format_rate(rc_pass, rc_total),
         "crc_fail": crc_total - crc_pass,
         "rc_fail": rc_total - rc_pass,
+        # Same sample-based contract as the web result view and CLI summary.
+        "check_total": check_total, "check_pass": check_pass,
+        "check_fail": check_total - check_pass,
+        "check_rate": format_rate(check_pass, check_total),
         "dlc_note": dlc_note,
         "dlc_note_html": f"<br>{dlc_note}" if dlc_note else "",
     }
@@ -705,7 +768,8 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     if len(channels) > 1:
         ch_buttons = '<span class="sep">|</span>'
         for ch in sorted(channels):
-            ch_buttons += f'<button onclick="showChannel({ch})">CH{ch}</button>'
+            ch_buttons += (f'<button data-filter="ch{ch}" '
+                           f'onclick="showChannel({ch})">CH{ch}</button>')
 
     pages = [frame_sections[i:i + SPLIT_MAX_SECTIONS]
              for i in range(0, len(frame_sections), SPLIT_MAX_SECTIONS)] or [[]]

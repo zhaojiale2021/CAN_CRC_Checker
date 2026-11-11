@@ -132,17 +132,22 @@ def _verdict_row(verdict: VerifyVerdict, report: VerifyReport) -> dict:
 def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     """Per-message summary counted in FRAMES, not verdicts.
 
+    Frames are keyed by ``(frame_id, channel)``: a gateway trace can carry the
+    same CAN ID on two buses, and merging them produces a wrong pass rate and
+    a misleading channel tag.
+
     RC 连续失败会被折叠成一条 verdict(报告不逐帧刷屏),所以数 verdict 会把
     「1800 帧失败」缩成「失败 1」,还会把 CRC 的逐帧 verdict 和折叠后的 RC
     verdict 加在一起(1801 + 2 = 1803):0x421 曾显示成「1802/1803、失败 1」
-    。这里按 (frame_id, timestamp) 去重成帧 ——
+    。这里按 (frame_id, channel, timestamp) 去重成帧 ——
     一条帧的所有校验都通过才算通过帧;RC 的逐帧结果来自 ``rc_series``。
     """
-    frames: dict[int, dict] = {}
-    outcomes: dict[int, dict[float, bool]] = {}
+    frames: dict[tuple[int, int], dict] = {}
+    outcomes: dict[tuple[int, int], dict[float, bool]] = {}
 
     def frame_entry(frame_id: int, _timestamp: float, channel: int = 0) -> dict:
-        frame = frames.get(frame_id)
+        key = (frame_id, channel)
+        frame = frames.get(key)
         if frame is None:
             frame = {
                 "frame_id": frame_id,
@@ -154,7 +159,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
                 "signals": {},
                 "failures": [],
             }
-            frames[frame_id] = frame
+            frames[key] = frame
         return frame
 
     def signal_entry(frame: dict, verdict: VerifyVerdict) -> dict | None:
@@ -178,7 +183,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     count_rc_verdicts = not report.rc_series
     for verdict in report.verdicts:
         frame = frame_entry(verdict.frame_id, verdict.timestamp, verdict.channel)
-        results = outcomes.setdefault(verdict.frame_id, {})
+        results = outcomes.setdefault((verdict.frame_id, verdict.channel), {})
         results[verdict.timestamp] = (results.get(verdict.timestamp, True)
                                       and verdict.is_pass)
         if not verdict.is_pass and len(frame["failures"]) < MAX_FAILURE_ROWS:
@@ -196,7 +201,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     for (frame_id, _channel, signal_name), points in report.rc_series.items():
         for timestamp, _value, is_pass, _category in points:
             frame = frame_entry(frame_id, timestamp, _channel)
-            results = outcomes.setdefault(frame_id, {})
+            results = outcomes.setdefault((frame_id, _channel), {})
             results[timestamp] = results.get(timestamp, True) and is_pass
             entry = frame["signals"].get(signal_name)
             if entry is None:
@@ -212,12 +217,13 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
             entry["total"] += 1
             entry["pass" if is_pass else "fail"] += 1
 
-    for frame_id, frame in frames.items():
-        frame["total"] = len(outcomes[frame_id])
-        frame["fail"] = sum(1 for ok in outcomes[frame_id].values() if not ok)
+    for key, frame in frames.items():
+        frame["total"] = len(outcomes[key])
+        frame["fail"] = sum(1 for ok in outcomes[key].values() if not ok)
         frame["pass"] = frame["total"] - frame["fail"]
 
-    ordered = sorted(frames.values(), key=lambda f: (-f["fail"], f["frame_id"]))
+    ordered = sorted(frames.values(),
+                     key=lambda f: (-f["fail"], f["frame_id"], f["channel"]))
     truncated = len(ordered) > MAX_FRAME_ROWS
     if truncated:
         ordered = ordered[:MAX_FRAME_ROWS]
@@ -246,6 +252,8 @@ def report_to_dict(report: VerifyReport) -> dict:
         "trace_path": report.trace_path,
         "total_frames": report.total_frames,
         "total_verdicts": report.total_verdicts,
+        "trace_truncated": report.frames_truncated,
+        "trace_frame_limit": report.frame_limit,
         # 校验项口径:CRC 逐帧 verdict + RC 逐帧采样(不是折叠后的 verdict 数)
         "check_total": crc_total + rc_total,
         "check_pass": crc_pass + rc_pass,
@@ -377,6 +385,7 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
             "dataid_fallback": setup.dataid_fallback,
             "counts": setup.counts,
             "notes": setup.notes,
+            "config_warnings": list(cfg.warnings),
             "max_frames": cfg.max_frames,
             "runs": len(reports),
         },

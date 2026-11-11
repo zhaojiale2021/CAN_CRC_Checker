@@ -36,6 +36,7 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 RUNS_DIR = DATA_DIR / "runs"
 
 DEFAULT_MAX_UPLOAD_MB = 200
+MAX_DBC_UPLOADS = 10
 TRACE_SUFFIXES = frozenset({".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"})
 DBC_SUFFIXES = frozenset({".dbc"})
 DATAID_SUFFIXES = frozenset({".json", ".xlsx", ".xls"})
@@ -179,6 +180,10 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
     """Build the ASGI app (``store`` is injectable for tests)."""
     api = FastAPI(title="CAN CRC Checker (Web)")
     run_store = store if store is not None else RunStore(RUNS_DIR)
+    # Uploads are deleted in the request's ``finally`` block; a crash or a
+    # killed process leaves them behind forever. Clear the staging area on
+    # startup, like the report store already does for run directories.
+    shutil.rmtree(UPLOADS_DIR, ignore_errors=True)
 
     @api.get("/api/projects")
     def list_projects() -> dict:
@@ -279,6 +284,9 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         """Verify an uploaded trace with uploaded DBC files and a page-filled config."""
         if not dbcs:
             raise HTTPException(400, "至少上传一个 DBC 文件")
+        if len(dbcs) > MAX_DBC_UPLOADS:
+            raise HTTPException(
+                400, f"一次最多上传 {MAX_DBC_UPLOADS} 个 DBC 文件")
         frame_limit = _parse_frame_limit(max_frames)
 
         run_id = secrets.token_urlsafe(9)
@@ -309,6 +317,38 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             # Uploads are only needed while the run is in flight.
             shutil.rmtree(upload_dir, ignore_errors=True)
 
+        run_store.add(outcome)
+        return outcome.to_dict()
+
+    @api.post("/api/verify-sample")
+    async def verify_sample(
+        project_id: str = Form(...),
+        trace_name: str = Form(...),
+        max_frames: str = Form(""),
+        only_failures: str = Form("false"),
+    ) -> dict:
+        """Verify a trace shipped with a project, without uploading it.
+
+        The browser still sends no path: ``trace_name`` must be one of the
+        names the catalog listed for this project.
+        """
+        project = get_project(project_id)
+        if project is None:
+            raise HTTPException(404, f"未知项目: {project_id}")
+        if trace_name not in project.sample_traces:
+            raise HTTPException(404, f"项目内没有示例 trace: {trace_name}")
+        trace_path = Path(project.path) / "trace" / trace_name
+        if not trace_path.is_file():
+            raise HTTPException(404, f"示例 trace 不存在: {trace_name}")
+        frame_limit = _parse_frame_limit(max_frames)
+
+        run_id = secrets.token_urlsafe(9)
+        try:
+            outcome = await run_in_threadpool(
+                run_project, project, trace_path, trace_name,
+                frame_limit, _parse_bool(only_failures), run_id, run_store.runs_dir)
+        except RunError as exc:
+            raise HTTPException(400, str(exc)) from exc
         run_store.add(outcome)
         return outcome.to_dict()
 

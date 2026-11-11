@@ -23,8 +23,7 @@ Example config (all fields optional except dbc and traces):
     "format": "html",
     "file": "report.html",
     "only_failures": true
-  },
-  "tui": false
+  }
 }
 """
 
@@ -107,6 +106,7 @@ class RunConfig:
 
     # Derived / resolved fields
     _resolved_paths: dict = field(default_factory=dict, repr=False)
+    warnings: list[str] = field(default_factory=list, repr=False)
 
     def resolve_paths(self, base_dir: str | None = None):
         """Resolve relative paths against config file location or CWD."""
@@ -119,7 +119,7 @@ class RunConfig:
             if path.is_absolute():
                 return str(path)
             resolved = (base / path).resolve()
-            return str(resolved) if resolved.exists() else str(resolved)
+            return str(resolved)
 
         self.dbc = _resolve(self.dbc) if self.dbc else self.dbc
         self.dbcs = [_resolve(p) for p in self.dbcs]
@@ -546,10 +546,7 @@ CONFIG_SCHEMA_DOC = """
   "rc": {
     "max_valid": 14                      // Max valid RC value before wrap to 0
                                          // (null = auto: 2^length - 1)
-  },
-
-  // === UI ===
-  "tui": false                           // true = launch TUI instead of CLI output
+  }
 }
 """
 
@@ -558,9 +555,63 @@ CONFIG_SCHEMA_DOC = """
 # Loader
 # ---------------------------------------------------------------------------
 
+_TOP_LEVEL_KEYS = {
+    "dbc", "dbcs", "dbc_merge", "traces", "crc", "range", "dataid",
+    "filter", "signals", "output", "rc",
+}
+_SECTION_KEYS = {
+    "crc": {
+        "preset", "custom", "byte_swap", "auto_classify", "overrides",
+        "profiles", "profile_by_width", "range_overrides", "skip",
+    },
+    "range": {"mode", "start_byte", "end_byte"},
+    "dataid": {
+        "xlsx", "json", "sheet", "mapping", "mapping_file", "position",
+        "byte_order", "default",
+    },
+    "filter": {"frame_ids", "max_frames"},
+    "signals": {
+        "patterns_file", "checksum_pattern", "rc_pattern",
+        "checksum_patterns", "rc_patterns",
+    },
+    "output": {"format", "file", "only_failures", "max_report_sections"},
+    "rc": {"max_valid"},
+}
+_CHECKSUM_TYPES = {"crc", "sum", "sum_xor", "xor_seed"}
+
+
+def _warn_unknown_keys(mapping: dict, known: set[str], prefix: str,
+                       warnings: list[str]) -> None:
+    """Record (do not reject) misspelled/obsolete keys so they aren't silent."""
+    for key in mapping:
+        if key.startswith("_") or key in known:
+            continue
+        warnings.append(f"{prefix}{key} is not a recognized option (ignored)")
+
+
+def _require_mapping(data: dict, section: str) -> dict:
+    value = data.get(section, {})
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"Config section '{section}' must be a JSON object")
+    return value
+
+
+def _require_int(value, label: str, minimum: int | None = None) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{label} must be an integer")
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{label} must be >= {minimum}")
+    return value
+
+
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def load_config(config_path: str) -> RunConfig:
     """Load and validate a JSON configuration file.
+
+    Unknown keys are reported on ``RunConfig.warnings`` instead of being
+    silently ignored; values that would only crash mid-run are rejected here.
 
     Args:
         config_path: Path to a .json configuration file.
@@ -579,8 +630,16 @@ def load_config(config_path: str) -> RunConfig:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    if not isinstance(data, dict):
+        raise ValueError("Config root must be a JSON object")
+
     cfg = RunConfig()
     base_dir = str(path.parent)
+
+    _warn_unknown_keys(data, _TOP_LEVEL_KEYS, "", cfg.warnings)
+    for section, known in _SECTION_KEYS.items():
+        _warn_unknown_keys(_require_mapping(data, section),
+                           known, f"{section}.", cfg.warnings)
 
     # Required
     cfg.dbc = data.get("dbc", "")
@@ -591,7 +650,10 @@ def load_config(config_path: str) -> RunConfig:
     cfg.dbcs = dbcs_raw
     # Merge all DBCs into a single map instead of per-channel DBC selection
     # (use when every trace channel can carry frames from every DBC)
-    cfg.dbc_merge = data.get("dbc_merge", False)
+    raw_merge = data.get("dbc_merge", False)
+    if not isinstance(raw_merge, bool):
+        raise ValueError("dbc_merge must be true or false")
+    cfg.dbc_merge = raw_merge
 
     traces_raw = data.get("traces", [])
     if isinstance(traces_raw, str):
@@ -604,7 +666,7 @@ def load_config(config_path: str) -> RunConfig:
         raise ValueError("Config must specify at least one 'traces' entry.")
 
     # CRC
-    crc = data.get("crc", {})
+    crc = _require_mapping(data, "crc")
     if crc:
         cfg.crc_preset = crc.get("preset", "")
         cfg.crc_custom = crc.get("custom")
@@ -623,16 +685,35 @@ def load_config(config_path: str) -> RunConfig:
         cfg.crc_range_overrides = crc.get("range_overrides") or {}
         # Protection groups to leave unverified (frame ids/names/signal names).
         cfg.crc_skip = crc.get("skip") or []
+        if cfg.crc_custom is not None:
+            if not isinstance(cfg.crc_custom, dict):
+                raise ValueError("crc.custom must be a JSON object")
+            missing = {"width", "poly"} - set(cfg.crc_custom)
+            if missing:
+                raise ValueError(
+                    "crc.custom is missing required field(s): "
+                    + ", ".join(sorted(missing)))
+            checksum_type = cfg.crc_custom.get("type", "crc")
+            if checksum_type not in _CHECKSUM_TYPES:
+                raise ValueError(
+                    f"crc.custom.type must be one of: "
+                    f"{', '.join(sorted(_CHECKSUM_TYPES))}")
 
     # Range
-    rng = data.get("range", {})
+    rng = _require_mapping(data, "range")
     if rng:
         cfg.range_mode = rng.get("mode", "exclude_crc")
-        cfg.range_start = rng.get("start_byte", 0)
-        cfg.range_end = rng.get("end_byte", -1)
+        if cfg.range_mode not in VALID_RANGE_MODES:
+            raise ValueError(
+                f"Unknown range.mode '{cfg.range_mode}'. Expected one of: "
+                f"{', '.join(sorted(VALID_RANGE_MODES))}")
+        cfg.range_start = _require_int(rng.get("start_byte", 0),
+                                       "range.start_byte", minimum=0)
+        cfg.range_end = _require_int(rng.get("end_byte", -1),
+                                     "range.end_byte", minimum=-1)
 
     # DataID
-    did = data.get("dataid", {})
+    did = _require_mapping(data, "dataid")
     if did:
         cfg.dataid_xlsx = did.get("xlsx", "")
         sheet_raw = did.get("sheet", "")
@@ -644,7 +725,13 @@ def load_config(config_path: str) -> RunConfig:
         cfg.dataid_mapping_file = did.get("mapping_file") or ""
         cfg.dataid_json = did.get("json", "")
         cfg.dataid_position = did.get("position", "prepend")
+        if cfg.dataid_position not in ("prepend", "append"):
+            raise ValueError(
+                "dataid.position must be 'prepend' or 'append'")
         cfg.dataid_byte_order = did.get("byte_order", "lo_hi")
+        if cfg.dataid_byte_order not in ("lo_hi", "hi_lo"):
+            raise ValueError(
+                "dataid.byte_order must be 'lo_hi' or 'hi_lo'")
         # Convert now — a string reaching the verify loop crashes mid-run on
         # `dataid & 0xFF` instead of failing at load time.
         raw_default = did.get("default")
@@ -657,7 +744,7 @@ def load_config(config_path: str) -> RunConfig:
             cfg.dataid_default = raw_default
 
     # Filter
-    flt = data.get("filter", {})
+    flt = _require_mapping(data, "filter")
     if flt:
         raw_ids = flt.get("frame_ids")
         if raw_ids:
@@ -667,10 +754,11 @@ def load_config(config_path: str) -> RunConfig:
             ]
         raw_max = flt.get("max_frames")
         if raw_max is not None:
-            cfg.max_frames = raw_max
+            cfg.max_frames = _require_int(raw_max, "filter.max_frames",
+                                          minimum=0)
 
     # Signals
-    sig = data.get("signals", {})
+    sig = _require_mapping(data, "signals")
     if sig:
         cfg.checksum_pattern = sig.get("checksum_pattern")
         cfg.rc_pattern = sig.get("rc_pattern")
@@ -679,19 +767,25 @@ def load_config(config_path: str) -> RunConfig:
         cfg.rc_patterns = sig.get("rc_patterns") or None
 
     # Output
-    out = data.get("output", {})
+    out = _require_mapping(data, "output")
     if out:
         cfg.output_format = out.get("format", "table")
+        if cfg.output_format not in ("table", "html"):
+            raise ValueError("output.format must be 'table' or 'html'")
         cfg.output_file = out.get("file", "")
         cfg.only_failures = out.get("only_failures", False)
         raw_sections = out.get("max_report_sections")
         if raw_sections is not None:
-            cfg.max_report_sections = raw_sections
+            cfg.max_report_sections = _require_int(
+                raw_sections, "output.max_report_sections", minimum=0)
 
     # RC config
-    rc_cfg = data.get("rc", {})
+    rc_cfg = _require_mapping(data, "rc")
     if rc_cfg:
         cfg.rc_max_valid = rc_cfg.get("max_valid")
+        if cfg.rc_max_valid is not None:
+            cfg.rc_max_valid = _require_int(cfg.rc_max_valid, "rc.max_valid",
+                                            minimum=0)
 
     # Resolve relative paths
     cfg.resolve_paths(base_dir)

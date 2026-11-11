@@ -89,3 +89,22 @@ class TestDlcGate:
         engine = VerifyEngine(_build_map(dlc=32), algorithms=[])
         reader = _Reader([_frame(64), _frame(32)])
         assert not list(engine.run_stream(reader))
+
+
+class TestFrameCap:
+    """A frame cap must be visible on the report, never silent."""
+
+    def test_cap_marks_report_truncated(self):
+        """Stopping early because another frame exists sets the flags."""
+        engine = VerifyEngine(_build_map(dlc=8), algorithms=[])
+        report = engine.run(_Reader([_frame(8)] * 3), max_frames=2)
+        assert report.total_frames == 2
+        assert report.frames_truncated is True
+        assert report.frame_limit == 2
+
+    def test_exact_cap_is_not_truncation(self):
+        """A trace that ends exactly at the cap was fully verified."""
+        engine = VerifyEngine(_build_map(dlc=8), algorithms=[])
+        report = engine.run(_Reader([_frame(8)] * 2), max_frames=2)
+        assert report.frames_truncated is False
+        assert report.frame_limit is None

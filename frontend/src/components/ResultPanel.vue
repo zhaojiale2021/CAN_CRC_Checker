@@ -40,6 +40,28 @@
     <el-alert v-if="reportNote" type="warning" :closable="false" class="report-note"
               :title="reportNote" />
 
+    <el-alert
+      v-if="report.trace_truncated"
+      type="warning"
+      :closable="false"
+      class="all-pass"
+      :title="`只校验了前 ${report.trace_frame_limit} 帧（帧上限），其余帧未校验；以下通过率只代表这部分帧。`"
+    />
+    <el-alert
+      v-if="report.check_total === 0"
+      type="warning"
+      :closable="false"
+      class="all-pass"
+      title="没有执行任何校验：DBC 里没有匹配到保护信号，或没有配置 CRC 算法。"
+    />
+    <el-alert
+      v-else-if="report.crc_total === 0 && report.rc_total > 0"
+      type="info"
+      :closable="false"
+      class="all-pass"
+      title="仅校验 Rolling Counter：本次运行没有执行 CRC 校验。"
+    />
+
     <div class="toolbar">
       <el-button type="primary" :disabled="!result.report_url" @click="openReport">
         下载 HTML 报告
@@ -81,6 +103,8 @@
         </template>
         <ul class="notes">
           <li v-for="(note, i) in setup.notes" :key="i" class="mono">{{ note }}</li>
+          <li v-for="(warning, i) in setup.config_warnings || []" :key="'w' + i"
+              class="mono warn-text">{{ warning }}</li>
         </ul>
         <p v-if="channelList.length" class="muted">
           通道映射:
@@ -92,14 +116,14 @@
     </el-collapse>
 
     <el-alert
-      v-if="!report.fail_count"
+      v-if="report.check_total > 0 && report.check_fail === 0"
       type="success"
       :closable="false"
       class="all-pass"
-      :title="`全部通过:${report.total_verdicts} 项校验(CRC ${report.crc_total} / RC ${report.rc_total})`"
+      :title="`全部通过：${report.check_total} 项校验（CRC ${report.crc_total} / RC ${report.rc_total}）`"
     />
 
-    <template v-else>
+    <template v-else-if="report.check_fail > 0">
       <div class="section-head">
         <h3>失败明细</h3>
         <el-input
@@ -137,7 +161,7 @@
           <template #default="{ row }"><span class="mono fail-text">{{ row.actual_hex }}</span></template>
         </el-table-column>
         <el-table-column prop="detail" label="说明" min-width="260" show-overflow-tooltip />
-        <el-table-column label="次数" width="70">
+        <el-table-column label="次数/帧" width="80">
           <template #default="{ row }">
             <span :class="{ 'fail-text': row.count > 1 }">{{ row.count }}</span>
           </template>
@@ -291,6 +315,7 @@ function openReport() {
 .report-note { margin-bottom: 12px; }
 .table { width: 100%; }
 .fail-text { color: #e74c3c; font-weight: 600; }
+.warn-text { color: #e6a23c; }
 .pass-text { color: #2ecc71; }
 .muted { color: var(--el-text-color-secondary); font-size: 12px; }
 .all-pass { margin-bottom: 8px; }

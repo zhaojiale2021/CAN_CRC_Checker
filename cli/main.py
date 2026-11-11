@@ -7,13 +7,12 @@ import re
 from pathlib import Path
 import click
 
-from crc_checker.config import DEFAULT_MAX_FRAMES
-from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.config import DEFAULT_MAX_FRAMES, RunConfig
+from crc_checker.crc.models import CRCParams
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
 from crc_checker.dbc.parser import parse_dbc
-from crc_checker.trace.reader import TraceReader
-from crc_checker.verify.engine import VerifyEngine
 from crc_checker.report.html import write_html
+from crc_checker import __version__
 
 
 # ---------------------------------------------------------------------------
@@ -30,33 +29,34 @@ def _parse_crc_params(algo: str | None, custom_crc: str | None) -> CRCParams | N
         return CRCParams(
             width=data["width"],
             polynomial=int(data["poly"], 16) if isinstance(data["poly"], str) else data["poly"],
-            initial_value=int(data["init"], 16) if isinstance(data["init"], str) else data["init"],
-            final_xor=int(data["xor"], 16) if isinstance(data["xor"], str) else data["xor"],
+            initial_value=(int(data.get("init", "0x00"), 16)
+                           if isinstance(data.get("init", "0x00"), str)
+                           else data.get("init", 0)),
+            final_xor=(int(data.get("xor", "0x00"), 16)
+                       if isinstance(data.get("xor", "0x00"), str)
+                       else data.get("xor", 0)),
             reflect_in=data.get("reflect_in", False),
             reflect_out=data.get("reflect_out", False),
             name=data.get("name", "custom"),
+            checksum_type=data.get("type", "crc"),
         )
     if algo:
         return get_preset(algo)
     return None
 
 
-def _parse_crc_range(mode: str, start: int | None, end: int | None) -> CRCRange:
-    """Build CRCRange from CLI options."""
-    return CRCRange(
-        mode=mode,
-        start_byte=start or 0,
-        end_byte=end if end is not None else -1,
-    )
-
-
-def _range_specified(mode: str, start: int | None, end: int | None) -> bool:
-    """True when the user explicitly configured a CRC range.
-
-    ``--range-start``/``--range-end`` default to None; comparing them against
-    0/-1 made the check always true and clobbered every auto-detected range.
-    """
-    return mode != "exclude_crc" or start is not None or end is not None
+def _parse_frame_ids(raw: str | None) -> list[int] | None:
+    """Parse ``--frame-ids`` (hex ``0x..`` or decimal, comma separated)."""
+    if not raw:
+        return None
+    try:
+        return [
+            int(token.strip(), 16) if token.strip().lower().startswith("0x")
+            else int(token.strip())
+            for token in raw.split(",") if token.strip()
+        ]
+    except ValueError as exc:
+        raise click.BadParameter(f"Invalid --frame-ids value: {raw}") from exc
 
 
 def _expand_trace_paths(trace_files: list[str]) -> list[str]:
@@ -75,24 +75,75 @@ def _expand_trace_paths(trace_files: list[str]) -> list[str]:
     return result
 
 
-def _build_algorithms(crc_params: CRCParams | None):
-    """Build protection algorithm list from CRC params."""
+def _check_stats(report) -> tuple[int, int]:
+    """(passed, total) checks counted by sample, matching the web/report.
+
+    RC failures fold consecutive frames into one verdict for display, so
+    counting verdicts would understate both failures and the pass rate.
+    """
     # pylint: disable=import-outside-toplevel
-    from crc_checker.verify.runner import build_algorithms
-    return build_algorithms(crc_params)
+    from crc_checker.report.trends import rc_sample_stats
+
+    crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
+    crc_pass = sum(1 for v in report.verdicts
+                   if v.algorithm == "crc" and v.is_pass)
+    rc_pass, rc_total = rc_sample_stats(report)
+    return crc_pass + rc_pass, crc_total + rc_total
+
+
+def _print_summary(report):
+    """Print the sample-based summary and any run caveats."""
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.report.trends import format_rate
+
+    passed, total = _check_stats(report)
+    click.echo()
+    click.echo("=" * 60)
+    click.echo(f"SUMMARY: {report.total_frames} frames, "
+               f"{passed} passed, {total - passed} failed "
+               f"({format_rate(passed, total)} pass rate)")
+    if report.frames_truncated:
+        click.echo(click.style(
+            f"WARNING: stopped at the frame cap ({report.frame_limit} frames); "
+            "the rest of the trace was NOT verified.", fg="yellow", bold=True))
+    if report.dlc_mismatch_skipped:
+        click.echo(click.style(
+            f"NOTE: {report.dlc_mismatch_skipped} frame(s) skipped by the "
+            "DLC gate.", fg="yellow"))
+    if total == 0:
+        click.echo(click.style(
+            "WARNING: no checks were performed (no matching protection "
+            "signals).", fg="yellow", bold=True))
 
 
 def _output_report(report, output_fmt: str, output_file: str,
                    only_failures: bool, max_sections: int | None = None):
-    """Render verification report as table or HTML(返回提示文本,无则空串)。"""
+    """Render verification report as table or HTML, then print the summary."""
     if output_fmt == "html":
         path = output_file or "crc_report.html"
         note = write_html(report, path, only_failures, max_sections=max_sections)
         if note:
             click.echo(f"报告已受限: {note}")
         click.echo(f"HTML: {path}")
+        _print_summary(report)
     else:
         _print_table(report, only_failures)
+
+
+def _exit_after_reports(reports, fail_on_failure: bool,
+                        min_pass_rate: float | None) -> None:
+    """Exit 1 when the run should fail a CI gate.
+
+    ``--fail-on-failure`` catches any failed check; ``--min-pass-rate``
+    applies to the aggregate across all reports (0 = no checks).
+    """
+    passed = sum(_check_stats(report)[0] for report in reports)
+    total = sum(_check_stats(report)[1] for report in reports)
+    failed = total - passed
+    rate = (passed / total * 100.0) if total else 100.0
+    if (fail_on_failure and failed) or (
+            min_pass_rate is not None and rate < min_pass_rate):
+        raise click.exceptions.Exit(1)
 
 
 def _safe_report_stem(trace_path: str) -> str:
@@ -124,12 +175,20 @@ def _report_output_path(base_path: str, report, multiple: bool,
 
 
 # pylint: disable=too-many-locals
+def _fit(text: str, width: int) -> str:
+    """Truncate a table cell so one long DBC signal name cannot break the table."""
+    text = str(text)
+    return text if len(text) <= width else text[:width - 1] + "~"
+
+
 def _print_table(report, only_failures: bool = False):
     """Print results as a formatted table to terminal."""
     verdicts = report.failed if only_failures else report.verdicts
 
     if not verdicts:
-        click.echo("No verification results.")
+        click.echo("No failed verdicts." if only_failures
+                   else "No verification results.")
+        _print_summary(report)
         return
 
     # Column widths
@@ -155,8 +214,8 @@ def _print_table(report, only_failures: bool = False):
         line = (
             f"{v.timestamp:>{ts_w}.6f} "
             f"{f'0x{v.frame_id:03X}':<{id_w}} "
-            f"{v.signal_name:<{sig_w}} "
-            f"{v.algorithm:<{algo_w}} "
+            f"{_fit(v.signal_name, sig_w):<{sig_w}} "
+            f"{_fit(v.algorithm, algo_w):<{algo_w}} "
             f"{exp_str:<{exp_w}} "
             f"{act_str:<{act_w}} "
             f"{status}"
@@ -166,28 +225,11 @@ def _print_table(report, only_failures: bool = False):
         if not v.is_pass and v.detail:
             click.echo(f"  {click.style(v.detail, fg='yellow')}")
 
-    # Summary. RC checks are counted by sample: consecutive failing frames are
-    # folded into one verdict for display, so verdict counts would understate
-    # both the failure count and the pass rate (and disagree with the HTML/Web
-    # reports, which already use this accounting).
-    # pylint: disable=import-outside-toplevel
-    from crc_checker.report.trends import format_rate, rc_sample_stats
-
-    crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
-    crc_pass = sum(1 for v in report.verdicts
-                   if v.algorithm == "crc" and v.is_pass)
-    rc_pass, rc_total = rc_sample_stats(report)
-    total_checks = crc_total + rc_total
-    passed_checks = crc_pass + rc_pass
-    click.echo()
-    click.echo("=" * 60)
-    click.echo(f"SUMMARY: {report.total_frames} frames, "
-               f"{passed_checks} passed, "
-               f"{total_checks - passed_checks} failed "
-               f"({format_rate(passed_checks, total_checks)} pass rate)")
+    _print_summary(report)
 
 
 @click.group()
+@click.version_option(__version__, prog_name="crc-check")
 def cli():
     """CAN CRC Checker — DBC-aware CAN bus CRC/Rolling Counter verification tool."""
 
@@ -228,6 +270,10 @@ def cli():
 @click.option("--max-frames", type=int, default=DEFAULT_MAX_FRAMES,
               help="Maximum frames to process (0 = unlimited, default 6000)")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+@click.option("--fail-on-failure", is_flag=True,
+              help="Exit 1 if any check fails (use in CI)")
+@click.option("--min-pass-rate", type=click.FloatRange(0, 100), default=None,
+              help="Exit 1 when the aggregate pass rate is below this percentage")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 # pylint: disable=import-outside-toplevel
@@ -236,110 +282,85 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
            checksum_pattern, rc_pattern, patterns_file,
            dataid_xlsx, dataid_sheet, dataid_mapping,
            frame_ids, output_fmt, output_file,
-           only_failures, max_frames, verbose):
-    """Verify CRC and Rolling Counter in CAN trace files."""
+           only_failures, max_frames, verbose,
+           fail_on_failure, min_pass_rate):
+    """Verify CRC and Rolling Counter in CAN trace files.
+
+    This builds a RunConfig and calls the same ``run_config`` pipeline as
+    ``crc-check run`` and the web API, so all three cannot drift apart.
+    """
+    from crc_checker.verify.runner import RunnerError, run_config
 
     if not dbc_paths:
         raise click.UsageError("At least one --dbc path is required.")
 
-    # Parse CRC params
     if not algo and not custom_crc:
-        click.echo("Warning: No CRC algorithm specified. Use --algo or --custom-crc.", err=True)
+        click.echo("Warning: No CRC algorithm specified. Use --algo or "
+                   "--custom-crc.", err=True)
         click.echo("Only Rolling Counter verification will be performed.", err=True)
 
     try:
         crc_params = _parse_crc_params(algo, custom_crc)
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         raise click.BadParameter(f"Invalid CRC algorithm: {exc}") from exc
-    crc_range = _parse_crc_range(range_mode, range_start, range_end)
-    # Expand directories up front: DBC selection samples trace files, so it
-    # must never be handed a directory.
-    expanded_traces = _expand_trace_paths(list(trace_files))
-
+    if algo:
+        status, _note = get_validation(algo)
+        if status != "validated":
+            click.echo(f"Warning: preset {algo} is not verified with real data.",
+                       err=True)
     if verbose and crc_params:
         click.echo(f"CRC Algorithm: {crc_params.name}")
-        click.echo(f"  poly=0x{crc_params.polynomial:X} init=0x{crc_params.initial_value:X} "
+        click.echo(f"  poly=0x{crc_params.polynomial:X} "
+                   f"init=0x{crc_params.initial_value:X} "
                    f"xor=0x{crc_params.final_xor:X} width={crc_params.width}")
 
-    # Parse frame ID filter
-    id_filter = None
-    if frame_ids:
-        id_filter = [int(x.strip(), 16) if x.strip().startswith("0x") else int(x.strip())
-                     for x in frame_ids.split(",")]
+    cfg = RunConfig()
+    cfg.dbcs = list(dbc_paths)
+    # Expand directories up front: DBC selection samples trace files, so it
+    # must never be handed a directory.
+    cfg.traces = _expand_trace_paths(list(trace_files))
+    cfg.crc_preset = algo or ""
+    if custom_crc:
+        cfg.crc_custom = json.loads(custom_crc)
+    cfg.range_mode = range_mode
+    cfg.range_start = range_start or 0
+    cfg.range_end = range_end if range_end is not None else -1
+    cfg.checksum_pattern = checksum_pattern
+    cfg.rc_pattern = rc_pattern
+    cfg.patterns_file = patterns_file or ""
+    cfg.dataid_xlsx = dataid_xlsx or ""
+    cfg.dataid_sheet = dataid_sheet or ""
+    cfg.dataid_mapping = dataid_mapping or ""
+    cfg.frame_ids = _parse_frame_ids(frame_ids)
+    cfg.max_frames = max_frames
+    cfg.output_format = output_fmt
+    cfg.output_file = output_file or ""
+    cfg.only_failures = only_failures
 
-    # Build signal patterns
-    patterns = None
-    if checksum_pattern or rc_pattern:
-        patterns = {}
-        if checksum_pattern:
-            patterns["checksum"] = checksum_pattern
-        if rc_pattern:
-            patterns["rolling_counter"] = rc_pattern
-
-    # Signal-name patterns (YAML default, optional custom file, regex overrides)
-    from crc_checker.patterns import load_naming_patterns
-    naming = load_naming_patterns(patterns_file) if patterns_file else None
-    if patterns and naming:
-        naming = naming.with_overrides(checksum_pattern, rc_pattern)
-
-    # Parse DBC: if multiple, auto-select best match from trace sample
-    from crc_checker.dbc.parser import parse_all_dbc, select_best_dbc, sample_trace_ids
-    all_dbc = list(dbc_paths)
-    if len(all_dbc) == 1 and Path(all_dbc[0]).is_file() and all_dbc[0].endswith('.dbc'):
-        # Single DBC file — direct parse
-        protection_map = parse_dbc(all_dbc[0], patterns, naming=naming)
+    try:
+        setup, reports = run_config(cfg, cfg.traces)
+    except (RunnerError, ValueError, OSError, KeyError, re.error) as exc:
+        raise click.UsageError(str(exc)) from exc
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Corrupt workbooks / optional readers can raise types outside the
+        # expected list. Keep the CLI free of tracebacks unless -v asks for one.
         if verbose:
-            click.echo(f"Parsing DBC: {all_dbc[0]}")
-    else:
-        # Multiple or directory — parse all, select by trace match
-        dbc_maps = parse_all_dbc(all_dbc, patterns, naming=naming)
-        if len(dbc_maps) == 1:
-            protection_map = dbc_maps[0]
-        else:
-            sample_ids = sample_trace_ids(expanded_traces[0], max_frames=500)
-            best_map, best_matched, best_total = select_best_dbc(dbc_maps, sample_ids)
-            if best_map is None:
-                raise click.UsageError("No DBC matches any frame IDs in trace.")
-            protection_map = best_map
-            if verbose:
-                click.echo(f"Auto-selected: {Path(best_map.dbc_paths[0]).name} "
-                           f"({best_matched}/{best_total} IDs matched)")
-
-    if crc_params:
-        protection_map.apply_crc_params(crc_params)
-    # Only apply explicit range; if user didn't specify --range, let auto-detect
-    # work (see _range_specified for the always-true condition this replaces).
-    if _range_specified(range_mode, range_start, range_end):
-        protection_map.apply_crc_range(crc_range)
-
-    # Parse DataID Excel if provided
-    if dataid_xlsx:
-        from crc_checker.dataid import parse_dataid_xlsx
-        if verbose:
-            click.echo(f"Parsing DataID Excel: {dataid_xlsx}" +
-                       (f" (sheet: {dataid_sheet})" if dataid_sheet else ""))
-        dataid_map = parse_dataid_xlsx(dataid_xlsx, dataid_sheet, mapping=dataid_mapping)
-        n = protection_map.apply_dataid_map(dataid_map)
-        if verbose:
-            click.echo(f"Loaded {len(dataid_map)} DataID entries, {n} applied")
+            raise
+        raise click.UsageError(f"校验执行失败: {exc}") from exc
 
     if verbose:
-        click.echo(f"Found protection signals in {len(protection_map.all_frame_ids())} CAN IDs")
+        for note in setup.notes:
+            click.echo(note)
+        click.echo(f"Found protection signals in "
+                   f"{len(setup.protection_map.messages)} CAN IDs")
 
-    algorithms = _build_algorithms(crc_params)
-
-    multiple_reports = len(expanded_traces) > 1
-    for index, trace_path in enumerate(expanded_traces, start=1):
-        if verbose:
-            click.echo(f"Processing trace: {trace_path}")
-        engine = VerifyEngine(protection_map, algorithms)
-        with TraceReader(trace_path) as reader:
-            report = engine.run(reader, frame_ids=id_filter, max_frames=max_frames)
-        report.dbc_paths = protection_map.dbc_paths
+    multiple_reports = len(reports) > 1
+    for index, report in enumerate(reports, start=1):
         _output_report(report, output_fmt,
                        _report_output_path(output_file, report, multiple_reports,
                                            index=index),
                        only_failures)
+    _exit_after_reports(reports, fail_on_failure, min_pass_rate)
 
 
 @cli.command("presets")
@@ -367,7 +388,11 @@ def list_presets_cmd():
 @click.option("--config", "-c", "config_path", required=True,
               type=click.Path(exists=True), help="Path to JSON config file")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
+@click.option("--fail-on-failure", is_flag=True,
+              help="Exit 1 if any check fails (use in CI)")
+@click.option("--min-pass-rate", type=click.FloatRange(0, 100), default=None,
+              help="Exit 1 when the aggregate pass rate is below this percentage")
+def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate):  # pylint: disable=too-many-branches,too-many-statements
     """Run verification from a JSON config file.
 
     Generate an example config:  crc-check gen-config example.json
@@ -381,6 +406,9 @@ def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
         cfg = load_config(config_path)
     except (OSError, ValueError) as exc:
         raise click.BadParameter(f"配置文件读取失败: {exc}") from exc
+
+    for warning in cfg.warnings:
+        click.echo(f"Config warning: {warning}", err=True)
 
     if verbose:
         click.echo(f"Config: {config_path}")
@@ -417,8 +445,12 @@ def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
     # crc_checker.verify.runner so the web API cannot drift from the CLI.
     try:
         setup, reports = run_config(cfg, trace_paths)
-    except (RunnerError, ValueError, OSError, KeyError) as exc:
+    except (RunnerError, ValueError, OSError, KeyError, re.error) as exc:
         raise click.UsageError(str(exc)) from exc
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        if verbose:
+            raise
+        raise click.UsageError(f"校验执行失败: {exc}") from exc
 
     if verbose:
         for note in setup.notes:
@@ -433,6 +465,7 @@ def run_cmd(config_path, verbose):  # pylint: disable=too-many-branches
                        _report_output_path(cfg.output_file, report, multiple_reports,
                                            index=index),
                        cfg.only_failures, cfg.max_report_sections)
+    _exit_after_reports(reports, fail_on_failure, min_pass_rate)
 
 
 @cli.command("preprocess-dataid")

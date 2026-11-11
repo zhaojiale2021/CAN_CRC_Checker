@@ -102,15 +102,15 @@ class VerifyEngine:
 
             # Checked before any `continue` below, so the cap is exact:
             # frames without a protection group must still count towards it.
+            # Reaching this branch means at least one more frame exists, so
+            # the report can honestly say the trace was cut short.
             if max_frames and frame_count >= max_frames:
+                report.frames_truncated = True
+                report.frame_limit = max_frames
                 break
 
             frame_count += 1
             report.total_frames += 1
-
-            # Store frame data for hex-dump display (include channel)
-            report.add_frame_data(frame.timestamp, frame.arbitration_id, frame.data,
-                                  channel=frame.channel)
 
             # Find protection groups for this frame (channel-aware)
             protections = self.protection_map.get_protections(
@@ -122,6 +122,12 @@ class VerifyEngine:
                 protections = matched
             if not protections:
                 continue
+
+            # Store frame data for hex-dump display (include channel). Only
+            # frames with protection groups can appear in the report, so
+            # buffering every ordinary frame wasted memory on large traces.
+            report.add_frame_data(frame.timestamp, frame.arbitration_id, frame.data,
+                                  channel=frame.channel)
 
             # Run each algorithm on each protection group
             for prot in protections:

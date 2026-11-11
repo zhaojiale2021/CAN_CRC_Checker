@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    # 24.04 still provides Python 3.9 (the project floor). Once the 3.9 job is
+    # dropped this can move to ubuntu-latest.
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        # 3.9 is the declared floor; 3.11/3.13 keep a supported interpreter in
+        # the matrix (3.9 and 3.10 are past upstream EOL).
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    - name: Lint with pylint
+      run: |
+        # pylint is pinned in requirements.txt so local hooks and CI agree.
+        pylint $(git ls-files '*.py')
+    - name: Test with pytest
+      run: |
+        pytest --tb=short --cov=crc_checker --cov=cli --cov=webapp \
+          --cov-report=term --cov-fail-under=80
+
+  backend-windows:
+    # The project is used mostly on Windows; one job keeps path/console
+    # behaviour honest without doubling the full matrix.
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    - name: Test with pytest
+      run: pytest --tb=short
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+    - name: Install
+      working-directory: frontend
+      run: npm ci
+    - name: Unit tests
+      working-directory: frontend
+      run: npm test
+    - name: Build committed dist
+      working-directory: frontend
+      run: npm run build
+    - name: dist must match the committed build
+      run: |
+        if ! git diff --exit-code -- frontend/dist; then
+          echo "::error::frontend/dist is stale — run 'cd frontend && npm run build' and commit it"
+          exit 1
+        fi
+
+  # Stable required-check name for the branch ruleset; adding matrix entries
+  # or renaming jobs never requires touching the ruleset again.
+  gate:
+    name: CI required
+    runs-on: ubuntu-latest
+    needs: [backend, backend-windows, frontend]
+    if: always()
+    steps:
+      - name: All upstream jobs must succeed
+        run: |
+          echo "backend=${{ needs.backend.result }}"
+          echo "backend-windows=${{ needs.backend-windows.result }}"
+          echo "frontend=${{ needs.frontend.result }}"
+          if [ "${{ needs.backend.result }}" != "success" ] ||
+             [ "${{ needs.backend-windows.result }}" != "success" ] ||
+             [ "${{ needs.frontend.result }}" != "success" ]; then
+            echo "::error::An upstream job failed or was cancelled"
+            exit 1
+          fi

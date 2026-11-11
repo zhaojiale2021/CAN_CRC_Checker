@@ -66,6 +66,21 @@ test('failureRows 按报文+信号合并并累计次数', () => {
   assert.deepEqual(failureRows(null), [])
 })
 
+test('failureRows 累加 RC 折叠帧数并按通道分开', () => {
+  const report = {
+    failures: [
+      { frame_id: 0x421, channel: 0, signal: 'RC_A', timestamp: 1, repeat_count: 1800 },
+      { frame_id: 0x421, channel: 1, signal: 'RC_A', timestamp: 1, repeat_count: 2 },
+    ],
+  }
+  const rows = failureRows(report)
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0].count, 1800)
+  assert.equal(rows[1].count, 2)
+  assert.equal(rows[0].channel, 0)
+  assert.equal(rows[1].channel, 1)
+})
+
 test('frameRows 可按只失败筛选', () => {
   const report = { frames: [{ frame_id: 1, fail: 0 }, { frame_id: 2, fail: 3 }] }
   assert.equal(frameRows(report).length, 2)

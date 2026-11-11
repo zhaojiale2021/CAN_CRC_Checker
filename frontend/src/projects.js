@@ -41,19 +41,29 @@ export function summaryHighlights(project) {
   return items
 }
 
-/** 失败明细表:按 (报文, 信号) 去重后的行,保留首次出现的期望/实际值。 */
+/** 失败明细表:按 (通道, 报文, 信号) 去重后的行,保留首次出现的期望/实际值。
+ *  ``repeat_count`` 是 RC 连续失败折叠后的帧数,必须累加进次数;否则一个
+ *  卡死 1800 帧的计数器会显示成「1 次」。 */
 export function failureRows(report) {
   const rows = []
   const seen = new Map()
   for (const failure of report?.failures || []) {
-    const key = `${failure.frame_id}-${failure.signal}`
+    const channel = failure.channel ?? 0
+    const key = `${channel}-${failure.frame_id}-${failure.signal}`
+    const occurrences = failure.repeat_count || 1
     const existing = seen.get(key)
     if (existing) {
-      existing.count += 1
+      existing.count += occurrences
       existing.last_timestamp = failure.timestamp
       continue
     }
-    const row = { ...failure, count: 1, last_timestamp: failure.timestamp, key }
+    const row = {
+      ...failure,
+      channel,
+      count: occurrences,
+      last_timestamp: failure.timestamp,
+      key,
+    }
     seen.set(key, row)
     rows.push(row)
   }

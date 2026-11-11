@@ -203,7 +203,9 @@ class CRCEngine:
                        crc_byte_start: int = 0, crc_byte_end: int = 1) -> bytes:
         """Extract bytes for CRC, excluding the CRC field bytes."""
         if crc_range.mode in ("full_payload", "exclude_crc"):
-            # Exclude CRC byte(s) from full payload
+            # The two names are aliases: a CRC cannot include its own field,
+            # so both mean "all payload bytes except the CRC field". Kept for
+            # backward compatibility with existing configs.
             return data[:crc_byte_start] + data[crc_byte_end:]
         if crc_range.mode == "custom_range":
             end = crc_range.end_byte if crc_range.end_byte >= 0 else full_length

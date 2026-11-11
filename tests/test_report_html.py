@@ -1,7 +1,7 @@
 """Tests for HTML report frame rendering (CRC/RC highlights, DataID tooltip)."""
 
-from crc_checker.report.html import _build_frame_html
-from crc_checker.verify.models import VerifyVerdict
+from crc_checker.report.html import _build_frame_html, write_html
+from crc_checker.verify.models import VerifyReport, VerifyVerdict
 
 
 def _crc_verdict(**overrides) -> VerifyVerdict:
@@ -95,3 +95,36 @@ class TestCRCAlgorithmTag:
         v = _crc_verdict(crc_algorithm="")
         html = _build_frame_html([v], bytes(8))
         assert 'class="algo-tag"' not in html
+
+
+class TestReportSummary:
+    """Summary cards and banner use the same sample-based checks as web/CLI."""
+
+    def test_zero_checks_is_not_all_passed(self, tmp_path):
+        """An RC-only/empty run must not claim success."""
+        report = VerifyReport(trace_path="t.blf")
+        path = tmp_path / "report.html"
+        write_html(report, str(path))
+        text = path.read_text(encoding="utf-8")
+        assert "NO CHECKS EXECUTED" in text
+        assert "ALL CHECKS PASSED" not in text
+        assert '<div class="value">-</div>' in text
+
+    def test_failures_show_red_banner(self, tmp_path):
+        """Any failed check flips the banner and the overall card."""
+        report = VerifyReport(trace_path="t.blf", total_frames=1)
+        report.verdicts.append(_crc_verdict(is_pass=False))
+        path = tmp_path / "report.html"
+        write_html(report, str(path))
+        text = path.read_text(encoding="utf-8")
+        assert "FAILURES DETECTED" in text
+        assert 'class="card fail"' in text
+
+    def test_frame_cap_is_written_into_the_report(self, tmp_path):
+        """The report must say the trace was cut short."""
+        report = VerifyReport(trace_path="t.blf", total_frames=10,
+                              frames_truncated=True, frame_limit=10)
+        path = tmp_path / "report.html"
+        write_html(report, str(path))
+        text = path.read_text(encoding="utf-8")
+        assert "只校验了前 10 帧" in text

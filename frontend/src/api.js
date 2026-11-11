@@ -57,6 +57,18 @@ export function verifyTrace({ projectId, file, maxFrames = null, onlyFailures = 
 }
 
 /**
+ * 校验项目自带的示例 trace(服务端路径,浏览器只提交项目 id + 文件名)。
+ */
+export function verifySample({ projectId, traceName, maxFrames = null, onlyFailures = false }) {
+  const form = new FormData()
+  form.append('project_id', projectId)
+  form.append('trace_name', traceName)
+  form.append('max_frames', maxFrames === null ? '' : String(maxFrames))
+  form.append('only_failures', onlyFailures ? 'true' : 'false')
+  return request('/api/verify-sample', { method: 'POST', body: form })
+}
+
+/**
  * 手动模式:上传 DBC(+ 可选 DataID)和 trace,并提交页面上填写的 config。
  * `config` 必须是普通对象,服务端会覆盖其中的所有路径字段。
  */
