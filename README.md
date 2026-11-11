@@ -52,8 +52,10 @@ python -m cli.main run -c examples/example/config_bad.json -v
 # http://127.0.0.1:8000
 ```
 
-Select a project id, upload a trace, and get a summary, failure table and HTML
-report. The browser only sends project ids; paths stay server-side. Projects are
+Two ways to run: pick a **project id**, or switch to **manual mode** and upload
+DBC file(s) + a trace (plus an optional DataID file), then fill in the config
+options (algorithm, range, DataID layout, filters) on the page. The browser only
+sends project ids or uploaded files; paths stay server-side. Projects are
 scanned from `projects/` (or `examples/` when `projects/` does not exist; override
 with `CRC_CHECKER_PROJECTS_DIR`). The Vue frontend is committed as
 `frontend/dist`, so a deployment machine needs no Node. See

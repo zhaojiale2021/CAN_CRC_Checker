@@ -1,8 +1,8 @@
 # CAN CRC Checker 网页版 — API 与部署
 
-网页工具：选择项目 → 上传 trace（BLF/ASC/MF4/TRC/CSV）→ 服务端用该项目的
-`config.json`（DBC/DataID/算法）跑一次校验 → 页面查看汇总与失败明细，并可下载
-自包含的 HTML 报告。
+网页工具两种用法：选择项目 → 上传 trace；或手动上传 DBC（可多个）+ trace
+（+ 可选 DataID 文件），在页面上填写原 `config.json` 的算法/范围/DataID 等选项 → 服务端
+跑一次校验 → 页面查看汇总与失败明细，并可下载自包含的 HTML 报告。
 
 校验逻辑与 CLI **完全同源**：`crc_checker/verify/runner.py` 是唯一实现，
 `crc-check run` 与 `POST /api/verify` 都调用它，两边不会算出不同结论。
@@ -35,6 +35,20 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 新增项目：把一个 `config.json`（以及它引用的 DBC/DataID/trace）放进扫描目录即可，
 无需改代码。
 
+## 手动上传模式
+
+不想把项目放进服务端目录时，页面切到「手动上传 DBC + trace」：
+
+- 上传 1..10 个 DBC、1 个 trace、可选 1 个 DataID 文件（`.json` / `.xlsx` / `.xls`）。
+- 在页面上填写 CLI `config.json` 的常用段：`crc`（算法 preset、`byte_swap`、
+  `auto_classify`、`profile_by_width`）、`range`、`dataid`（位置/字节序/sheet/映射/
+  默认值）、`filter.frame_ids`、`signals` 正则、`rc.max_valid`、`dbc_merge`。
+- **路径字段永远由服务端生成**：请求里的 `dbc`/`dbcs`/`traces`、
+  `dataid.xlsx`/`dataid.json`/`dataid.mapping_file`、`signals.patterns_file` 会被拒绝
+  （400）或忽略，手写 config 无法让服务端读取任意文件。
+- DBC 选择、DataID 应用、报告生成与项目模式走同一条 `crc_checker/verify/runner.py`。
+- 算法下拉来自 `GET /api/presets`，并标注是否已用仓库内真实 trace 验证过。
+
 ## 查看部署版本（commit 节点）
 
 导航栏右上角「版本」入口，或直接访问 `/api/version`：
@@ -55,7 +69,9 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/projects` | 项目列表（服务端扫描项目目录） |
-| POST | `/api/verify` | multipart 上传 trace 并校验 |
+| GET | `/api/presets` | 内置算法列表及验证状态 |
+| POST | `/api/verify` | multipart 上传 trace 并按项目配置校验 |
+| POST | `/api/verify-manual` | multipart 上传 DBC + trace（+ DataID）并按页面填写的配置校验 |
 | GET | `/api/runs/{run_id}/report.html` | 下载本次校验的 HTML 报告 |
 | GET | `/api/version` | 部署版本（commit 节点），`Cache-Control: no-store` |
 
@@ -136,12 +152,57 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 序列化上限：失败明细每条 trace 最多 2000 行、报文最多 500 个、每个报文的信号最多
 50 个（超出时 `*_truncated: true`，完整内容以上面的 HTML 报告为准）。
 
+### `GET /api/presets`
+
+```json
+{
+  "presets": [{
+    "name": "CRC8/SAE-J1850-ZERO", "width": 8, "checksum_type": "crc",
+    "validated": true, "note": "captured CAN traces, E2E Profile 1"
+  }]
+}
+```
+
+`validated` 表示该算法已在仓库里的真实 trace 上复现过（与 `crc-check presets`
+的标注一致）。
+
+### `POST /api/verify-manual`
+
+`multipart/form-data`:
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `dbcs` | 是 | 1..10 个 `.dbc`（按 trace 通道自动选 DBC，或 `dbc_merge` 合并） |
+| `trace` | 是 | trace 文件（BLF/ASC/MF4/TRC/CSV/LOG） |
+| `dataid` | 否 | 预处理后的 `.json` 或 `.xlsx`/`.xls` |
+| `config` | 否 | JSON 字符串（默认 `{}`），允许的顶层键见下 |
+| `max_frames` | 否 | 同 `/api/verify` |
+| `only_failures` | 否 | 同 `/api/verify` |
+
+`config` 只接受 `crc`、`range`、`dataid`、`filter`、`signals`、`rc`、`output`、
+`dbc_merge`。`dbc`/`dbcs`/`traces`、`dataid.xlsx`/`dataid.json`/`dataid.mapping_file`、
+`signals.patterns_file` 由服务端控制或直接拒绝（400）——浏览器仍不能提交路径。
+
+```json
+{
+  "crc": {"preset": "CRC8/SAE-J1850-ZERO", "byte_swap": false,
+          "auto_classify": false, "profile_by_width": false},
+  "range": {"mode": "exclude_crc"},
+  "dataid": {"position": "prepend", "byte_order": "lo_hi"},
+  "filter": {"frame_ids": ["0x143"], "max_frames": 6000},
+  "signals": {"checksum_pattern": "^Checksum_"},
+  "rc": {"max_valid": 14}
+}
+```
+
+响应同 `/api/verify`，其中 `project_id` 为 `"manual"`、`project.name` 为「手动配置」。
+
 ### 状态码
 
 | 码 | 场景 |
 |----|------|
 | 404 | 未知 `project_id`；`run_id` 不存在或报告已过期 |
-| 400 | 空文件、帧数上限不是整数、配置/trace 解析失败 |
+| 400 | 空文件、文件类型不支持、配置里出现路径字段、帧数上限不是整数、配置/trace 解析失败 |
 | 413 | 上传超过 `CRC_WEB_MAX_UPLOAD_MB` |
 
 错误体沿用 FastAPI 的 `{"detail": "..."}`。
@@ -151,7 +212,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 写入 `data/`（已 gitignore）：
 
 ```
-data/web/uploads/<run_id>/              # 上传的 trace,跑完即删
+data/web/uploads/<run_id>/              # 上传的 trace / DBC / DataID,跑完即删
 data/web/runs/<run_id>/<run_id>.html    # 生成的报告,最多保留最近 20 次(LRU)
 ```
 

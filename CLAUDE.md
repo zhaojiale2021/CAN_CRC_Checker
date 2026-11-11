@@ -82,9 +82,11 @@ assembles everything. `report/` consumes `verify/` models only.
 committed). `webapp/catalog.py` scans `projects/` (or `CRC_CHECKER_PROJECTS_DIR`,
 falling back to `examples/`) and exposes project **ids** only — the browser never
 sends paths. `webapp/service.py` bridges the shared runner to the web and caches
-finished runs (LRU 20) under `data/web/runs/<run_id>/`. `webapp/version.py`
-reports the running commit vs. the deploy directory commit. See
-[docs/web-api.md](docs/web-api.md).
+finished runs (LRU 20) under `data/web/runs/<run_id>/`. `POST /api/verify-manual`
+adds a project-less mode: uploaded DBC/trace/DataID plus a page-filled config;
+`_manual_config()` overwrites every path and rejects path-bearing keys.
+`webapp/version.py` reports the running commit vs. the deploy directory commit.
+See [docs/web-api.md](docs/web-api.md).
 
 ### Adding capabilities
 
