@@ -20,6 +20,7 @@ from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalIn
 from crc_checker.protect.rolling_counter import RollingCounterVerifier
 from crc_checker.trace.models import CanFrame
 from crc_checker.verify.engine import VerifyEngine
+from crc_checker.verify.models import VerifyReport, VerifyVerdict
 from crc_checker.verify.runner import RunnerError, build_protection_map, run_config
 from webapp.catalog import get_project, scan_projects
 from webapp.main import UPLOADS_DIR, create_app, safe_filename
@@ -139,10 +140,11 @@ class TestVersion:
         assert "修复" in revision["subject"]
 
     def test_info_shape(self):
-        """The /api/version payload keeps its contract."""
+        """The /api/version payload keeps its contract (no server paths)."""
         info = DeploymentVersion(REPO_ROOT).info()
         assert set(info) == {"running", "checkout", "checkout_changed",
-                             "started_at", "path"}
+                             "started_at"}
+        assert "path" not in info
         assert set(info["running"]) == {"commit", "branch", "subject",
                                         "committed_at", "dirty"}
         assert info["started_at"].endswith("+00:00")
@@ -438,6 +440,50 @@ class TestFrameAccounting:
         assert payload["check_fail"] == 2
         assert payload["rc_pass"] == 3 and payload["rc_total"] == 5
 
+    def test_same_id_on_two_channels_stays_separate(self):
+        """A gateway trace carries the same CAN ID on two buses."""
+        report = VerifyReport()
+        for channel in (0, 1):
+            report.verdicts.append(VerifyVerdict(
+                frame_id=0x100, timestamp=1.0, algorithm="crc",
+                signal_name="M_CRC", expected_value=0, actual_value=0,
+                is_pass=True, channel=channel))
+        payload = report_to_dict(report)
+        assert len(payload["frames"]) == 2
+        assert {frame["channel"] for frame in payload["frames"]} == {0, 1}
+
+    def test_trace_truncation_is_serialised(self):
+        """The web result can warn that the frame cap cut the trace."""
+        report = VerifyReport(frames_truncated=True, frame_limit=10)
+        payload = report_to_dict(report)
+        assert payload["trace_truncated"] is True
+        assert payload["trace_frame_limit"] == 10
+
+
+class TestSampleTraceApi:
+    """项目自带 trace 可直接校验,不需要先下载再上传。"""
+
+    def test_sample_trace_runs_without_upload(self, client):
+        """The catalog's sample trace name is enough."""
+        response = client.post("/api/verify-sample", data={
+            "project_id": EXAMPLE_PROJECT,
+            "trace_name": "example.blf",
+            "max_frames": "100",
+        })
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["trace_name"] == "example.blf"
+        assert body["reports"][0]["total_frames"] == 100
+        assert body["report_url"].endswith("/report.html")
+
+    def test_sample_trace_rejects_unknown_name(self, client):
+        """Only names listed by the catalog are accepted — no path injection."""
+        response = client.post("/api/verify-sample", data={
+            "project_id": EXAMPLE_PROJECT,
+            "trace_name": "../config.json",
+        })
+        assert response.status_code == 404
+
 
 class TestStartupLogging:
     """uvicorn 的启动横幅过滤器:0.0.0.0 不是可访问地址,不打印。"""
@@ -458,16 +504,17 @@ class TestStartupLogging:
     def test_other_banners_and_logs_pass(self):
         """具体地址的横幅和普通日志不受影响。"""
         logger = logging.getLogger("uvicorn.error")
-        assert logger.filter(self._banner("127.0.0.1")) is True
+        # Logger.filter() returns the LogRecord on Python 3.12+ and True on
+        # older versions; only "not filtered" is part of the contract.
+        assert logger.filter(self._banner("127.0.0.1"))
         record = logging.LogRecord(
             "uvicorn.error", logging.INFO, __file__, 2,
             "Application startup complete.", None, None)
-        assert logger.filter(record) is True
+        assert logger.filter(record)
 
 
 class TestManualApi:
     """手动上传模式:DBC + trace + 页面填写的 config。"""
-
     @staticmethod
     def _post(client, config, trace=EXAMPLE_TRACE, dataid=None):
         dbc_path = EXAMPLE_DIR / "dbc" / "network.dbc"
@@ -521,6 +568,16 @@ class TestManualApi:
                                                  EXAMPLE_TRACE.read_bytes()))])
         assert response.status_code == 400
         assert "network.txt" in response.json()["detail"]
+
+    def test_manual_rejects_too_many_dbcs(self, client):
+        """服务端执行与页面一致的 10 个 DBC 上限。"""
+        dbc_bytes = (EXAMPLE_DIR / "dbc" / "network.dbc").read_bytes()
+        files = [("dbcs", (f"n{i}.dbc", dbc_bytes)) for i in range(11)]
+        files.append(("trace", (EXAMPLE_TRACE.name, EXAMPLE_TRACE.read_bytes())))
+        response = client.post("/api/verify-manual", data={"config": "{}"},
+                               files=files)
+        assert response.status_code == 400
+        assert "最多" in response.json()["detail"]
 
     def test_manual_does_not_leak_uploads(self, client):
         """跑完删掉该 run 的上传目录(报告在 RunStore 自己的目录)。"""

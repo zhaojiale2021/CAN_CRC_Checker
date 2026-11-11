@@ -86,8 +86,12 @@ class DBCProtectionMap:
         dropped too (otherwise e.g. a SUM comment keeps Profile 5's 0..56 range
         and byte-swap and every frame fails). Explicit DataID-Remark profiles
         (``crc_profile``) still win over the comment.
+
+        Comments that describe an external algorithm or a sub-byte checksum
+        cannot be computed; those checksum signals are dropped (the rolling
+        counter stays) instead of being verified with the global default.
         """
-        # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel,too-many-branches
         from crc_checker.crc.classify import (
             build_crc_params_from_comment, classify_crc_algo,
             parse_dataid_from_comment, parse_sum_byte_range,
@@ -105,14 +109,23 @@ class DBCProtectionMap:
                 if prot.crc_profile:
                     continue
                 algo = classify_crc_algo(prot.checksum_comment)
-                if algo in ('skip', 'p05'):
-                    # Algorithm described in an external file —
-                    # keep whatever default params were applied.
-                    # p05: the comment names an E2E profile — the profile table
+                if algo == 'skip':
+                    # Algorithm described in an external file: we cannot
+                    # compute it, so it must not be verified with the global
+                    # default (that produced guaranteed false failures). Drop
+                    # only the checksum; the rolling counter is still valid.
+                    prot.checksum_signal = None
+                    applied += 1
+                    continue
+                if algo == 'p05':
+                    # The comment names an E2E profile — the profile table
                     # (DBCProtectionMap.apply_profiles) owns params/range/DataID.
                     continue
                 if prot.checksum_signal.length < 8:
-                    # sub-byte checksum (e.g. nibble) — not auto-verifiable
+                    # sub-byte checksum (e.g. nibble) — not auto-verifiable;
+                    # same treatment as an externally specified algorithm.
+                    prot.checksum_signal = None
+                    applied += 1
                     continue
                 if prot.e2e_profile and fallback_range is not None:
                     # Width-selected profile was a guess; the comment now

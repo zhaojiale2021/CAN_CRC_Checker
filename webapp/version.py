@@ -90,7 +90,6 @@ class DeploymentVersion:  # pylint: disable=too-few-public-methods
             "checkout": checkout,
             "checkout_changed": changed,
             "started_at": self.started_at,
-            "path": str(self.root),
         }
 
 

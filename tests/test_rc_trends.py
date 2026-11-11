@@ -367,7 +367,7 @@ class TestRcErrorAccounting:
     def test_format_rate_never_rounds_away_a_failure(self):
         """1 个失败 / 40 万帧也必须显示成非 100%(原来 .1% 会写成 100.0%)。"""
         assert format_rate(3, 3) == "100.0%"
-        assert format_rate(0, 0) == "100.0%"
+        assert format_rate(0, 0) == "-"
         assert format_rate(4217, 4218) == "99.98%"
         assert format_rate(187556, 187890) == "99.8%"
         assert format_rate(244587, 244588) == "99.9996%"
@@ -375,7 +375,7 @@ class TestRcErrorAccounting:
     def test_summary_card_not_green_when_failures_exist(self):
         """RC 有失败时卡片不再是绿色 pass(避免绿 100% 旁边列着失败项)。"""
         html = self._render(self._report([0, 1, 2, 2, 2]))
-        assert '<div class="card"><div class="label">RC Pass</div>' in html
+        assert '<div class="card fail"><div class="label">RC Pass</div>' in html
         assert '<div class="card pass"><div class="label">RC Pass</div>' not in html
 
     def test_rc_card_counts_samples_not_folded_verdicts(self):

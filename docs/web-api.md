@@ -15,6 +15,8 @@ pip install -r requirements.txt
 # 浏览器访问 http://<服务器IP>:8000
 ```
 
+> 网页版**没有认证**，默认绑定 `0.0.0.0`。请只在可信内网运行，或放在带认证的反向代理后面。
+
 前端产物 `frontend/dist` 已提交进 git，部署机无需 Node。改前端时：
 
 ```bash
@@ -40,6 +42,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 不想把项目放进服务端目录时，页面切到「手动上传 DBC + trace」：
 
 - 上传 1..10 个 DBC、1 个 trace、可选 1 个 DataID 文件（`.json` / `.xlsx` / `.xls`）。
+  服务端也执行 10 个 DBC 的上限，单文件默认上限 200MB（`CRC_WEB_MAX_UPLOAD_MB`）。
 - 在页面上填写 CLI `config.json` 的常用段：`crc`（算法 preset、`byte_swap`、
   `auto_classify`、`profile_by_width`）、`range`、`dataid`（位置/字节序/sheet/映射/
   默认值）、`filter.frame_ids`、`signals` 正则、`rc.max_valid`、`dbc_merge`。
@@ -71,9 +74,13 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | GET | `/api/projects` | 项目列表（服务端扫描项目目录） |
 | GET | `/api/presets` | 内置算法列表及验证状态 |
 | POST | `/api/verify` | multipart 上传 trace 并按项目配置校验 |
+| POST | `/api/verify-sample` | 直接校验项目自带的示例 trace（只传项目 id + 文件名） |
 | POST | `/api/verify-manual` | multipart 上传 DBC + trace（+ DataID）并按页面填写的配置校验 |
 | GET | `/api/runs/{run_id}/report.html` | 下载本次校验的 HTML 报告 |
 | GET | `/api/version` | 部署版本（commit 节点），`Cache-Control: no-store` |
+
+项目模式下列表里的示例 trace 可直接点选校验（`POST /api/verify-sample`），
+服务端会校验 `trace_name` 必须在该项目 `sample_traces` 列表里，浏览器仍不传路径。
 
 ### `GET /api/projects`
 
@@ -128,10 +135,12 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
     "dataid_entries": 2, "dataid_sheet": "",
     "counts": {"profiles": 4, "auto_classify": 3},
     "notes": ["DBC files: 1 file(s)", "..."],
+    "config_warnings": [],
     "max_frames": 6000
   },
   "reports": [{
     "total_frames": 160, "total_verdicts": 320,
+    "check_total": 320, "check_pass": 320, "check_fail": 0,
     "pass_count": 320, "fail_count": 0, "pass_rate": 1.0,
     "crc_total": 160, "crc_pass": 160, "crc_rate": 1.0,
     "rc_total": 160, "rc_pass": 160, "rc_rate": 1.0,
@@ -144,13 +153,32 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
       "signals": [{"signal": "Checksum_Alpha", "algorithm": "crc",
                    "total": 40, "pass": 40, "fail": 0, "last_detail": ""}]
     }],
-    "frames_truncated": false
+    "frames_truncated": false,
+    "trace_truncated": false, "trace_frame_limit": null
   }]
 }
 ```
 
+`check_*` 是逐帧采样口径（与 CLI/HTML 报告一致）；`total_verdicts`/`fail_count`
+是折叠后的 verdict 口径。`trace_truncated` 表示 trace 因帧上限被截断，
+`frames_truncated` 只表示结果页的报文表被截到 500 行。
+
 序列化上限：失败明细每条 trace 最多 2000 行、报文最多 500 个、每个报文的信号最多
 50 个（超出时 `*_truncated: true`，完整内容以上面的 HTML 报告为准）。
+`max_frames=0`（不限）会按整条 trace 建索引，建议只在可信环境对已知大小的文件使用。
+
+### `POST /api/verify-sample`
+
+直接校验项目目录里自带的 trace，不需要上传：
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `project_id` | 是 | `/api/projects` 里的 `id` |
+| `trace_name` | 是 | 必须在该项目的 `sample_traces` 列表里 |
+| `max_frames` | 否 | 同 `/api/verify` |
+| `only_failures` | 否 | 同 `/api/verify` |
+
+响应与 `/api/verify` 相同。服务端只接受目录列表里出现过的文件名，浏览器仍不传路径。
 
 ### `GET /api/presets`
 
@@ -165,6 +193,10 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 
 `validated` 表示该算法已在仓库里的真实 trace 上复现过（与 `crc-check presets`
 的标注一致）。
+
+> 已完成运行的报告索引在进程内存里（LRU 20），因此 `run_web.sh` 只启动单个
+> uvicorn worker。不要加 `--workers`：多进程下上传请求和报告下载可能落在不同
+> 进程，报告会 404。需要多进程部署时请把报告存到共享存储并改造 `RunStore`。
 
 ### `POST /api/verify-manual`
 

@@ -6,11 +6,17 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/pylint.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/pylint.yml)
+[![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml)
 
 [English](../../README.md) | [🌍 中文](./README.md)
 
 </div>
+
+---
+
+| 网页版 | 自包含 HTML 报告 |
+| --- | --- |
+| ![网页版](../screenshots/web-ui.png) | ![HTML 报告](../screenshots/report.png) |
 
 ---
 
@@ -44,6 +50,17 @@ crc-check inspect examples/example/dbc/network.dbc
 python -m cli.main run -c examples/example/config_bad.json -v
 ```
 
+作为 CI 门禁：`--fail-on-failure` 有任何失败就退出 1，`--min-pass-rate 99.5`
+低于阈值退出 1（`crc-check verify` 同样支持）。
+
+```bash
+crc-check run -c examples/example/config.json --fail-on-failure
+```
+
+MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若只执行
+`pip install -e .`，请补 `pip install "python-can[mf4]"`（或
+`pip install -e ".[mf4]"`）。
+
 ## 🌐 网页版
 
 ```bash
@@ -52,10 +69,12 @@ python -m cli.main run -c examples/example/config_bad.json -v
 ```
 
 两种用法：选择**项目 id**，或切到**手动模式**上传 DBC + trace（可选 DataID 文件），
-再在页面上填写算法、CRC 范围、DataID 布局、帧过滤等配置。浏览器只提交项目 id
-或上传文件，路径始终在服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，
-可用 `CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
-无需 Node。详见 [docs/web-api.md](../web-api.md)。
+再在页面上填写算法、CRC 范围、DataID 布局、帧过滤等配置。项目详情里的示例 trace
+可以直接点选校验，不需要先下载再上传。浏览器只提交项目 id 或上传文件，路径始终在
+服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，可用
+`CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
+无需 Node。网页版没有认证，请只在可信内网运行。详见
+[docs/web-api.md](../web-api.md)。
 
 ## 🌟 能力一览
 
@@ -64,8 +83,9 @@ python -m cli.main run -c examples/example/config_bad.json -v
 | **自动识别保护信号** | 前缀（`Checksum_*`、`CRC_*`）与后缀（`*_CRC`、`*_Counter`）、多 E2E 实例、传感器总线标记、BlockCounter 排除 —— 全部由 YAML 正则驱动 |
 | **E2E Profile 校验** | Profile 5（CRC16/CCITT，DataID 追加，字节交换）与 Profile 1/1A（CRC8/SAE-J1850-ZERO，DataID 前置，4-bit 计数器） |
 | **非 CRC 校验和** | SUM8、SUM8/XOR-FF、XOR8/SEED，可按 DBC 注释逐报文选择 |
-| **多种 trace 格式** | BLF、ASC、MF4、TRC、CSV/LOG（基于 python-can） |
+| **多种 trace 格式** | BLF、ASC、MF4、TRC、CSV/LOG（MF4 需要 `python-can[mf4]`） |
 | **大 trace** | 流式校验、CRC 引擎缓存、RC 趋势图抽稀、报告体积上限保护 |
+| **CI 门禁** | `--fail-on-failure` / `--min-pass-rate`；帧上限截断一定会提示 |
 | **DataID 表** | `.xlsx`、旧版 `.xls` 与预处理 JSON；列布局由 YAML 命名映射提供 |
 | **结果可复现** | CLI 与网页版共用同一个 runner（`crc_checker/verify/runner.py`） |
 
@@ -121,6 +141,8 @@ rolling_counter:
 
 | 段 | 字段 | 说明 |
 | --- | --- | --- |
+| 顶层 | `dbc` / `dbcs` | 单个 DBC 路径，或文件/目录列表 |
+| | `dbc_merge` | 合并多个 DBC 为一个映射，而不是按通道选择 |
 | `crc` | `preset` | 预设名；`custom` 表示内联参数 |
 | | `byte_swap` | 比较前交换 CRC 字节（Profile 5） |
 | | `auto_classify` | 按 DBC 注释逐报文选择算法 |
@@ -128,12 +150,16 @@ rolling_counter:
 | | `profiles` | 按 Profile 覆盖（算法、DataID 布局、范围、计数器上限） |
 | | `range_overrides` / `skip` | 逐报文范围 / 不校验的信号 |
 | `range` | `mode` | `exclude_crc` / `full_payload` / `custom_range` |
+| | `start_byte` / `end_byte` | `custom_range` 的起止字节（`-1` = 帧尾） |
 | `dataid` | `json` / `xlsx` | 预处理 JSON（快）或 Excel 源表 |
 | | `mapping` / `mapping_file` | DataID 列布局 |
+| | `position` / `byte_order` / `default` | `prepend`/`append`、`lo_hi`/`hi_lo`、未匹配时的默认 DataID |
 | `signals` | `patterns_file` | 自定义信号名 YAML |
 | | `checksum_pattern(s)` / `rc_pattern(s)` | 正则覆盖 |
+| `filter` | `frame_ids` / `max_frames` | CAN ID 过滤；帧上限（`0` = 不限，默认 6000） |
 | `rc` | `max_valid` | 计数器最大值（默认 `2^位数 - 1`） |
-| `output` | `max_report_sections` | 报告帧段上限（默认 30000，0 = 不限） |
+| `output` | `format` / `file` / `only_failures` | `table` 或 `html`、输出路径、只写失败项 |
+| | `max_report_sections` | 报告帧段上限（默认 30000，0 = 不限） |
 
 完整 schema 见 `crc_checker/config.py`（`CONFIG_SCHEMA_DOC`）。
 
@@ -159,17 +185,21 @@ tests/                  pytest 测试
 ## 🧪 开发
 
 ```bash
-pytest
-pylint crc_checker/ cli/ webapp/ tests/ examples/     # 必须 10.00/10
-cd frontend && npm test                               # node --test
-cd frontend && npm install && npm run build           # 重新构建 dist
-python examples/generate_example.py                   # 重新生成示例
+pytest --cov=crc_checker --cov=cli --cov=webapp   # CI 门槛 80%
+pylint $(git ls-files '*.py')                     # 必须 10.00/10
+cd frontend && npm test                           # node --test（29 个）
+cd frontend && npm install && npm run build       # 重新构建 dist
+python examples/generate_example.py               # 重新生成示例
 ```
+
+CI 在 Python 3.9、3.11、3.13 上跑同样的 pylint 与 pytest，另有一个 Windows
+pytest 作业，并额外跑前端单测和 `frontend/dist` 是否与源码构建一致。
+pre-push 钩子会用 CI 同环境跑 lint + 测试。
 
 ## 🤝 贡献
 
-欢迎提 issue / PR。提交前请先跑上面的 lint 与测试；CI 会在 Python 3.9 和 3.10
-上跑同样的 pylint 与 pytest。
+欢迎提 issue / PR。提交前请先跑上面的 lint 与测试；CI 会跑同样的检查，
+外加前端单测和 dist 新鲜度检查。
 
 ## 📄 许可证
 

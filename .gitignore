@@ -14,6 +14,10 @@ build/
 report*.csv
 report*.json
 
+# Local customer projects. This is the documented place for real DBC/trace
+# data; it must never be committed to this public repository.
+projects/
+
 # Python build artifacts (frontend/dist IS committed)
 build/
 /dist/
@@ -30,6 +34,8 @@ frontend/node_modules/
 
 # Tool metadata
 .reasonix/
+.coverage
+htmlcov/
 
 # Generated agent-memory index (local only)
 AGENTS.md

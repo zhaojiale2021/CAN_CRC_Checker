@@ -12,6 +12,7 @@ of encoding it in a separate table. The rules below are generic:
   * "CRC checksum ... Profile 1A ... DataID 0x00EB" -> Profile 1A
       (CRC8/SAE-J1850-ZERO + DataID parsed from the comment)
   * "algorithm in a separate file" or sub-byte checksum -> 'skip'
+    (the caller drops the checksum signal; it cannot be auto-verified)
 """
 
 from __future__ import annotations
@@ -126,7 +127,7 @@ def build_crc_params_from_comment(comment: str,
     """
     algo = classify_crc_algo(comment)
     if not algo or algo in ('skip', 'p05'):
-        # Algorithm described in an external file — caller keeps the default.
+        # skip: the caller drops the checksum signal (no auto-verification).
         # p05: the comment names an E2E profile; params come from
         # DBCProtectionMap.apply_profiles (crc/profiles.py).
         return None

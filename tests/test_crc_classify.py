@@ -5,6 +5,26 @@ from crc_checker.crc.classify import (
     parse_dataid_from_comment, parse_sum_byte_range,
 )
 from crc_checker.crc.presets import get_preset
+from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
+
+
+class TestApplyCommentClassification:  # pylint: disable=too-few-public-methods
+    """Effect of classification on the protection map (not just the classifier)."""
+
+    def test_skip_comment_removes_checksum_not_counter(self):
+        """An external algorithm must be left unverified, not checked with the default."""
+        pm = DBCProtectionMap()
+        prot = MessageProtection(
+            frame_id=0x100, frame_name="M", dlc=8,
+            checksum_signal=SignalInfo(name="M_CRC", start_bit=0, length=8),
+            rolling_counter_signal=SignalInfo(name="M_RC", start_bit=8, length=4),
+            checksum_comment="CRC8 算法另附文件",
+        )
+        pm.messages = {0x100: [prot]}
+        applied = pm.apply_comment_classification(get_preset("CRC8/SAE-J1850"))
+        assert applied == 1
+        assert prot.checksum_signal is None
+        assert prot.rolling_counter_signal is not None
 
 
 class TestClassifyCrcAlgo:
@@ -162,7 +182,7 @@ class TestBuildParams:
         assert build_crc_params_from_comment("") is None
 
     def test_skip_returns_none(self):
-        """skip comments return None (caller keeps the default algorithm)."""
+        """skip comments return None (the caller drops the checksum signal)."""
         assert build_crc_params_from_comment("CRC8 算法另附文件") is None
 
 
