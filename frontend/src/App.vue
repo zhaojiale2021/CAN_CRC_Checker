@@ -13,6 +13,21 @@
                 :title="`项目列表加载失败：${loadError}`" />
 
       <el-card class="block" shadow="never">
+        <div class="mode-bar">
+          <el-radio-group v-model="mode">
+            <el-radio-button value="project">项目配置</el-radio-button>
+            <el-radio-button value="manual">手动上传 DBC + trace</el-radio-button>
+          </el-radio-group>
+          <span class="muted">
+            {{ mode === 'project'
+              ? '项目配置来自服务端 projects/ 目录，与 CLI 共用同一校验口径'
+              : '无需服务端项目：上传 DBC 与 trace 后，在页面上填写原 config.json 的参数' }}
+          </span>
+        </div>
+      </el-card>
+
+      <!-- 1. 项目 / DBC -->
+      <el-card v-if="mode === 'project'" class="block" shadow="never">
         <template #header>
           <div class="card-head">
             <span class="step">1</span>
@@ -54,11 +69,42 @@
         </div>
       </el-card>
 
+      <el-card v-else class="block" shadow="never">
+        <template #header>
+          <div class="card-head">
+            <span class="step">1</span>
+            <span>上传 DBC</span>
+            <span class="muted">可多选；校验时按 trace 通道自动选择最匹配的 DBC</span>
+          </div>
+        </template>
+        <el-upload
+          drag
+          multiple
+          action="#"
+          accept=".dbc"
+          :auto-upload="false"
+          :limit="10"
+          :on-change="onDbcChange"
+          :on-remove="onDbcRemove"
+          :on-exceed="onDbcExceed"
+          :file-list="dbcList"
+        >
+          <div class="upload-text">把 DBC 文件拖到这里，或<em>点击选择</em>（可多选）</div>
+          <template #tip>
+            <div class="muted">上限 10 个；多个 DBC 可用下方「合并所有 DBC」改成单一映射。</div>
+          </template>
+        </el-upload>
+        <div v-if="dbcFiles.length" class="detail-row muted selected-files">
+          已选：{{ dbcFiles.map((f) => f.name).join('、') }}
+        </div>
+      </el-card>
+
+      <!-- 2. trace (+ 手动模式的 DataID) -->
       <el-card class="block" shadow="never">
         <template #header>
           <div class="card-head">
             <span class="step">2</span>
-            <span>上传 trace</span>
+            <span>上传 trace{{ mode === 'manual' ? ' / DataID' : '' }}</span>
             <span class="muted">BLF / ASC / MF4 / TRC / CSV，上限 {{ uploadLimitMb }}MB</span>
           </div>
         </template>
@@ -77,22 +123,144 @@
             <div class="muted">文件只用于本次校验：服务端跑完即删除，仅保留生成的报告。</div>
           </template>
         </el-upload>
+
+        <div v-if="mode === 'manual'" class="option dataid-upload">
+          <span class="option-label">DataID</span>
+          <el-upload
+            action="#"
+            accept=".json,.xlsx,.xls"
+            :auto-upload="false"
+            :limit="1"
+            :on-change="onDataidChange"
+            :on-remove="onDataidRemove"
+            :on-exceed="onDataidExceed"
+            :file-list="dataidList"
+          >
+            <el-button size="small">选择 DataID 文件（可选）</el-button>
+            <template #tip>
+              <div class="muted">预处理后的 .json 或 .xlsx/.xls；不传则不使用 DataID。</div>
+            </template>
+          </el-upload>
+          <span v-if="dataidFile" class="muted mono">{{ dataidFile.name }}</span>
+        </div>
       </el-card>
 
+      <!-- 3. 算法与校验选项 -->
       <el-card class="block" shadow="never">
         <template #header>
           <div class="card-head">
             <span class="step">3</span>
             <span>校验选项</span>
+            <span v-if="mode === 'manual'" class="muted">对应 CLI config.json 的 crc / range / dataid / rc / signals 段</span>
           </div>
         </template>
+
+        <div v-if="mode === 'manual'" class="options algorithm-form">
+          <el-alert v-if="presetError" type="warning" :closable="false"
+                    :title="`算法列表加载失败：${presetError}（仍可手填配置或按 DBC 注释识别）`" />
+
+          <div class="option">
+            <span class="option-label">算法</span>
+            <el-select v-model="preset" clearable filterable class="algo-select"
+                       placeholder="不指定（只校验 RC）">
+              <el-option label="不指定（只校验 RC）" value="" />
+              <el-option
+                v-for="item in presets"
+                :key="item.name"
+                :label="item.name"
+                :value="item.name"
+              >
+                <span class="mono">{{ item.name }}</span>
+                <el-tag size="small" class="opt-tag"
+                        :type="item.validated ? 'success' : 'info'">
+                  {{ item.validated ? '已验证' : '未验证' }}
+                </el-tag>
+              </el-option>
+            </el-select>
+            <span class="muted">未验证 = 仓库里没有用真实 trace 跑通过</span>
+          </div>
+
+          <div class="option">
+            <span class="option-label">开关</span>
+            <el-checkbox v-model="byteSwap">字节交换（Profile 5）</el-checkbox>
+            <el-checkbox v-model="autoClassify">按 DBC 注释识别算法</el-checkbox>
+            <el-checkbox v-model="profileByWidth">按 CRC 宽度选 E2E Profile</el-checkbox>
+            <el-checkbox v-model="dbcMerge">合并所有 DBC</el-checkbox>
+          </div>
+
+          <div class="option">
+            <span class="option-label">CRC 范围</span>
+            <el-radio-group v-model="rangeMode" size="small">
+              <el-radio-button value="exclude_crc">排除 CRC 字节</el-radio-button>
+              <el-radio-button value="full_payload">整帧</el-radio-button>
+              <el-radio-button value="custom_range">自定义</el-radio-button>
+            </el-radio-group>
+            <template v-if="rangeMode === 'custom_range'">
+              <el-input-number v-model="rangeStart" :min="0" :max="64" size="small"
+                               controls-position="right" />
+              <span class="muted">..</span>
+              <el-input-number v-model="rangeEnd" :min="-1" :max="64" size="small"
+                               controls-position="right" />
+              <span class="muted">末字节（-1 = 帧尾）</span>
+            </template>
+          </div>
+
+          <div class="option">
+            <span class="option-label">DataID</span>
+            <el-select v-model="dataidPosition" size="small" class="small-select">
+              <el-option label="前置 prepend" value="prepend" />
+              <el-option label="后置 append" value="append" />
+            </el-select>
+            <el-select v-model="dataidByteOrder" size="small" class="small-select">
+              <el-option label="低字节在前 lo_hi" value="lo_hi" />
+              <el-option label="高字节在前 hi_lo" value="hi_lo" />
+            </el-select>
+          </div>
+
+          <div class="option">
+            <span class="option-label">RC 上限</span>
+            <el-input-number v-model="rcMaxValid" :min="0" :max="255" size="small"
+                             controls-position="right" />
+            <span class="muted">留空 = 按计数器位宽自动（2^N - 1）</span>
+          </div>
+
+          <el-collapse class="advanced">
+            <el-collapse-item title="高级：帧过滤 / 信号正则 / DataID 细节" name="advanced">
+              <div class="options">
+                <div class="option">
+                  <span class="option-label">帧 ID</span>
+                  <el-input v-model="frameIds" placeholder="0x143, 0x299（留空 = 全部）" />
+                </div>
+                <div class="option">
+                  <span class="option-label">Checksum 正则</span>
+                  <el-input v-model="checksumPattern" placeholder="留空 = 内置命名规则" />
+                </div>
+                <div class="option">
+                  <span class="option-label">RC 正则</span>
+                  <el-input v-model="rcPattern" placeholder="留空 = 内置命名规则" />
+                </div>
+                <div class="option">
+                  <span class="option-label">DataID sheet</span>
+                  <el-input v-model="dataidSheet" placeholder="xlsx 工作表名（留空 = 自动匹配）" />
+                </div>
+                <div class="option">
+                  <span class="option-label">DataID 映射</span>
+                  <el-input v-model="dataidMapping" placeholder="如 hi_lo_two_cols（留空 = 默认）" />
+                </div>
+                <div class="option">
+                  <span class="option-label">DataID 默认值</span>
+                  <el-input v-model="dataidDefault" placeholder="如 0x0000（留空 = 不使用）" />
+                </div>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
+
         <div class="options">
           <div class="option">
             <span class="option-label">帧数上限</span>
             <el-radio-group v-model="frameMode" size="small">
-              <el-radio-button value="config">
-                配置默认{{ configMaxFrames ? `（${configMaxFrames}）` : '（不限）' }}
-              </el-radio-button>
+              <el-radio-button value="config">配置默认{{ frameDefaultLabel }}</el-radio-button>
               <el-radio-button value="unlimited">不限</el-radio-button>
               <el-radio-button value="custom">自定义</el-radio-button>
             </el-radio-group>
@@ -146,7 +314,9 @@
           <div class="card-head">
             <span class="step">4</span>
             <span>校验结果</span>
-            <span class="muted mono">{{ result.trace_name }} · {{ result.project_id }}</span>
+            <span class="muted mono">
+              {{ result.trace_name }} · {{ resultProjectLabel(result.project_id) }}
+            </span>
           </div>
         </template>
         <ResultPanel :result="result" />
@@ -160,15 +330,22 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import VersionPanel from './components/VersionPanel.vue'
 import ResultPanel from './components/ResultPanel.vue'
-import { fetchProjects, verifyTrace } from './api.js'
+import { fetchPresets, fetchProjects, verifyManual, verifyTrace } from './api.js'
 import {
   canRun,
   findProject,
   groupByOem,
   summaryHighlights,
 } from './projects.js'
+import {
+  buildManualConfig,
+  manualCanRun,
+  resultProjectLabel,
+} from './manualConfig.js'
 
 const UPLOAD_LIMIT_MB = 200
+
+const mode = ref('project')
 
 const projects = ref([])
 const projectId = ref('')
@@ -182,20 +359,64 @@ const loadError = ref('')
 const runError = ref('')
 const result = ref(null)
 
+// 手动模式
+const presets = ref([])
+const presetError = ref('')
+const dbcList = ref([])
+const dbcFiles = ref([])
+const dataidList = ref([])
+const dataidFile = ref(null)
+const preset = ref('')
+const byteSwap = ref(false)
+const autoClassify = ref(false)
+const profileByWidth = ref(false)
+const dbcMerge = ref(false)
+const rangeMode = ref('exclude_crc')
+const rangeStart = ref(0)
+const rangeEnd = ref(-1)
+const dataidPosition = ref('prepend')
+const dataidByteOrder = ref('lo_hi')
+const dataidSheet = ref('')
+const dataidMapping = ref('')
+const dataidDefault = ref('')
+const rcMaxValid = ref(null)
+const frameIds = ref('')
+const checksumPattern = ref('')
+const rcPattern = ref('')
+
 const uploadLimitMb = UPLOAD_LIMIT_MB
 const projectGroups = computed(() => groupByOem(projects.value))
 const project = computed(() => findProject(projects.value, projectId.value))
 const highlights = computed(() => summaryHighlights(project.value))
 const configMaxFrames = computed(() => project.value?.summary?.default_max_frames ?? null)
+const frameDefaultLabel = computed(() => {
+  if (mode.value === 'project') {
+    return configMaxFrames.value ? `（${configMaxFrames.value}）` : '（不限）'
+  }
+  return '（6000）'
+})
 
-const runnable = computed(() => canRun({
-  projectId: projectId.value,
-  file: selectedFile.value,
-  running: running.value,
-}))
+const runnable = computed(() => (
+  mode.value === 'project'
+    ? canRun({
+      projectId: projectId.value,
+      file: selectedFile.value,
+      running: running.value,
+    })
+    : manualCanRun({
+      dbcFiles: dbcFiles.value,
+      traceFile: selectedFile.value,
+      running: running.value,
+    })
+))
 
 const prerequisite = computed(() => {
-  if (!projectId.value) return '请先选择项目。'
+  if (mode.value === 'project') {
+    if (!projectId.value) return '请先选择项目。'
+    if (!selectedFile.value) return '请先上传 trace 文件。'
+    return ''
+  }
+  if (!dbcFiles.value.length) return '请先上传至少一个 DBC 文件。'
   if (!selectedFile.value) return '请先上传 trace 文件。'
   return ''
 })
@@ -218,28 +439,93 @@ function onFileExceed() {
   ElMessage.warning('一次只能上传一个 trace 文件，请先移除已选文件。')
 }
 
+function onDbcChange(_uploadFile, uploadFiles) {
+  dbcList.value = [...uploadFiles]
+  dbcFiles.value = uploadFiles.map((item) => item.raw).filter(Boolean)
+}
+
+function onDbcRemove(_uploadFile, uploadFiles) {
+  dbcList.value = [...uploadFiles]
+  dbcFiles.value = uploadFiles.map((item) => item.raw).filter(Boolean)
+}
+
+function onDbcExceed() {
+  ElMessage.warning('最多一次上传 10 个 DBC 文件。')
+}
+
+function onDataidChange(uploadFile) {
+  dataidFile.value = uploadFile.raw || null
+  dataidList.value = uploadFile.raw ? [uploadFile] : []
+}
+
+function onDataidRemove() {
+  dataidFile.value = null
+  dataidList.value = []
+}
+
+function onDataidExceed() {
+  ElMessage.warning('一次只能上传一个 DataID 文件，请先移除已选文件。')
+}
+
 function maxFramesPayload() {
   if (frameMode.value === 'unlimited') return 0
   if (frameMode.value === 'custom') return customFrames.value || null
   return null
 }
 
+function manualConfigPayload() {
+  return buildManualConfig({
+    preset: preset.value,
+    byteSwap: byteSwap.value,
+    autoClassify: autoClassify.value,
+    profileByWidth: profileByWidth.value,
+    dbcMerge: dbcMerge.value,
+    rangeMode: rangeMode.value,
+    rangeStart: rangeStart.value,
+    rangeEnd: rangeEnd.value,
+    dataidPosition: dataidPosition.value,
+    dataidByteOrder: dataidByteOrder.value,
+    dataidSheet: dataidSheet.value,
+    dataidMapping: dataidMapping.value,
+    dataidDefault: dataidDefault.value,
+    rcMaxValid: rcMaxValid.value,
+    frameIds: frameIds.value,
+    checksumPattern: checksumPattern.value,
+    rcPattern: rcPattern.value,
+  })
+}
+
+function reportMessage(payload) {
+  const report = payload.reports?.[0]
+  if (report && report.fail_count === 0) {
+    ElMessage.success(`全部通过：${report.total_verdicts} 项校验`)
+  } else if (report) {
+    ElMessage.warning(`发现 ${report.fail_count} 项失败`)
+  }
+}
+
 async function run() {
   running.value = true
   runError.value = ''
   try {
-    result.value = await verifyTrace({
-      projectId: projectId.value,
-      file: selectedFile.value,
-      maxFrames: maxFramesPayload(),
-      onlyFailures: onlyFailures.value,
-    })
-    const report = result.value.reports?.[0]
-    if (report && report.fail_count === 0) {
-      ElMessage.success(`全部通过：${report.total_verdicts} 项校验`)
-    } else if (report) {
-      ElMessage.warning(`发现 ${report.fail_count} 项失败`)
+    if (mode.value === 'manual') {
+      result.value = await verifyManual({
+        dbcs: dbcFiles.value,
+        trace: selectedFile.value,
+        dataid: dataidFile.value,
+        config: manualConfigPayload(),
+        maxFrames: maxFramesPayload(),
+        onlyFailures: onlyFailures.value,
+      })
+    } else {
+      result.value = await verifyTrace({
+        projectId: projectId.value,
+        file: selectedFile.value,
+        maxFrames: maxFramesPayload(),
+        onlyFailures: onlyFailures.value,
+      })
     }
+    reportMessage(result.value)
   } catch (err) {
     runError.value = err.message
     result.value = null
@@ -258,7 +544,20 @@ async function loadProjects() {
   }
 }
 
-onMounted(loadProjects)
+async function loadPresets() {
+  try {
+    const data = await fetchPresets()
+    presets.value = data.presets || []
+    presetError.value = ''
+  } catch (err) {
+    presetError.value = err.message
+  }
+}
+
+onMounted(() => {
+  loadProjects()
+  loadPresets()
+})
 </script>
 
 <style scoped>
@@ -276,16 +575,25 @@ onMounted(loadProjects)
 .step { display: inline-flex; align-items: center; justify-content: center;
         width: 20px; height: 20px; border-radius: 50%; font-size: 12px;
         background: var(--el-color-primary); color: #fff; }
+.mode-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .project-select { width: 420px; max-width: 100%; margin-top: 8px; }
 .project-detail { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .detail-row { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12px;
               align-items: baseline; }
 .detail-item { display: inline-flex; gap: 6px; align-items: baseline; }
+.selected-files { margin-top: 10px; }
 .mono { font-family: 'SF Mono', Consolas, monospace; }
 .muted { color: var(--el-text-color-secondary); font-size: 12px; }
 .upload-text { color: var(--el-text-color-regular); }
 .options { display: flex; flex-direction: column; gap: 14px; }
+.algorithm-form { margin-bottom: 22px; padding-bottom: 18px;
+                  border-bottom: 1px solid var(--el-border-color-lighter); }
 .option { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.option-label { width: 80px; color: var(--el-text-color-secondary); font-size: 13px; }
+.option-label { width: 100px; color: var(--el-text-color-secondary); font-size: 13px; }
+.algo-select { width: 280px; }
+.small-select { width: 150px; }
+.opt-tag { float: right; margin-left: 10px; }
+.advanced { margin-top: 2px; }
+.dataid-upload { margin-top: 14px; }
 .run-bar { display: flex; align-items: center; gap: 14px; margin-top: 20px; }
 </style>

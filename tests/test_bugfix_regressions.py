@@ -25,9 +25,16 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-import canmatrix
 import openpyxl
 import pytest
+
+# canmatrix >= 1.3 exposes the classes from their own modules; 1.3.2 in
+# particular stopped re-exporting them as callables at the package top level.
+try:
+    from canmatrix.ArbitrationId import ArbitrationId
+    from canmatrix.Frame import Frame
+except ImportError:  # canmatrix <= 1.2 re-exports both classes directly
+    from canmatrix import ArbitrationId, Frame
 
 from cli.main import _print_table, _range_specified, _report_output_path
 from crc_checker.config import RunConfig, apply_crc_config
@@ -196,9 +203,9 @@ def test_frame_html_escapes_message_name():
 
 def test_extended_frame_id_is_masked():
     """29-bit IDs must not carry the 0x80000000 extended flag in the map."""
-    frame = canmatrix.Frame(
+    frame = Frame(
         name="ExtMsg",
-        arbitration_id=canmatrix.ArbitrationId(id=0xF110, extended=True),
+        arbitration_id=ArbitrationId(id=0xF110, extended=True),
         size=8,
     )
     assert frame.arbitration_id.to_compound_integer() & 0x1FFFFFFF == 0xF110

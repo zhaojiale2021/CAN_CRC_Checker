@@ -11,18 +11,22 @@ Design notes:
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import re
 import secrets
 import shutil
 from pathlib import Path
+from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from webapp.catalog import PROJECT_ROOT, get_project, scan_projects
+from crc_checker.crc.presets import get_preset, get_validation, list_presets
+from webapp.catalog import PROJECT_ROOT, Project, get_project, scan_projects
 from webapp.service import RunStore, RunError, run_project
 from webapp.version import deployment_version
 
@@ -32,6 +36,20 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 RUNS_DIR = DATA_DIR / "runs"
 
 DEFAULT_MAX_UPLOAD_MB = 200
+TRACE_SUFFIXES = frozenset({".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"})
+DBC_SUFFIXES = frozenset({".dbc"})
+DATAID_SUFFIXES = frozenset({".json", ".xlsx", ".xls"})
+# Sections the manual-upload form may fill in. Everything path-bearing is set
+# server-side from the uploads, so the browser still never sends a path.
+MANUAL_SECTIONS = ("crc", "range", "dataid", "filter", "signals", "rc", "output")
+MANUAL_SCALARS = ("dbc_merge",)
+MANUAL_FORBIDDEN = (
+    ("dataid", "xlsx"),
+    ("dataid", "json"),
+    ("dataid", "mapping_file"),
+    ("signals", "patterns_file"),
+)
+
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._一-鿿 -]+")
 # Windows device names are not valid file names even with an extension
 # (``CON``, ``NUL.blf``, ``COM1`` …); opening them targets the device.
@@ -40,6 +58,18 @@ _WINDOWS_RESERVED = frozenset(
     | {f"COM{i}" for i in range(1, 10)}
     | {f"LPT{i}" for i in range(1, 10)}
 )
+
+
+def _drop_bind_any_banner(record: logging.LogRecord) -> bool:
+    """Hide uvicorn's "Uvicorn running on http://0.0.0.0:PORT" line.
+
+    ``0.0.0.0`` is a bind address, not one a browser can open; the launchers
+    print the addresses that actually work. Records from other hosts pass
+    through untouched.
+    """
+    message = record.getMessage()
+    return not (message.startswith("Uvicorn running on") and "0.0.0.0" in message)
+
 
 def max_upload_bytes() -> int:
     """Upload cap in bytes (``CRC_WEB_MAX_UPLOAD_MB`` overrides the default)."""
@@ -85,6 +115,66 @@ def _parse_bool(raw: str) -> bool:
     return raw.strip().lower() == "true"
 
 
+def _manual_config(raw: str, dbc_paths: list[Path], trace_path: Path,
+                   dataid_path: Path | None) -> dict:
+    """Build the run config for a manual upload.
+
+    The browser fills in the algorithm/range/DataID/filter sections; every
+    filesystem path is overwritten with the server-side upload location, so a
+    hand-written ``config`` can never point the server at another file.
+    """
+    try:
+        data = json.loads(raw or "{}")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, f"配置 JSON 解析失败: {exc.msg}") from exc
+    if not isinstance(data, dict):
+        raise HTTPException(400, "配置必须是 JSON 对象")
+
+    unknown = sorted(set(data) - set(MANUAL_SECTIONS) - set(MANUAL_SCALARS))
+    if unknown:
+        raise HTTPException(400, f"网页版不支持这些配置项: {', '.join(unknown)}")
+    for section in MANUAL_SECTIONS:
+        if section in data and not isinstance(data[section], dict):
+            raise HTTPException(400, f"配置项 {section} 必须是 JSON 对象")
+    for scalar in MANUAL_SCALARS:
+        if scalar in data and not isinstance(data[scalar], bool):
+            raise HTTPException(400, f"配置项 {scalar} 必须是布尔值")
+    for section, key in MANUAL_FORBIDDEN:
+        if key in (data.get(section) or {}):
+            raise HTTPException(400, f"网页版不接受 {section}.{key},请使用上传文件")
+
+    if dataid_path is not None:
+        dataid = data.setdefault("dataid", {})
+        if dataid_path.suffix.lower() == ".json":
+            dataid["json"] = str(dataid_path)
+        else:
+            dataid["xlsx"] = str(dataid_path)
+
+    output = data.setdefault("output", {})
+    output.pop("file", None)
+    output["format"] = "html"
+
+    data["dbc"] = ""
+    data["dbcs"] = [str(path) for path in dbc_paths]
+    data["traces"] = [str(trace_path)]
+    return data
+
+
+def _manual_project(upload_dir: Path, config_path: Path,
+                    dbc_paths: list[Path]) -> Project:
+    """Synthetic project entry so the shared runner/report path stays unchanged."""
+    return Project(
+        id="manual",
+        oem="manual",
+        model="手动配置",
+        path=upload_dir,
+        config_path=config_path,
+        dbc_files=[path.name for path in dbc_paths],
+        sample_traces=[],
+        summary={},
+    )
+
+
 def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too-many-statements
     """Build the ASGI app (``store`` is injectable for tests)."""
     api = FastAPI(title="CAN CRC Checker (Web)")
@@ -105,14 +195,38 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         return JSONResponse(deployment_version.info(),
                             headers={"Cache-Control": "no-store"})
 
-    async def _save_upload(file: UploadFile, run_id: str) -> Path:
+    @api.get("/api/presets")
+    def crc_presets() -> dict:
+        """Built-in CRC / checksum algorithms, with validation status."""
+        presets = []
+        for name in list_presets():
+            params = get_preset(name)
+            status, note = get_validation(name)
+            presets.append({
+                "name": name,
+                "width": params.width,
+                "checksum_type": params.checksum_type,
+                "validated": status == "validated",
+                "note": note,
+            })
+        return {"presets": presets}
+
+    async def _save_upload(file: UploadFile, run_id: str,
+                           subdir: str = "",
+                           allowed: frozenset = TRACE_SUFFIXES,
+                           label: str = "trace") -> Path:
         """Stream one upload into ``data/web/uploads/<run_id>/`` (size-capped)."""
-        upload_dir = UPLOADS_DIR / run_id
+        upload_dir = UPLOADS_DIR / run_id / subdir
         upload_dir.mkdir(parents=True, exist_ok=True)
-        trace_path = upload_dir / safe_filename(file.filename or "")
+        name = safe_filename(file.filename or "")
+        if Path(name).suffix.lower() not in allowed:
+            raise HTTPException(400, f"{label} 文件类型不支持: {name}")
+        target = upload_dir / name
+        if target.exists():
+            raise HTTPException(400, f"{label} 文件名重复: {name}")
         limit = max_upload_bytes()
         written = 0
-        with open(trace_path, "wb") as handle:
+        with open(target, "wb") as handle:
             while chunk := await file.read(1024 * 1024):
                 written += len(chunk)
                 if written > limit:
@@ -121,8 +235,8 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                              f"请截取日志后重试")
                 handle.write(chunk)
         if written == 0:
-            raise HTTPException(400, "上传的 trace 文件为空")
-        return trace_path
+            raise HTTPException(400, f"上传的 {label} 文件为空")
+        return target
 
     @api.post("/api/verify")
     async def verify(  # pylint: disable=too-many-locals
@@ -148,6 +262,51 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             raise HTTPException(400, str(exc)) from exc
         finally:
             # The trace is only needed while the run is in flight.
+            shutil.rmtree(upload_dir, ignore_errors=True)
+
+        run_store.add(outcome)
+        return outcome.to_dict()
+
+    @api.post("/api/verify-manual")
+    async def verify_manual(  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
+        dbcs: list[UploadFile] = File(...),
+        trace: UploadFile = File(...),
+        config: str = Form("{}"),
+        dataid: Optional[UploadFile] = File(None),
+        max_frames: str = Form(""),
+        only_failures: str = Form("false"),
+    ) -> dict:
+        """Verify an uploaded trace with uploaded DBC files and a page-filled config."""
+        if not dbcs:
+            raise HTTPException(400, "至少上传一个 DBC 文件")
+        frame_limit = _parse_frame_limit(max_frames)
+
+        run_id = secrets.token_urlsafe(9)
+        upload_dir = UPLOADS_DIR / run_id
+        try:
+            dbc_paths = []
+            for item in dbcs:
+                dbc_paths.append(
+                    await _save_upload(item, run_id, "dbc", DBC_SUFFIXES, "DBC"))
+            trace_path = await _save_upload(trace, run_id)
+            dataid_path = None
+            if dataid is not None:
+                dataid_path = await _save_upload(
+                    dataid, run_id, allowed=DATAID_SUFFIXES, label="DataID")
+
+            config_data = _manual_config(config, dbc_paths, trace_path, dataid_path)
+            config_path = upload_dir / "config.json"
+            config_path.write_text(
+                json.dumps(config_data, ensure_ascii=False), encoding="utf-8")
+            project = _manual_project(upload_dir, config_path, dbc_paths)
+
+            outcome = await run_in_threadpool(
+                run_project, project, trace_path, trace_path.name,
+                frame_limit, _parse_bool(only_failures), run_id, run_store.runs_dir)
+        except RunError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        finally:
+            # Uploads are only needed while the run is in flight.
             shutil.rmtree(upload_dir, ignore_errors=True)
 
         run_store.add(outcome)
@@ -194,3 +353,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
 
 
 app = create_app()
+
+# uvicorn configures its loggers before importing the app, so a filter added
+# here is already in place when the startup banner is logged.
+logging.getLogger("uvicorn.error").addFilter(_drop_bind_any_banner)

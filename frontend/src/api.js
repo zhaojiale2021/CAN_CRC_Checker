@@ -36,6 +36,10 @@ export function fetchProjects() {
   return request('/api/projects')
 }
 
+export function fetchPresets() {
+  return request('/api/presets')
+}
+
 export function fetchVersion() {
   return request('/api/version')
 }
@@ -50,4 +54,26 @@ export function verifyTrace({ projectId, file, maxFrames = null, onlyFailures = 
   form.append('max_frames', maxFrames === null ? '' : String(maxFrames))
   form.append('only_failures', onlyFailures ? 'true' : 'false')
   return request('/api/verify', { method: 'POST', body: form })
+}
+
+/**
+ * 手动模式:上传 DBC(+ 可选 DataID)和 trace,并提交页面上填写的 config。
+ * `config` 必须是普通对象,服务端会覆盖其中的所有路径字段。
+ */
+export function verifyManual({
+  dbcs,
+  trace,
+  dataid = null,
+  config,
+  maxFrames = null,
+  onlyFailures = false,
+}) {
+  const form = new FormData()
+  dbcs.forEach((file) => form.append('dbcs', file))
+  form.append('trace', trace)
+  if (dataid) form.append('dataid', dataid)
+  form.append('config', JSON.stringify(config || {}))
+  form.append('max_frames', maxFrames === null ? '' : String(maxFrames))
+  form.append('only_failures', onlyFailures ? 'true' : 'false')
+  return request('/api/verify-manual', { method: 'POST', body: form })
 }

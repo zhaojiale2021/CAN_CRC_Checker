@@ -51,10 +51,11 @@ python -m cli.main run -c examples/example/config_bad.json -v
 # 浏览器打开 http://127.0.0.1:8000
 ```
 
-选择项目 → 上传 trace → 查看汇总、失败明细并下载 HTML 报告。浏览器只提交项目 id，
-路径始终在服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，可用
-`CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机无需
-Node。详见 [docs/web-api.md](../web-api.md)。
+两种用法：选择**项目 id**，或切到**手动模式**上传 DBC + trace（可选 DataID 文件），
+再在页面上填写算法、CRC 范围、DataID 布局、帧过滤等配置。浏览器只提交项目 id
+或上传文件，路径始终在服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，
+可用 `CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
+无需 Node。详见 [docs/web-api.md](../web-api.md)。
 
 ## 🌟 能力一览
 

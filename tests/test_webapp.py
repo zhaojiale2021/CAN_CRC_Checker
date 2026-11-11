@@ -5,6 +5,7 @@ path (upload → run → serialise → report) is exercised end to end.
 """
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -21,7 +22,7 @@ from crc_checker.trace.models import CanFrame
 from crc_checker.verify.engine import VerifyEngine
 from crc_checker.verify.runner import RunnerError, build_protection_map, run_config
 from webapp.catalog import get_project, scan_projects
-from webapp.main import create_app, safe_filename
+from webapp.main import UPLOADS_DIR, create_app, safe_filename
 from webapp.service import (RunStore, RunOutcome, report_to_dict,
                             resolve_max_frames)
 from webapp.version import DeploymentVersion, read_revision
@@ -31,6 +32,17 @@ EXAMPLE_DIR = REPO_ROOT / "examples" / "example"
 EXAMPLE_TRACE = EXAMPLE_DIR / "trace" / "example.blf"
 BAD_TRACE = EXAMPLE_DIR / "trace" / "example_bad.blf"
 EXAMPLE_PROJECT = "examples/example"
+
+
+@pytest.fixture(autouse=True)
+def isolate_projects_root(monkeypatch):
+    """Scan examples/ so a local projects/ directory cannot change the results.
+
+    projects/ holds customer data and is not part of the repository; without
+    this override, adding one locally makes the catalog tests (and every test
+    that looks up ``examples/example``) depend on the developer's machine.
+    """
+    monkeypatch.setenv("CRC_CHECKER_PROJECTS_DIR", str(REPO_ROOT / "examples"))
 
 
 @pytest.fixture(name="client")
@@ -425,3 +437,94 @@ class TestFrameAccounting:
         assert payload["check_pass"] == 3
         assert payload["check_fail"] == 2
         assert payload["rc_pass"] == 3 and payload["rc_total"] == 5
+
+
+class TestStartupLogging:
+    """uvicorn 的启动横幅过滤器:0.0.0.0 不是可访问地址,不打印。"""
+
+    @staticmethod
+    def _banner(host):
+        """构造一条 uvicorn "Uvicorn running on ..." 日志记录。"""
+        return logging.LogRecord(
+            "uvicorn.error", logging.INFO, __file__, 1,
+            "Uvicorn running on %s (Press CTRL+C to quit)",
+            (f"http://{host}:8000",), None)
+
+    def test_bind_any_banner_is_dropped(self):
+        """监听 0.0.0.0 时,那条误导性的启动行被过滤掉。"""
+        logger = logging.getLogger("uvicorn.error")
+        assert logger.filter(self._banner("0.0.0.0")) is False
+
+    def test_other_banners_and_logs_pass(self):
+        """具体地址的横幅和普通日志不受影响。"""
+        logger = logging.getLogger("uvicorn.error")
+        assert logger.filter(self._banner("127.0.0.1")) is True
+        record = logging.LogRecord(
+            "uvicorn.error", logging.INFO, __file__, 2,
+            "Application startup complete.", None, None)
+        assert logger.filter(record) is True
+
+
+class TestManualApi:
+    """手动上传模式:DBC + trace + 页面填写的 config。"""
+
+    @staticmethod
+    def _post(client, config, trace=EXAMPLE_TRACE, dataid=None):
+        dbc_path = EXAMPLE_DIR / "dbc" / "network.dbc"
+        files = [("dbcs", (dbc_path.name, dbc_path.read_bytes())),
+                 ("trace", (trace.name, trace.read_bytes()))]
+        if dataid is not None:
+            files.append(("dataid", (dataid.name, dataid.read_bytes())))
+        return client.post("/api/verify-manual",
+                           data={"config": json.dumps(config)},
+                           files=files)
+
+    def test_presets_endpoint(self, client):
+        """GET /api/presets lists built-in algorithms with validation status."""
+        body = client.get("/api/presets").json()
+        names = {item["name"] for item in body["presets"]}
+        assert "CRC8/SAE-J1850-ZERO" in names
+        item = next(p for p in body["presets"] if p["name"] == "CRC8/SAE-J1850-ZERO")
+        assert item["width"] == 8
+        assert item["validated"] is True
+
+    def test_manual_verify_with_preset_and_dataid(self, client):
+        """Uploaded DBC + trace + DataID run through the shared runner."""
+        config = {
+            "crc": {"preset": "CRC8/SAE-J1850", "auto_classify": True,
+                    "profile_by_width": True},
+            "range": {"mode": "exclude_crc"},
+            "dataid": {"position": "prepend", "byte_order": "lo_hi",
+                       "mapping": "hi_lo_two_cols"},
+            "filter": {"max_frames": 1500},
+        }
+        response = self._post(client, config, dataid=EXAMPLE_DIR / "dbc" / "dataid.json")
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["project_id"] == "manual"
+        assert body["project"]["name"] == "手动配置"
+        assert body["setup"]["dbc_names"] == ["network.dbc"]
+        assert body["setup"]["dataid_entries"] > 0
+        assert body["reports"][0]["total_frames"] > 0
+
+    def test_manual_rejects_browser_paths(self, client):
+        """路径字段只能来自上传,手写 config 里的 traces 会被拒绝。"""
+        response = self._post(client, {"traces": ["C:/secret.blf"]})
+        assert response.status_code == 400
+        assert "traces" in response.json()["detail"]
+
+    def test_manual_rejects_wrong_upload_type(self, client):
+        """DBC 槽位必须是 .dbc。"""
+        response = client.post("/api/verify-manual", data={"config": "{}"},
+                               files=[("dbcs", ("network.txt", b"x")),
+                                      ("trace", (EXAMPLE_TRACE.name,
+                                                 EXAMPLE_TRACE.read_bytes()))])
+        assert response.status_code == 400
+        assert "network.txt" in response.json()["detail"]
+
+    def test_manual_does_not_leak_uploads(self, client):
+        """跑完删掉该 run 的上传目录(报告在 RunStore 自己的目录)。"""
+        response = self._post(client, {"filter": {"max_frames": 100}})
+        assert response.status_code == 200, response.text
+        run_id = response.json()["run_id"]
+        assert not (UPLOADS_DIR / run_id).exists()
