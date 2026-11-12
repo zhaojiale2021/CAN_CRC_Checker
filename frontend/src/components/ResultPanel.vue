@@ -113,14 +113,18 @@
           {{ trends.length }} 个信号 · 异常 {{ trendEpisodeCount }} 段 ({{
             trendErrorCount
           }}
-          帧) (横轴为相对 t0 的精确时间,悬浮看每帧数值)
+          帧)
+          <template v-if="report.rc_trends_truncated"
+            >（仅显示错误最多的前 {{ trends.length }} 个信号）</template
+          >
+          (横轴为相对 t0 的精确时间,悬浮看每帧数值)
         </span>
         <el-button
           size="small"
           :aria-pressed="chartsVisible"
           @click="chartsVisible = !chartsVisible"
         >
-          {{ chartsVisible ? '隐藏趋势图' : '显示趋势图' }}
+          {{ chartsVisible ? '隐藏趋势图' : '查看趋势图' }}
         </el-button>
       </div>
       <div
@@ -146,13 +150,13 @@
       </details>
     </div>
 
-    <el-collapse class="setup" @change="onSetupChange">
+    <el-collapse class="setup">
       <el-collapse-item name="setup">
         <template #title>
           <span class="setup-title">运行信息</span>
-          <el-tag size="small" type="info" class="tag-gap"
-            >{{ setup.max_frames ?? '不限' }} 帧上限</el-tag
-          >
+          <el-tag size="small" type="info" class="tag-gap">{{
+            frameLimitLabel
+          }}</el-tag>
           <el-tag size="small" type="info" class="tag-gap"
             >{{ setup.dbc_names.length }} 个 DBC</el-tag
           >
@@ -361,7 +365,7 @@ const props = defineProps({
 
 const failureSearch = ref('')
 const onlyFailingFrames = ref(false)
-const chartsVisible = ref(true)
+const chartsVisible = ref(false)
 
 const report = computed(() => props.result?.reports?.[0] || null)
 // HTML 报告的降级/截断提示(超帧段上限时后端自动只写失败项,并在报告顶部写明)
@@ -395,9 +399,9 @@ const trendEpisodeCount = computed(() =>
   trends.value.reduce((sum, t) => sum + (t.episodes || 0), 0),
 )
 
-function onSetupChange() {
-  /* 需要展开行为时可在此记录;当前无副作用 */
-}
+const frameLimitLabel = computed(() =>
+  setup.value.max_frames ? `${setup.value.max_frames} 帧上限` : '不限帧数',
+)
 
 const channelList = computed(() =>
   Object.entries(setup.value.channels || {}).map(([channel, dbc]) => ({

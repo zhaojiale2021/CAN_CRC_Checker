@@ -1,0 +1,433 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zhaojiale2021/CAN_CRC_Checker/config.schema.json",
+  "title": "CAN CRC Checker run configuration",
+  "description": "Schema for crc-check run -c config.json. Unknown keys are warned about (not rejected) by the loader; editors can use this file for completion and validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^[_$]": {
+      "description": "Comment / tooling keys (e.g. _comment, $schema) are ignored by the loader."
+    }
+  },
+  "properties": {
+    "dbc": {
+      "type": "string",
+      "description": "Path to one DBC file or a directory of DBC files."
+    },
+    "dbcs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit DBC files/directories; combined with dbc."
+    },
+    "dbc_merge": {
+      "type": "boolean",
+      "default": false,
+      "description": "Merge every DBC into one protection map instead of selecting one per trace channel."
+    },
+    "traces": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ],
+      "description": "Trace file(s) or directories (BLF/ASC/MF4/TRC/CSV/LOG)."
+    },
+    "crc": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "type": "string",
+          "description": "Built-in preset name, e.g. CRC8/AUTOSAR. See `crc-check presets`."
+        },
+        "custom": {
+          "type": "object",
+          "required": [
+            "width",
+            "poly"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "poly": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "init": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "default": "0x00"
+            },
+            "xor": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "default": "0x00"
+            },
+            "reflect_in": {
+              "type": "boolean",
+              "default": false
+            },
+            "reflect_out": {
+              "type": "boolean",
+              "default": false
+            },
+            "name": {
+              "type": "string",
+              "default": "custom"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "crc",
+                "sum",
+                "sum_xor",
+                "xor_seed"
+              ],
+              "default": "crc"
+            }
+          },
+          "patternProperties": {
+            "^[_$]": {
+              "description": "Comment / tooling keys are ignored by the loader."
+            }
+          }
+        },
+        "byte_swap": {
+          "type": "boolean",
+          "default": false,
+          "description": "Swap the computed CRC bytes (AUTOSAR E2E Profile 5)."
+        },
+        "auto_classify": {
+          "type": "boolean",
+          "default": false,
+          "description": "Pick the algorithm per message from DBC comments."
+        },
+        "overrides": {
+          "type": "object",
+          "description": "Per-message preset override, keyed by frame id/name.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "profiles": {
+          "type": "object",
+          "description": "Per-profile overrides (p01 / p05).",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "profile_by_width": {
+          "type": "boolean",
+          "default": false,
+          "description": "Select the E2E profile from the CRC signal width."
+        },
+        "range_overrides": {
+          "type": "object",
+          "description": "Per-message/signal CRC range, keyed by frame id/name/signal.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "exclude_crc",
+                  "full_payload",
+                  "custom_range"
+                ]
+              },
+              "start_byte": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "end_byte": {
+                "type": "integer",
+                "minimum": -1
+              }
+            }
+          }
+        },
+        "skip": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "description": "Frame ids/names/signals left unverified."
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "exclude_crc",
+            "full_payload",
+            "custom_range"
+          ],
+          "default": "exclude_crc"
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": -1,
+          "default": -1
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    },
+    "dataid": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "xlsx": {
+          "type": "string",
+          "description": ".xlsx or legacy .xls workbook."
+        },
+        "json": {
+          "type": "string",
+          "description": "Preprocessed DataID JSON (fast path)."
+        },
+        "sheet": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Sheet name(s); blank = auto-match to the DBC name."
+        },
+        "mapping": {
+          "type": "string",
+          "description": "Named mapping from dataid_mappings.yaml, or a JSON object."
+        },
+        "mapping_file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Custom mapping YAML."
+        },
+        "position": {
+          "type": "string",
+          "enum": [
+            "prepend",
+            "append"
+          ],
+          "default": "prepend"
+        },
+        "byte_order": {
+          "type": "string",
+          "enum": [
+            "lo_hi",
+            "hi_lo"
+          ],
+          "default": "lo_hi"
+        },
+        "default": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ],
+          "description": "Fallback DataID (e.g. 0x0000) when no entry matches."
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frame_ids": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "description": "CAN IDs to keep (hex strings such as 0x143 are accepted)."
+        },
+        "max_frames": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Frame cap; 0 = unlimited, omitted/null = built-in default."
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "patterns_file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Custom signal-name YAML (see crc_checker/data/patterns.yaml)."
+        },
+        "checksum_pattern": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rc_pattern": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "checksum_patterns": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rc_patterns": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "table",
+            "html",
+            "json"
+          ],
+          "default": "table"
+        },
+        "file": {
+          "type": "string"
+        },
+        "only_failures": {
+          "type": "boolean",
+          "default": false
+        },
+        "max_report_sections": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Frame-section cap per report; 0 = unlimited, omitted = built-in default."
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    },
+    "rc": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_valid": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Largest valid counter value before wrap; null = 2^length - 1."
+        }
+      },
+      "patternProperties": {
+        "^[_$]": {
+          "description": "Comment / tooling keys are ignored by the loader."
+        }
+      }
+    }
+  }
+}

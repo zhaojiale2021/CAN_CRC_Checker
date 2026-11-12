@@ -435,6 +435,8 @@ def report_to_dict(report: VerifyReport) -> dict:
     # RC is counted by sample (folded failing frames exist only in the
     # series); otherwise the card would disagree with the trend charts.
     rc_pass, rc_total = rc_sample_stats(report)
+    rc_trends = _rc_trend_rows(report)
+    rc_trends_total = sum(1 for points in report.rc_series.values() if points)
 
     return {
         "trace_path": report.trace_path,
@@ -463,7 +465,8 @@ def report_to_dict(report: VerifyReport) -> dict:
         "failures_truncated": report.fail_count > len(failures),
         "frames": frames,
         "frames_truncated": frames_truncated,
-        "rc_trends": _rc_trend_rows(report),
+        "rc_trends": rc_trends,
+        "rc_trends_truncated": rc_trends_total > MAX_RC_TRENDS,
         # File names only — the browser never receives server filesystem paths.
         # Normalize separators first: on POSIX ``Path(r"C:\x\y.dbc").name`` is
         # the whole string, so a Windows path would leak through.
@@ -549,12 +552,22 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
             cancellation_token=cancellation_token)
     except RunnerError as exc:
         raise RunError(str(exc)) from exc
+    except KeyError as exc:
+        # Unknown preset / profile key: a user-facing config error, not a 500.
+        detail = exc.args[0] if exc.args else exc
+        raise RunError(f"配置错误: {detail}") from exc
     except (OSError, ValueError) as exc:
         raise RunError(f"校验执行失败: {exc}") from exc
 
     display_name = trace_name or trace_path.name
     for report in reports:
         report.trace_path = display_name
+        # The web result view already receives basenames only; the HTML report
+        # must not leak server filesystem paths either.
+        report.dbc_paths = [
+            Path(str(path).replace("\\", "/")).name for path in report.dbc_paths
+        ]
+        report.dbc_path = ", ".join(report.dbc_paths)
 
     run_id = run_id or secrets.token_urlsafe(9)
     html_path = None
@@ -575,6 +588,7 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
             # partially written main file and chunks instead of leaking them
             # until the next restart's purge.
             shutil.rmtree(run_dir, ignore_errors=True)
+            report_note = "HTML 报告写入失败（磁盘空间或输出目录权限不足），结果仍然可用。"
 
     payload = make_run_payload(
         setup={
@@ -634,6 +648,11 @@ class RunStore:
     _pending_cleanup: dict[int, RunOutcome] = field(default_factory=dict, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
+    # Written into runs_dir on first use. Purging is only safe when this
+    # directory is known to be ours — CRC_CHECKER_DATA_DIR may point at a
+    # shared location, and deleting every HTML file there would be surprising.
+    _MARKER = ".crc-checker-run-store"
+
     def __post_init__(self) -> None:
         """Purge the report directory (run index is memory-only).
 
@@ -642,13 +661,20 @@ class RunStore:
         produce a dozen 30MB split parts (measured 2026-10-20: data/web/runs
         had grown to 11GB / 834 files).
         """
-        self.purge_disk()
+        self.runs_dir.mkdir(parents=True, exist_ok=True)
+        marker = self.runs_dir / self._MARKER
+        if marker.exists():
+            self.purge_disk()
+        else:
+            marker.write_text("CAN CRC Checker run store\n", encoding="utf-8")
 
     def purge_disk(self) -> None:
         """Delete report files under ``runs_dir`` (startup + tests)."""
         if not self.runs_dir.is_dir():
             return
         for path in self.runs_dir.iterdir():
+            if path.name == self._MARKER:
+                continue
             if path.is_dir():
                 shutil.rmtree(path, ignore_errors=True)
             elif path.suffix == ".html":

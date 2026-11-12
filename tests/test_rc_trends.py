@@ -207,7 +207,13 @@ class TestHtmlTrendCharts:
     def test_trends_section_rendered(self):
         """Trends section + chart svg + threshold + folded detail all present."""
         html = self._render(self._report([0, 1, 2, 2, 2]))
-        assert "Rolling Counter Trends" in html
+        assert "Rolling Counter 趋势" in html
+        assert 'id="rcChartsToggle"' in html
+        assert 'id="rcChartsBody"' in html
+        assert "toggleRcCharts" in html
+        assert "查看趋势图" in html
+        # Trend charts start collapsed so a 60-signal report is readable.
+        assert 'id="rcChartsBody" style="display:none"' in html
         assert "rc-chart-card" in html
         assert "<polyline" in html
         assert "rc-err-dot" in html
@@ -325,6 +331,18 @@ class TestReportSizeLimit:
         assert note == ""
         assert pages.count('class="frame-section') == 9
 
+    def test_only_failures_omits_clean_trend_charts(self):
+        """A failures-only report should not pay for clean trend charts."""
+        _note, pages = self._write(self._report([0, 1, 2, 3, 4]),
+                                   only_failures=True, max_sections=100)
+        assert 'class="rc-charts"' not in pages
+
+    def test_only_failures_keeps_failing_trend_charts(self):
+        """Signals with errors still get their chart in a failures-only report."""
+        _note, pages = self._write(self._report([0, 1, 2, 2, 2]),
+                                   only_failures=True, max_sections=100)
+        assert 'class="rc-charts"' in pages
+
 
 class TestRcErrorAccounting:
     """Error accounting for the report/result view: frame counts and
@@ -360,20 +378,20 @@ class TestRcErrorAccounting:
         a bare frame count that reads as N separate errors.
         """
         html = self._render(self._report([0, 1, 2, 2, 2, 2, 2, 2, 2, 2]))
-        assert ('errors: <span class="err">7</span> frames · '
-                '<span class="err">1</span> episode') in html
-        assert "samples: 10" in html
+        assert ('错误: <span class="err">7</span> 帧 · '
+                '<span class="err">1</span> 段') in html
+        assert "采样: 10" in html
 
     def test_clean_chart_header_shows_zero(self):
         """A clean chart shows only a green 0, with no episode count."""
         html = self._render(self._report([0, 1, 2, 3, 4]))
-        assert '<span class="ok">errors: 0</span>' in html
-        assert "episodes" not in html
+        assert '<span class="ok">错误: 0</span>' in html
+        assert "段" not in html
 
     def test_isolated_failures_count_as_separate_episodes(self):
         """Sporadic (non-consecutive) failures are counted per episode."""
         html = self._render(self._report([0, 1, 1, 2, 3, 3, 4]))
-        assert '<span class="err">2</span> episodes' in html
+        assert '<span class="err">2</span> 段' in html
 
     def test_format_rate_never_rounds_away_a_failure(self):
         """Even 1 failure in 400k frames must show as non-100% (a naive .1%
@@ -390,8 +408,8 @@ class TestRcErrorAccounting:
         100% must not sit next to listed failure items).
         """
         html = self._render(self._report([0, 1, 2, 2, 2]))
-        assert '<div class="card fail"><div class="label">RC Pass</div>' in html
-        assert '<div class="card pass"><div class="label">RC Pass</div>' not in html
+        assert '<div class="card fail"><div class="label">RC 通过</div>' in html
+        assert '<div class="card pass"><div class="label">RC 通过</div>' not in html
 
     def test_rc_card_counts_samples_not_folded_verdicts(self):
         """The RC card counts samples: folded failing frames must not shrink into 1 check item."""
@@ -403,4 +421,4 @@ class TestRcErrorAccounting:
     def test_summary_cards_stay_green_when_clean(self):
         """With everything passing the card stays a green pass."""
         html = self._render(self._report([0, 1, 2, 3, 4]))
-        assert '<div class="card pass"><div class="label">RC Pass</div>' in html
+        assert '<div class="card pass"><div class="label">RC 通过</div>' in html

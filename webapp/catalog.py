@@ -21,6 +21,8 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from crc_checker.config import DEFAULT_MAX_FRAMES
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROJECTS_DIR = PROJECT_ROOT / "projects"
 EXAMPLES_DIR = PROJECT_ROOT / "examples"
@@ -107,6 +109,7 @@ def _summarize(config: dict) -> dict:
     rng = config.get("range") or {}
     dataid = config.get("dataid") or {}
     flt = config.get("filter") or {}
+    raw_max = flt.get("max_frames")
     return {
         "crc": _crc_label(crc),
         "crc_preset": crc.get("preset") or "",
@@ -118,7 +121,8 @@ def _summarize(config: dict) -> dict:
         "range_end": rng.get("end_byte", -1),
         "dataid": _dataid_label(dataid),
         "dbc_merge": bool(config.get("dbc_merge")),
-        "default_max_frames": flt.get("max_frames"),
+        "default_max_frames": (DEFAULT_MAX_FRAMES if raw_max is None
+                               else raw_max),
         "rc_max_valid": (config.get("rc") or {}).get("max_valid"),
     }
 

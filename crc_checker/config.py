@@ -98,7 +98,7 @@ class RunConfig:
     checksum_patterns: list[str] | None = None  # Extra checksum regexes
     rc_patterns: list[str] | None = None        # Extra counter regexes
     dataid_mapping_file: str = ""               # Custom DataID mapping YAML
-    output_format: str = "table"                # table | html
+    output_format: str = "table"                # table | html | json
     output_file: str = ""                       # Output path
     only_failures: bool = False                 # Show failures only
     max_report_sections: int | None = None      # Per-report section cap (0 = unlimited)
@@ -585,7 +585,7 @@ def _warn_unknown_keys(mapping: dict, known: set[str], prefix: str,
                        warnings: list[str]) -> None:
     """Record (do not reject) misspelled/obsolete keys so they aren't silent."""
     for key in mapping:
-        if key.startswith("_") or key in known:
+        if key.startswith(("_", "$")) or key in known:
             continue
         warnings.append(f"{prefix}{key} is not a recognized option (ignored)")
 

@@ -81,7 +81,8 @@ CSS = """
               font-family: 'SF Mono', 'Consolas', monospace; }
 
   .hex-grid { display: flex; flex-direction: column; gap: 2px;
-              font-family: 'SF Mono', 'Consolas', 'Courier New', monospace; }
+              font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+              overflow-x: auto; }
   .hex-row { display: flex; align-items: center; gap: 4px; font-size: 13px; }
   .hex-offset { color: #556677; min-width: 45px; text-align: right;
                 font-size: 11px; }
@@ -104,6 +105,7 @@ CSS = """
   .hex-legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
                 margin: 6px 0 14px; color: #8899aa; font-size: 11px; }
   .hex-legend .hex-byte { width: auto; padding: 0 5px; }
+  .hex-legend-title { color: #e0e0e0; }
 
   .segment-label { color: #556677; font-size: 10px; min-width: 85px;
                    text-align: right; margin-right: 4px; }
@@ -120,7 +122,8 @@ CSS = """
                                  white-space: nowrap; z-index: 10; }
   .segment-label .did:hover .tooltip { visibility: visible; }
 
-  .verdict-table { margin-top: 12px; border-top: 1px solid #1a1a2e; padding-top: 8px; }
+  .verdict-table { margin-top: 12px; border-top: 1px solid #1a1a2e; padding-top: 8px;
+                   overflow-x: auto; }
   .verdict-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .verdict-table th { color: #8899aa; text-align: left; padding: 4px 8px;
                       font-weight: normal; border-bottom: 1px solid #1a1a2e; }
@@ -143,7 +146,14 @@ CSS = """
 
   /* RC trend charts */
   .rc-charts { margin-bottom: 20px; }
-  .rc-charts h2 { font-size: 15px; margin: 0 0 10px; }
+  .rc-charts-head { display: flex; align-items: center; gap: 14px;
+                    margin-bottom: 10px; }
+  .rc-charts h2 { font-size: 15px; margin: 0; }
+  .rc-toggle { margin-left: auto; padding: 6px 14px; border: 1px solid #0f3460;
+               background: #16213e; color: #e0e0e0; border-radius: 4px;
+               cursor: pointer; font-size: 12px; }
+  .rc-toggle:hover { background: #0f3460; }
+  .rc-toggle:focus-visible { outline: 2px solid #3987e5; outline-offset: 1px; }
   .rc-chart-card { background: #16213e; border-radius: 8px; margin-bottom: 10px;
                    overflow: hidden; }
   .rc-chart-header { display: flex; align-items: center; padding: 8px 16px;
@@ -190,6 +200,34 @@ CSS = """
   .page-nav a:hover { text-decoration: underline; }
   .page-nav .cur { color: #e0e0e0; font-weight: bold; margin: 0 2px; }
   .split-notice { margin-left: 14px; color: #fab219; font-size: 12px; }
+
+  /* Screen-reader-only label for the search box (placeholder is not a label). */
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0;
+             margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0);
+             white-space: nowrap; border: 0; }
+  .filter-bar button:focus-visible, .filter-bar input:focus-visible,
+  .frame-header:focus-visible, .rc-chart-header:focus-visible {
+    outline: 2px solid #3987e5; outline-offset: 1px;
+  }
+
+  /* The report is also a share/print artifact: dark-only wastes ink and
+     hides the byte-highlight borders. */
+  @media print {
+    body { background: #fff; color: #111; margin: 8mm; }
+    .container { max-width: none; }
+    .info-bar, .card, .frame-section, .rc-chart-card, .page-nav {
+      background: #fff; color: #111; border: 1px solid #ccc;
+    }
+    .frame-header, .rc-chart-header { background: #eee; color: #111; }
+    .filter-bar, .rc-readout, .rc-crosshair { display: none !important; }
+    .rc-charts-body { display: block !important; }
+    .rc-toggle { display: none !important; }
+    .frame-section.collapsed .frame-body,
+    .rc-chart-card.collapsed .rc-chart-body { display: block; }
+    .frame-section { break-inside: avoid; }
+    .hex-byte.crc-pass { border-color: #1b7f3b; }
+    .hex-byte.crc-fail { border-color: #b3261e; }
+  }
 """
 
 
@@ -346,7 +384,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
             f'<td>{s["algorithm"]}</td>'
             f'<td>0x{s["expected"]:0{exp_w}X}</td>'
             f'<td>0x{s["actual"]:0{act_w}X}</td>'
-            f'<td>{"PASS" if s["pass"] else "FAIL"}</td>'
+            f'<td>{"通过" if s["pass"] else "失败"}</td>'
             f'<td>{detail_html}</td>'
             f'</tr>'
         )
@@ -395,7 +433,7 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
         <div class="hex-grid">{''.join(hex_rows)}</div>
         <div class="verdict-table">
           <table>
-            <tr><th>Signal</th><th>Type</th><th>Expected</th><th>Actual</th><th>Verdict</th><th>Detail</th></tr>
+            <tr><th scope="col">信号</th><th scope="col">类型</th><th scope="col">期望</th><th scope="col">实际</th><th scope="col">结论</th><th scope="col">说明</th></tr>
             {verdict_rows}
           </table>
         </div>
@@ -449,31 +487,31 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
     """One report page: shared chrome (summary/filter/JS) + its slice of frames."""
     note_html = (f'<div class="report-note">{escape(note)}</div>' if note else "")
     if stats['check_fail']:
-        banner_class, banner_label = "fail", "FAILURES DETECTED"
+        banner_class, banner_label = "fail", "检测到失败"
     elif stats['check_total'] == 0:
-        banner_class, banner_label = "empty", "NO CHECKS EXECUTED"
+        banner_class, banner_label = "empty", "未执行校验"
     else:
-        banner_class, banner_label = "pass", "ALL CHECKS PASSED"
-    banner_detail = (f"{stats['check_pass']}/{stats['check_total']} checks "
+        banner_class, banner_label = "pass", "全部校验通过"
+    banner_detail = (f"{stats['check_pass']}/{stats['check_total']} 项 "
                      f"· {stats['check_rate']}")
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CAN CRC Check Report</title>
+<title>CAN CRC 校验报告</title>
 <style>
 {CSS}
 </style>
 </head>
 <body>
 <div class="container">
-<h1>CAN CRC Check Report</h1>
+<h1>CAN CRC 校验报告</h1>
 <div class="info-bar">
   DBC: {escape(dbc_display)}<br>
   Trace: {escape(report.trace_path or '')}<br>
-  Channels: {len(channels)}<br>
-  Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}{stats['dlc_note_html']}
+  通道数: {len(channels)}<br>
+  生成时间: {datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %z")}{stats['dlc_note_html']}
 </div>
 {note_html}
 <div class="verdict-banner {banner_class}">
@@ -481,42 +519,44 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
   <span class="detail">{banner_detail}</span>
 </div>
 <div class="summary-cards">
-  <div class="card"><div class="label">Frames</div>
+  <div class="card"><div class="label">帧数</div>
     <div class="value">{report.total_frames}</div></div>
-  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">Checks</div>
+  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">校验项</div>
     <div class="value">{stats['check_pass']}/{stats['check_total']}</div></div>
-  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">Pass Rate</div>
+  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">通过率</div>
     <div class="value">{stats['check_rate']}</div></div>
-  <div class="card{' fail' if stats['crc_fail'] else ' pass'}"><div class="label">CRC Pass</div>
+  <div class="card{' fail' if stats['crc_fail'] else ' pass'}"><div class="label">CRC 通过</div>
     <div class="value">{stats['crc_pass']}/{stats['crc_total']}</div></div>
-  <div class="card{' fail' if stats['crc_fail'] else ' pass'}"><div class="label">CRC Rate</div>
+  <div class="card{' fail' if stats['crc_fail'] else ' pass'}"><div class="label">CRC 通过率</div>
     <div class="value">{stats['crc_rate']}</div></div>
-  <div class="card{' fail' if stats['rc_fail'] else ' pass'}"><div class="label">RC Pass</div>
+  <div class="card{' fail' if stats['rc_fail'] else ' pass'}"><div class="label">RC 通过</div>
     <div class="value">{stats['rc_pass']}/{stats['rc_total']}</div></div>
-  <div class="card{' fail' if stats['rc_fail'] else ' pass'}"><div class="label">RC Rate</div>
+  <div class="card{' fail' if stats['rc_fail'] else ' pass'}"><div class="label">RC 通过率</div>
     <div class="value">{stats['rc_rate']}</div></div>
 </div>
 
 {charts_html}
 {nav}
 
-<div class="filter-bar">
-  <button class="active" data-filter="all" onclick="showAll()">All frames</button>
-  <button data-filter="errors" onclick="showErrors()">Errors only</button>
+<div class="filter-bar" role="group" aria-label="报告筛选">
+  <button class="active" data-filter="all" aria-pressed="true" onclick="showAll()">全部帧</button>
+  <button data-filter="errors" aria-pressed="false" onclick="showErrors()">仅失败</button>
   {ch_buttons}
   <span class="sep">|</span>
-  <input id="searchInput" type="text" placeholder="Search ID / signal / frame name"
-         oninput="searchFrames()">
+  <label class="sr-only" for="searchInput">搜索 ID / 信号 / 报文名</label>
+  <input id="searchInput" type="search" placeholder="搜索 ID / 信号 / 报文名"
+         aria-label="搜索 ID / 信号 / 报文名" oninput="searchFrames()">
   <span class="sep">|</span>
-  <button onclick="expandAll()">Expand all</button>
-  <button onclick="collapseAll()">Collapse all</button>
+  <button onclick="expandAll()">展开全部</button>
+  <button onclick="collapseAll()">折叠全部</button>
 </div>
 
-<div class="hex-legend">
-  <span class="hex-byte crc-pass">00</span> CRC match
-  <span class="hex-byte crc-fail">FF</span> CRC mismatch
-  <span class="hex-byte rc-pass">00</span> RC match
-  <span class="hex-byte rc-fail">FF</span> RC error
+<div class="hex-legend" aria-label="十六进制高亮图例">
+  <span class="hex-legend-title">十六进制高亮：</span>
+  <span class="hex-byte crc-pass" title="示例：CRC 校验一致的字节">示例</span> CRC 一致
+  <span class="hex-byte crc-fail" title="示例：CRC 校验不一致的字节">示例</span> CRC 不一致
+  <span class="hex-byte rc-pass" title="示例：Rolling Counter 一致的字节">示例</span> RC 一致
+  <span class="hex-byte rc-fail" title="示例：Rolling Counter 异常的字节">示例</span> RC 异常
 </div>
 
 {''.join(sections)}
@@ -570,9 +610,21 @@ function activateOnKey(evt) {{
     evt.currentTarget.click();
   }}
 }}
+function toggleRcCharts() {{
+  const body = document.getElementById('rcChartsBody');
+  const btn = document.getElementById('rcChartsToggle');
+  if (!body || !btn) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '隐藏趋势图' : '查看趋势图';
+  btn.setAttribute('aria-pressed', String(!hidden));
+}}
 function updateBtns(activeId) {{
   document.querySelectorAll('.filter-bar button').forEach(b => {{
-    b.classList.toggle('active', b.dataset.filter === activeId);
+    if (!b.dataset.filter) return;
+    const active = b.dataset.filter === activeId;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
   }});
 }}
 const RC_X0 = {RC_X0}, RC_X1 = {RC_X1}, RC_Y0 = {RC_Y0}, RC_Y1 = {RC_Y1};
@@ -691,13 +743,16 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     the report, never silently dropped.
 
     Returns:
-        Notice for the caller (empty string = no downgrade/truncation); the
-        web results page shows it directly.
+        Notice for the caller (empty string = no report-section downgrade or
+        truncation). The frame-cap notice is written into the HTML only:
+        callers already surface ``report.frames_truncated`` themselves, so
+        returning it too produced two identical warning boxes in the web UI.
     """
 
     limit = REPORT_FULL_MAX_SECTIONS if max_sections is None else max_sections
     verdicts = report.failed if only_failures else report.verdicts
     notes: list[str] = []
+    caller_notes: list[str] = []
     if report.frames_truncated:
         notes.append(
             f"只校验了前 {report.frame_limit} 帧(帧上限),"
@@ -707,10 +762,11 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     if limit and not only_failures and len(grouped) > limit and report.failed:
         # A full per-frame report of a big trace would be hundreds of MB;
         # the failures-only view is what there is to see.
-        notes.append(
-            f"帧段 {len(grouped)} 超过单份报告上限 {limit},"
-            "已自动改为只保留失败帧(完整逐帧视图请分段校验或调大 "
-            "output.max_report_sections)")
+        message = (f"帧段 {len(grouped)} 超过单份报告上限 {limit},"
+                   "已自动改为只保留失败帧(完整逐帧视图请分段校验或调大 "
+                   "output.max_report_sections)")
+        notes.append(message)
+        caller_notes.append(message)
         verdicts = report.failed
         grouped = _group_verdicts(verdicts)
 
@@ -718,9 +774,10 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     if truncated:
         kept = sorted(grouped.items(), key=lambda x: (x[0][1], x[0][0]))[:limit]
         grouped = dict(kept)
-        notes.append(
-            f"帧段仍超过上限,已截断为前 {limit} 段"
-            "(完整数据请减小帧上限或分批校验)")
+        message = (f"帧段仍超过上限,已截断为前 {limit} 段"
+                   "(完整数据请减小帧上限或分批校验)")
+        notes.append(message)
+        caller_notes.append(message)
     note = ";".join(notes)
 
     # Collect unique channels
@@ -754,9 +811,9 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     dbc_display = ", ".join(report.dbc_paths) if report.dbc_paths else report.dbc_path
 
     # RC trends only live on the main file (part 1) — parts stay lean.
-    rc_charts_html = _build_rc_charts(report)
+    rc_charts_html = _build_rc_charts(report, only_failures=only_failures)
     # DLC gate diagnostics — only shown when the gate actually skipped frames
-    dlc_note = (f"DLC mismatch skipped: {report.dlc_mismatch_skipped} frames"
+    dlc_note = (f"DLC 不匹配跳过: {report.dlc_mismatch_skipped} 帧"
                 if report.dlc_mismatch_skipped else "")
     stats = {
         "crc_total": crc_total, "crc_pass": crc_pass,
@@ -791,4 +848,4 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
                           nav, note)
         with open(path, "w", encoding="utf-8") as f:
             f.write(html)
-    return note
+    return ";".join(caller_notes)

@@ -346,6 +346,7 @@ class TestServiceHelpers:
         """
         (tmp_path / "old.html").write_text("x", encoding="utf-8")
         (tmp_path / "old_p2.html").write_text("x", encoding="utf-8")
+        (tmp_path / ".crc-checker-run-store").write_text("", encoding="utf-8")
         RunStore(tmp_path)
         assert not list(tmp_path.glob("*.html"))
 
@@ -405,6 +406,7 @@ class TestApi:
             }, files={"file": (BAD_TRACE.name, handle)})
         body = wait_for_result(client, response)
         trends = body["reports"][0]["rc_trends"]
+        assert body["reports"][0]["rc_trends_truncated"] is False
         assert trends, "expected RC trend data for the example trace"
         first = trends[0]
         assert {"signal", "frame_id_hex", "channel", "bit_max", "max_valid",
@@ -430,7 +432,9 @@ class TestApi:
         body = wait_for_result(client, response)
         report = client.get(body["report_url"])
         assert report.status_code == 200
-        assert "CAN CRC Check Report" in report.text
+        assert "CAN CRC 校验报告" in report.text
+        # The web report must not leak server filesystem paths (DBC is a basename).
+        assert str(EXAMPLE_TRACE.parent) not in report.text
         assert client.get("/api/runs/does-not-exist/report.html").status_code == 404
         # One sub-directory per run: the main file goes to runs/<run_id>/<run_id>.html
         run_id = body["run_id"]
@@ -696,6 +700,20 @@ class TestManualApi:
                                files=files)
         assert response.status_code == 400
         assert "最多" in response.json()["detail"]
+
+    def test_manual_rejects_unknown_preset(self, client):
+        """An unknown preset is a 400 at request time, not a worker 500."""
+        files = [
+            ("dbcs", ("network.dbc",
+                      (EXAMPLE_DIR / "dbc" / "network.dbc").read_bytes())),
+            ("trace", (EXAMPLE_TRACE.name, EXAMPLE_TRACE.read_bytes())),
+        ]
+        response = client.post(
+            "/api/verify-manual",
+            data={"config": json.dumps({"crc": {"preset": "CRC9/NOPE"}})},
+            files=files)
+        assert response.status_code == 400
+        assert "未知的 CRC 算法" in response.json()["detail"]
 
     def test_manual_does_not_leak_uploads(self, client):
         """The run's upload directory is deleted afterwards (the report

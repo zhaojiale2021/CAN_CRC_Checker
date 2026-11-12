@@ -102,14 +102,13 @@ def _load_custom_crc(custom_crc: str | None) -> dict | None:
 
 
 def _parse_frame_ids(raw: str | None) -> list[int] | None:
-    """Parse ``--frame-ids`` (hex ``0x..`` or decimal, comma separated)."""
+    """Parse ``--frame-ids`` (hex ``0x..`` or decimal, separated by space/comma/semicolon)."""
     if not raw:
         return None
     try:
         return [
-            int(token.strip(), 16) if token.strip().lower().startswith("0x")
-            else int(token.strip())
-            for token in raw.split(",") if token.strip()
+            int(token, 16) if token.lower().startswith("0x") else int(token)
+            for token in re.split(r"[\s,;]+", raw.strip()) if token
         ]
     except ValueError as exc:
         raise click.BadParameter(f"Invalid --frame-ids value: {raw}") from exc
@@ -129,6 +128,45 @@ def _expand_trace_paths(trace_files: list[str]) -> list[str]:
         else:
             result.append(str(tp))
     return result
+
+
+def _echo_verbose_config(cfg, config_path: str | None, trace_paths: list[str],
+                         *, err: bool = False) -> None:
+    """Print the resolved run inputs (shared by ``run`` and ``verify``)."""
+    def out(text: str) -> None:
+        click.echo(text, err=err)
+
+    if config_path:
+        out(f"Config: {config_path}")
+    if cfg.dbc:
+        out(f"DBC:    {cfg.dbc}")
+    if cfg.dbcs:
+        out(f"DBCs:   {', '.join(cfg.dbcs)}")
+    out(f"Traces: {len(trace_paths)} file(s)")
+    if cfg.crc_preset:
+        out(f"CRC:    {cfg.crc_preset}")
+    elif cfg.crc_custom:
+        out("CRC:    custom")
+    if cfg.dataid_json and Path(cfg.dataid_json).exists():
+        out(f"DataID JSON: {cfg.dataid_json} (fast path)")
+    elif cfg.dataid_xlsx:
+        out(f"DataID xlsx: {cfg.dataid_xlsx}")
+
+
+def _echo_verbose_setup(setup, trace_paths: list[str], *, err: bool = False,
+                        include_protection_count: bool = False) -> None:
+    """Print DBC selection notes and the trace list (shared by both commands)."""
+    def out(text: str) -> None:
+        click.echo(text, err=err)
+
+    for note in setup.notes:
+        out(note)
+    if include_protection_count:
+        out("Found protection signals in "
+            f"{len(set(setup.protection_map.messages))} CAN IDs")
+    out(f"Trace files: {len(trace_paths)} file(s)")
+    for path in trace_paths:
+        out(f"  {path}")
 
 
 def _print_summary(report):
@@ -362,6 +400,8 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         click.echo("Warning: No CRC algorithm specified. Use --algo or "
                    "--custom-crc.", err=True)
         click.echo("Only Rolling Counter verification will be performed.", err=True)
+    if algo and custom_crc:
+        raise click.UsageError("Use only one of --algo and --custom-crc.")
 
     if (range_start is not None or range_end is not None) and range_mode != "custom_range":
         raise click.UsageError(
@@ -381,7 +421,6 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     if output_file and json_file:
         raise click.UsageError("Use only one of --output-file and --json-file.")
 
-
     custom_data = _load_custom_crc(custom_crc)
     try:
         crc_params = _parse_crc_params(algo, custom_data)
@@ -392,12 +431,6 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         if status != "validated":
             click.echo(f"Warning: preset {algo} is not verified with real data.",
                        err=True)
-    if verbose and crc_params:
-        click.echo(f"CRC Algorithm: {crc_params.name}", err=output_fmt == "json")
-        click.echo(f"  poly=0x{crc_params.polynomial:X} "
-                   f"init=0x{crc_params.initial_value:X} "
-                   f"xor=0x{crc_params.final_xor:X} width={crc_params.width}",
-                   err=output_fmt == "json")
 
     cfg = RunConfig()
     cfg.dbcs = list(dbc_paths)
@@ -421,6 +454,16 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     cfg.output_file = output_file or ""
     cfg.only_failures = only_failures
 
+    if verbose:
+        _echo_verbose_config(cfg, None, cfg.traces, err=output_fmt == "json")
+        if crc_params:
+            click.echo(f"CRC Algorithm: {crc_params.name}",
+                       err=output_fmt == "json")
+            click.echo(f"  poly=0x{crc_params.polynomial:X} "
+                       f"init=0x{crc_params.initial_value:X} "
+                       f"xor=0x{crc_params.final_xor:X} width={crc_params.width}",
+                       err=output_fmt == "json")
+
     try:
         setup, reports = run_config(cfg, cfg.traces)
     except (RunnerError, ValueError, OSError, KeyError, re.error) as exc:
@@ -433,11 +476,8 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         raise click.UsageError(f"Verification failed: {exc}") from exc
 
     if verbose:
-        for note in setup.notes:
-            click.echo(note, err=output_fmt == "json")
-        click.echo(f"Found protection signals in "
-                   f"{len(setup.protection_map.messages)} CAN IDs",
-                   err=output_fmt == "json")
+        _echo_verbose_setup(setup, cfg.traces, err=output_fmt == "json",
+                            include_protection_count=True)
 
     if output_fmt == "json":
         _print_json_reports(reports, json_file or output_file, only_failures)
@@ -505,34 +545,9 @@ def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate, allow_empty,
     for warning in cfg.warnings:
         click.echo(f"Config warning: {warning}", err=cfg.output_format == "json")
 
-    if verbose and cfg.output_format != "json":
-        click.echo(f"Config: {config_path}")
-        click.echo(f"DBC:    {cfg.dbc}")
-        if cfg.dbcs:
-            click.echo(f"DBCs:   {', '.join(cfg.dbcs)}")
-        click.echo(f"Traces: {len(cfg.traces)} file(s)")
-        if cfg.crc_preset:
-            click.echo(f"CRC:    {cfg.crc_preset}")
-        elif cfg.crc_custom:
-            click.echo("CRC:    custom")
-        if cfg.dataid_json and Path(cfg.dataid_json).exists():
-            click.echo(f"DataID JSON: {cfg.dataid_json} (fast path)")
-        elif cfg.dataid_xlsx:
-            click.echo(f"DataID xlsx: {cfg.dataid_xlsx}")
-    elif verbose:
-        click.echo(f"Config: {config_path}", err=True)
-        click.echo(f"DBC:    {cfg.dbc}", err=True)
-        if cfg.dbcs:
-            click.echo(f"DBCs:   {', '.join(cfg.dbcs)}", err=True)
-        click.echo(f"Traces: {len(cfg.traces)} file(s)", err=True)
-        if cfg.crc_preset:
-            click.echo(f"CRC:    {cfg.crc_preset}", err=True)
-        elif cfg.crc_custom:
-            click.echo("CRC:    custom", err=True)
-        if cfg.dataid_json and Path(cfg.dataid_json).exists():
-            click.echo(f"DataID JSON: {cfg.dataid_json} (fast path)", err=True)
-        elif cfg.dataid_xlsx:
-            click.echo(f"DataID xlsx: {cfg.dataid_xlsx}", err=True)
+    if verbose:
+        _echo_verbose_config(cfg, config_path, cfg.traces,
+                             err=cfg.output_format == "json")
 
     if not cfg.crc_preset and not cfg.crc_custom and not cfg.crc_auto_classify:
         click.echo("Warning: No CRC algorithm configured. RC-only verification.",
@@ -562,18 +577,9 @@ def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate, allow_empty,
             raise
         raise click.UsageError(f"Verification failed: {exc}") from exc
 
-    if verbose and cfg.output_format != "json":
-        for note in setup.notes:
-            click.echo(note)
-        click.echo(f"Trace files: {len(trace_paths)} file(s)")
-        for p in trace_paths:
-            click.echo(f"  {p}")
-    elif verbose:
-        for note in setup.notes:
-            click.echo(note, err=True)
-        click.echo(f"Trace files: {len(trace_paths)} file(s)", err=True)
-        for p in trace_paths:
-            click.echo(f"  {p}", err=True)
+    if verbose:
+        _echo_verbose_setup(setup, trace_paths,
+                            err=cfg.output_format == "json")
 
     if cfg.output_format == "json":
         _print_json_reports(reports, cfg.output_file or None, cfg.only_failures)

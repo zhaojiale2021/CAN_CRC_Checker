@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest a new algorithm, trace format, or workflow.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prefer configuration (patterns / DataID mappings / presets) over new
+        code paths where possible.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to verify, and what blocks you today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Config shape, CLI flag, or API change you have in mind.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

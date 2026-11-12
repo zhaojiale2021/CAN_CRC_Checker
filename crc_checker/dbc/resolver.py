@@ -18,6 +18,10 @@ from crc_checker.patterns import DEFAULT_NAMING, NamingPatterns, join_patterns
 
 logger = logging.getLogger("crc_checker")
 
+# E2E instance index at the end of a matched suffix (``_CRC_2`` → ``2``,
+# ``_CRC2_3`` → ``2`` to keep the historical pairing behaviour).
+_PAIR_INDEX = re.compile(r"([0-9]+)(?:_[0-9]+[a-z]*)?$")
+
 
 # Kept as plain dicts for callers that imported them before patterns became
 # configurable. New code should use :class:`crc_checker.patterns.NamingPatterns`.
@@ -121,6 +125,11 @@ class SignalResolver:
                        naming: NamingPatterns | None = None) -> str:
         """Extract the suffix used to pair checksum and RC signals.
 
+        The configured patterns (``patterns.yaml`` or ``signals.patterns_file``)
+        drive both detection *and* pairing — a custom regex must not fall back
+        to a parallel hard-coded name list, or the two can disagree and pair
+        the wrong signals.
+
         Prefix-based naming:
           "Checksum_ACC1" → "ACC1"
           "RollingCounter_IFC2" → "IFC2"
@@ -131,35 +140,27 @@ class SignalResolver:
           "CCU_1_CRC_2" → "CCU_1_2"   instances stay separate groups)
           "SGU1_Msg_CheckSum_Can03" → "SGU1_Msg"  (bus marker stripped)
         """
+        naming = naming or DEFAULT_NAMING
         signal_name = SignalResolver.strip_bus_suffix(signal_name, naming)
-        # Remove common prefixes (prefix-based naming)
-        for prefix in ["Checksum_", "Checksum", "CheckSum_", "CheckSum", "CRC_", "CRC",
-                       "E2E_CRC_",
-                       "RollingCounter_", "RollingCounter", "Rolling_Counter_",
-                       "RollingCntr_", "RC_", "LiveCounter_", "AliveCounter_"]:
-            if signal_name.startswith(prefix):
-                return signal_name[len(prefix):]
 
-        # Remove common suffixes. The underscore-less Chks/Cntr forms
-        # ("ADC_ADAS1Chks") are stripped too.
-        suffix_match = re.search(
-            r'(?:_(CRC|Counter|Alive|Checksum|RollgCntr|RollingCounter|'
-            r'MsgCntr|MessageCounter|Message_Counter|AliveCounter|AliveCnt|'
-            r'CRCCheck)|'
-            r'(?:Chks|Cntr))([0-9]*)(_[0-9]+[a-z]*)?$',
-            signal_name, re.IGNORECASE
-        )
-        if suffix_match:
-            prefix = signal_name[:suffix_match.start()]
-            # Append the CRC index if present (APA_CRC1 → APA_1). An index
-            # separated by an underscore ("CCU_1_CRC_2") keeps two E2E
-            # instances of one message apart.
-            crc_index = suffix_match.group(2)
-            instance = (suffix_match.group(3) or "").lstrip("_")
-            index = crc_index or instance
-            if index:
-                prefix = f"{prefix}_{index}"
-            return prefix
+        # Prefix-based: strip whatever the configured prefix regex matched.
+        for prefix_re in (naming.checksum_re, naming.rolling_counter_re):
+            match = prefix_re.match(signal_name)
+            if match and match.end() > 0:
+                return signal_name[match.end():].lstrip("_")
+
+        # Suffix-based: the configured suffix regex tells us where the pair
+        # name ends; keep a trailing E2E instance index as part of the name.
+        for suffix_re in (naming.checksum_suffix_re,
+                          naming.rolling_counter_suffix_re):
+            match = suffix_re.search(signal_name)
+            if match is None:
+                continue
+            base = signal_name[:match.start()]
+            index = _PAIR_INDEX.search(signal_name[match.start():])
+            if base and index:
+                return f"{base}_{index.group(1)}"
+            return base
 
         # Fallback: take the part before the last underscore.
         if "_" in signal_name:
@@ -167,7 +168,7 @@ class SignalResolver:
             return parts[0]
         return signal_name
 
-    def build_protection_map(self, frames: list[dict]) -> DBCProtectionMap:  # pylint: disable=too-many-locals
+    def build_protection_map(self, frames: list[dict]) -> DBCProtectionMap:  # pylint: disable=too-many-locals,too-many-branches
         """Build a DBCProtectionMap from parsed DBC frame/signal data.
 
         Args:
@@ -213,6 +214,11 @@ class SignalResolver:
 
             for cs in checksum_signals:
                 suffix = self.extract_suffix(cs.name, self.naming)
+                if not suffix and self._custom_checksum:
+                    logger.warning(
+                        "0x%03X %s: custom checksum pattern leaves '%s' with no "
+                        "pair suffix; it will not pair with a counter",
+                        frame_id, frame_name, cs.name)
                 if suffix not in groups:
                     groups[suffix] = MessageProtection(
                         frame_id=frame_id, frame_name=frame_name,
@@ -231,6 +237,11 @@ class SignalResolver:
 
             for rc in rc_signals:
                 suffix = self.extract_suffix(rc.name, self.naming)
+                if not suffix and self._custom_rc:
+                    logger.warning(
+                        "0x%03X %s: custom counter pattern leaves '%s' with no "
+                        "pair suffix; it will not pair with a checksum",
+                        frame_id, frame_name, rc.name)
                 if suffix not in groups:
                     groups[suffix] = MessageProtection(
                         frame_id=frame_id, frame_name=frame_name,

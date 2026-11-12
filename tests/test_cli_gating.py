@@ -79,6 +79,31 @@ class TestExitCodes:
         bad = _config(tmp_path, "example_bad.blf")
         assert _run("-c", bad, "--min-pass-rate", "100").exit_code == 1
 
+
+class TestVerifyFlags:
+    """Flag-driven ``verify`` stays consistent with ``run``'s expectations."""
+
+    def test_algo_and_custom_crc_are_mutually_exclusive(self):
+        """Two algorithm sources at once is a usage error, not a silent pick."""
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(EXAMPLE / "dbc"),
+            "--trace", str(EXAMPLE / "trace" / "example.blf"),
+            "--algo", "CRC8/SAE-J1850",
+            "--custom-crc", '{"width": 8, "poly": "0x1D"}',
+        ])
+        assert result.exit_code != 0
+        assert "Use only one" in result.output
+
+    def test_frame_ids_accept_whitespace_and_semicolons(self):
+        """The CLI accepts the same separators as the manual-upload form."""
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(EXAMPLE / "dbc"),
+            "--trace", str(EXAMPLE / "trace" / "example.blf"),
+            "--algo", "CRC8/SAE-J1850",
+            "--frame-ids", "0x100; 0x200 0x300",
+        ])
+        assert result.exit_code == 0, result.output
+
     def test_gate_fails_when_no_checks_were_performed(self, tmp_path):
         """An enabled gate fails closed for a report with no protection checks."""
         dbc = tmp_path / "empty.dbc"

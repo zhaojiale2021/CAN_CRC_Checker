@@ -187,9 +187,9 @@ def _rc_error_stats(errors: int, episodes: int) -> str:
     alongside.
     """
     if not errors:
-        return '<span class="ok">errors: 0</span>'
-    unit = "episode" if episodes == 1 else "episodes"
-    return (f'errors: <span class="err">{errors}</span> frames · '
+        return '<span class="ok">错误: 0</span>'
+    unit = "段"
+    return (f'错误: <span class="err">{errors}</span> 帧 · '
             f'<span class="err">{episodes}</span> {unit}')
 
 
@@ -275,9 +275,9 @@ def _render_rc_chart(points: list, max_valid: int | None, bit_max: int,
     sig_attr = f' data-sig="{sig}"' if sig else ""
     dots = "".join(
         f'<circle class="rc-err-dot" cx="{x_of(t):.1f}" cy="{y_of(v):.1f}" r="4" '
-        f'data-cat="{escape(cat) if cat else "ERROR"}">'
+        f'data-cat="{escape(cat) if cat else "异常"}">'
         f'<title>{sig} · t={t:.6f}s · value={v} · '
-        f'{escape(cat) if cat else "ERROR"}</title>'
+        f'{escape(cat) if cat else "异常"}</title>'
         f'</circle>'
         for t, v, cat in fail_pts
     )
@@ -289,7 +289,7 @@ def _render_rc_chart(points: list, max_valid: int | None, bit_max: int,
             f'data-t0="{t0:.6f}" data-tspan="{span:.6f}" data-vmax="{y_top}"'
             f'{sig_attr}>'
             f'<text class="rc-tick" x="{RC_X0 - 6}" y="{RC_Y1 - 4}" '
-            f'text-anchor="end">value</text>'
+            f'text-anchor="end">值</text>'
             f'<text class="rc-tick" x="{RC_X1}" y="{RC_Y0 + 26}" '
             f'text-anchor="end">t/s</text>'
             f'{"".join(y_ticks)}{"".join(x_ticks)}'
@@ -300,8 +300,12 @@ def _render_rc_chart(points: list, max_valid: int | None, bit_max: int,
             f'</svg>')
 
 
-def _build_rc_charts(report: VerifyReport) -> str:
-    """Rolling Counter trends section: one collapsible SVG chart per RC signal."""
+def _build_rc_charts(report: VerifyReport, only_failures: bool = False) -> str:
+    """Rolling Counter trends section: one collapsible SVG chart per RC signal.
+
+    ``only_failures`` drops clean signals — the failures-only report should not
+    still pay for (or display) every passing trend chart.
+    """
     if not report.rc_series:
         return ""
 
@@ -329,10 +333,12 @@ def _build_rc_charts(report: VerifyReport) -> str:
             max_valid = meta.get("max_valid")
             bit_max = (1 << length) - 1
             span = max(points[-1][0] - points[0][0], 0.0)
+            errors = sum(1 for p in points if not p[2])
+            if only_failures and not errors:
+                continue
             svg = _render_rc_chart(points, max_valid, bit_max, signal_name=sig)
             if not svg:
                 continue
-            errors = sum(1 for p in points if not p[2])
             episodes = count_rc_episodes(points)
             samples = len(points)
             # Charts with errors start expanded; clean ones stay collapsed
@@ -348,7 +354,7 @@ def _build_rc_charts(report: VerifyReport) -> str:
         {name_html}
         <span class="channel-tag channel-{ch % 4}">CH{ch}</span>
         <span class="stats">{_rc_error_stats(errors, episodes)}
-          · samples: {samples}</span>
+          · 采样: {samples}</span>
       </div>
       <div class="rc-chart-body">
         {svg}
@@ -360,4 +366,11 @@ def _build_rc_charts(report: VerifyReport) -> str:
     if not cards:
         return ""
     return (f'<div class="rc-charts">{_RC_MARKER_DEFS}'
-            f'<h2>Rolling Counter Trends</h2>{"".join(cards)}</div>')
+            f'<div class="rc-charts-head">'
+            f'<h2>Rolling Counter 趋势</h2>'
+            f'<button id="rcChartsToggle" class="rc-toggle" type="button" '
+            f'aria-pressed="false" onclick="toggleRcCharts()">查看趋势图</button>'
+            f'</div>'
+            f'<div class="rc-charts-body" id="rcChartsBody" '
+            f'style="display:none">{"".join(cards)}</div>'
+            f'</div>')
