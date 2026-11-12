@@ -219,168 +219,12 @@
           </div>
         </template>
 
-        <div v-if="mode === 'manual'" class="options algorithm-form">
-          <el-alert
-            v-if="presetError"
-            type="warning"
-            :closable="false"
-            :title="`算法列表加载失败：${presetError}（仍可手填配置或按 DBC 注释识别）`"
-          />
-
-          <div class="option">
-            <span class="option-label">算法</span>
-            <el-select
-              v-model="preset"
-              clearable
-              filterable
-              class="algo-select"
-              placeholder="不指定（只校验 RC）"
-            >
-              <el-option label="不指定（只校验 RC）" value="" />
-              <el-option
-                v-for="item in presets"
-                :key="item.name"
-                :label="item.name"
-                :value="item.name"
-              >
-                <span class="mono">{{ item.name }}</span>
-                <el-tag
-                  size="small"
-                  class="opt-tag"
-                  :type="item.validated ? 'success' : 'info'"
-                >
-                  {{ item.validated ? '已验证' : '未验证' }}
-                </el-tag>
-              </el-option>
-            </el-select>
-            <span class="muted">未验证 = 仓库里没有用真实 trace 跑通过</span>
-          </div>
-
-          <div class="option">
-            <span class="option-label">开关</span>
-            <el-checkbox v-model="byteSwap">字节交换（Profile 5）</el-checkbox>
-            <el-checkbox v-model="autoClassify"
-              >按 DBC 注释识别算法</el-checkbox
-            >
-            <el-checkbox v-model="profileByWidth"
-              >按 CRC 宽度选 E2E Profile</el-checkbox
-            >
-            <el-checkbox v-model="dbcMerge">合并所有 DBC</el-checkbox>
-          </div>
-
-          <div class="option">
-            <span class="option-label">CRC 范围</span>
-            <el-radio-group v-model="rangeMode" size="small">
-              <el-radio-button value="exclude_crc"
-                >排除 CRC 字节</el-radio-button
-              >
-              <el-radio-button value="full_payload">整帧</el-radio-button>
-              <el-radio-button value="custom_range">自定义</el-radio-button>
-            </el-radio-group>
-            <template v-if="rangeMode === 'custom_range'">
-              <el-input-number
-                v-model="rangeStart"
-                :min="0"
-                :max="64"
-                size="small"
-                controls-position="right"
-              />
-              <span class="muted">..</span>
-              <el-input-number
-                v-model="rangeEnd"
-                :min="-1"
-                :max="64"
-                size="small"
-                controls-position="right"
-              />
-              <span class="muted">末字节（-1 = 帧尾）</span>
-            </template>
-          </div>
-
-          <div class="option">
-            <span class="option-label">DataID</span>
-            <el-select
-              v-model="dataidPosition"
-              size="small"
-              class="small-select"
-            >
-              <el-option label="前置 prepend" value="prepend" />
-              <el-option label="后置 append" value="append" />
-            </el-select>
-            <el-select
-              v-model="dataidByteOrder"
-              size="small"
-              class="small-select"
-            >
-              <el-option label="低字节在前 lo_hi" value="lo_hi" />
-              <el-option label="高字节在前 hi_lo" value="hi_lo" />
-            </el-select>
-          </div>
-
-          <div class="option">
-            <span class="option-label">RC 上限</span>
-            <el-input-number
-              v-model="rcMaxValid"
-              :min="0"
-              :max="255"
-              size="small"
-              controls-position="right"
-            />
-            <span class="muted">留空 = 按计数器位宽自动（2^N - 1）</span>
-          </div>
-
-          <el-collapse class="advanced">
-            <el-collapse-item
-              title="高级：帧过滤 / 信号正则 / DataID 细节"
-              name="advanced"
-            >
-              <div class="options">
-                <div class="option">
-                  <span class="option-label">帧 ID</span>
-                  <el-input
-                    v-model="frameIds"
-                    placeholder="0x143, 0x299（留空 = 全部）"
-                  />
-                </div>
-                <div class="option">
-                  <span class="option-label">Checksum 正则</span>
-                  <el-input
-                    v-model="checksumPattern"
-                    placeholder="留空 = 内置命名规则"
-                  />
-                </div>
-                <div class="option">
-                  <span class="option-label">RC 正则</span>
-                  <el-input
-                    v-model="rcPattern"
-                    placeholder="留空 = 内置命名规则"
-                  />
-                </div>
-                <div class="option">
-                  <span class="option-label">DataID sheet</span>
-                  <el-input
-                    v-model="dataidSheet"
-                    placeholder="xlsx 工作表名（留空 = 自动匹配）"
-                  />
-                </div>
-                <div class="option">
-                  <span class="option-label">DataID 映射</span>
-                  <el-input
-                    v-model="dataidMapping"
-                    placeholder="如 hi_lo_two_cols（留空 = 默认）"
-                  />
-                </div>
-                <div class="option">
-                  <span class="option-label">DataID 默认值</span>
-                  <el-input
-                    v-model="dataidDefault"
-                    placeholder="如 0x0000（留空 = 不使用）"
-                  />
-                </div>
-              </div>
-            </el-collapse-item>
-          </el-collapse>
-        </div>
+        <ManualOptionsForm
+          v-model:config="manualConfig"
+          :mode="mode"
+          :presets="presets"
+          :preset-error="presetError"
+        />
 
         <div class="options">
           <div class="option">
@@ -468,6 +312,7 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import VersionPanel from './components/VersionPanel.vue'
 import ResultPanel from './components/ResultPanel.vue'
+import ManualOptionsForm from './components/ManualOptionsForm.vue'
 import {
   fetchLimits,
   fetchPresets,
@@ -482,11 +327,7 @@ import {
   groupByOem,
   summaryHighlights,
 } from './projects.js'
-import {
-  buildManualConfig,
-  manualCanRun,
-  resultProjectLabel,
-} from './manualConfig.js'
+import { manualCanRun, resultProjectLabel } from './manualConfig.js'
 
 // 限额的内置兜底值:/api/limits 拉取失败时页面仍可用。
 const DEFAULT_LIMITS = {
@@ -518,23 +359,7 @@ const dbcList = ref([])
 const dbcFiles = ref([])
 const dataidList = ref([])
 const dataidFile = ref(null)
-const preset = ref('')
-const byteSwap = ref(false)
-const autoClassify = ref(false)
-const profileByWidth = ref(false)
-const dbcMerge = ref(false)
-const rangeMode = ref('exclude_crc')
-const rangeStart = ref(0)
-const rangeEnd = ref(-1)
-const dataidPosition = ref('prepend')
-const dataidByteOrder = ref('lo_hi')
-const dataidSheet = ref('')
-const dataidMapping = ref('')
-const dataidDefault = ref('')
-const rcMaxValid = ref(null)
-const frameIds = ref('')
-const checksumPattern = ref('')
-const rcPattern = ref('')
+const manualConfig = ref({})
 
 const uploadLimitBytes = computed(() => limits.maxUploadMb * 1024 * 1024)
 const projectGroups = computed(() => groupByOem(projects.value))
@@ -635,28 +460,6 @@ function maxFramesPayload() {
   return null
 }
 
-function manualConfigPayload() {
-  return buildManualConfig({
-    preset: preset.value,
-    byteSwap: byteSwap.value,
-    autoClassify: autoClassify.value,
-    profileByWidth: profileByWidth.value,
-    dbcMerge: dbcMerge.value,
-    rangeMode: rangeMode.value,
-    rangeStart: rangeStart.value,
-    rangeEnd: rangeEnd.value,
-    dataidPosition: dataidPosition.value,
-    dataidByteOrder: dataidByteOrder.value,
-    dataidSheet: dataidSheet.value,
-    dataidMapping: dataidMapping.value,
-    dataidDefault: dataidDefault.value,
-    rcMaxValid: rcMaxValid.value,
-    frameIds: frameIds.value,
-    checksumPattern: checksumPattern.value,
-    rcPattern: rcPattern.value,
-  })
-}
-
 function reportMessage(payload) {
   const report = payload.reports?.[0]
   if (!report) return
@@ -691,7 +494,7 @@ async function run() {
           dbcs: dbcFiles.value,
           trace: selectedFile.value,
           dataid: dataidFile.value,
-          config: manualConfigPayload(),
+          config: manualConfig.value,
           maxFrames: maxFramesPayload(),
           onlyFailures: onlyFailures.value,
         }),
@@ -884,43 +687,6 @@ onMounted(() => {
 }
 .upload-text {
   color: var(--el-text-color-regular);
-}
-.options {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.algorithm-form {
-  margin-bottom: 22px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.option {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.option-label {
-  width: 100px;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-}
-.algo-select {
-  width: 280px;
-}
-.small-select {
-  width: 150px;
-}
-.opt-tag {
-  float: right;
-  margin-left: 10px;
-}
-.advanced {
-  margin-top: 2px;
-}
-.dataid-upload {
-  margin-top: 14px;
 }
 .run-bar {
   display: flex;
