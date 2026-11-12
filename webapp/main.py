@@ -227,12 +227,19 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                     shutil.rmtree(upload_dir, ignore_errors=True)
                 return
             try:
-                outcome = run_project(
-                    project, trace_path, trace_name, frame_limit, only_failures,
-                    job.job_id, run_store.runs_dir,
-                    frame_progress_callback=lambda done, _total:
-                        job_registry.progress(job.job_id, done),
-                    cancellation_token=job.token)
+                try:
+                    outcome = run_project(
+                        project, trace_path, trace_name, frame_limit, only_failures,
+                        job.job_id, run_store.runs_dir,
+                        frame_progress_callback=lambda done, _total:
+                            job_registry.progress(job.job_id, done),
+                        cancellation_token=job.token)
+                finally:
+                    # Delete staged uploads before publishing the result: once
+                    # finish_success flips the job status, clients may read it
+                    # immediately, and the upload directory must already be gone.
+                    if upload_dir is not None:
+                        shutil.rmtree(upload_dir, ignore_errors=True)
                 published = job_registry.finish_success(
                     job.job_id, outcome.to_dict(), lambda: run_store.add(outcome))
                 if not published:
@@ -247,9 +254,6 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                 logger.exception("Unexpected verification job failure: %s", job.job_id)
                 job_registry.finish(job.job_id, "failed",
                                     error="服务器内部错误,请重试或查看服务端日志")
-            finally:
-                if upload_dir is not None:
-                    shutil.rmtree(upload_dir, ignore_errors=True)
 
         try:
             worker_pool.submit(worker)

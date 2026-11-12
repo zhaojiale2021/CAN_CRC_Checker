@@ -11,6 +11,9 @@ build/
 *.html
 !frontend/index.html
 !frontend/dist/index.html
+# Packaged copy of frontend/dist — CI diffs the two trees, so the entry
+# point must be committed alongside its assets.
+!webapp/static/dist/index.html
 report*.csv
 report*.json
 

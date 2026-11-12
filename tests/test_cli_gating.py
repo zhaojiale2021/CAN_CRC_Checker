@@ -29,6 +29,19 @@ def _run(*args: str):
     return CliRunner().invoke(cli, ["run", *args])
 
 
+def _separated_runner() -> CliRunner:
+    """CliRunner that keeps stderr out of stdout.
+
+    click <8.2 merges the streams unless ``mix_stderr`` is disabled; click
+    8.2+ removed the flag because separation is the only behaviour. Set it
+    only where the attribute exists so both versions stay quiet.
+    """
+    runner = CliRunner()
+    if hasattr(runner, "mix_stderr"):
+        runner.mix_stderr = False
+    return runner
+
+
 class TestExitCodes:
     """A verification tool must be usable as a CI gate."""
 
@@ -145,7 +158,7 @@ class TestVerifyOutput:
 
     def test_json_stdout_is_one_document(self):
         """Verbose JSON output on stdout remains one parseable document."""
-        result = CliRunner().invoke(cli, [
+        result = _separated_runner().invoke(cli, [
             "verify", "--dbc", str(EXAMPLE / "dbc"),
             "--trace", str(EXAMPLE / "trace" / "example.blf"),
             "--algo", "CRC8/SAE-J1850", "--max-frames", "10",
