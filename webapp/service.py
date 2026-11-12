@@ -14,12 +14,14 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from crc_checker.config import DEFAULT_MAX_FRAMES, RunConfig, load_config
 from crc_checker.report.html import write_html
 from crc_checker.report.trends import (RC_MAX_POINTS, _minmax_decimate,
                                        _split_trend_points, count_rc_episodes,
                                        crc_sample_stats, rc_sample_stats)
+from crc_checker.verify.cancellation import CancellationToken
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
 from crc_checker.verify.runner import RunnerError, run_config
 from webapp.catalog import Project
@@ -33,6 +35,154 @@ MAX_RC_TRENDS = 60             # RC trend signals serialised per trace
 
 class RunError(RuntimeError):
     """User-facing verification failure (bad config, unreadable trace, ...)."""
+
+
+JOB_STATUSES = frozenset({"queued", "running", "succeeded", "failed", "cancelled"})
+MAX_JOBS = 100
+
+
+@dataclass
+class VerificationJob:
+    """Thread-safe-registry record for one asynchronous verification."""
+
+    job_id: str
+    token: CancellationToken = field(default_factory=CancellationToken)
+    status: str = "queued"
+    processed_frames: int = 0
+    error: str | None = None
+    result: dict | None = None
+    created_at: float = field(default_factory=time.monotonic)
+
+    def to_dict(self) -> dict:
+        """JSON state exposed by the jobs API."""
+        return {
+            "job_id": self.job_id,
+            "status": self.status,
+            "processed_frames": self.processed_frames,
+            "error": self.error,
+            "result": self.result,
+        }
+
+
+class JobRegistry:
+    """Bounded, per-app job state with atomic transitions and snapshots."""
+
+    def __init__(self, max_jobs: int = MAX_JOBS):
+        self.max_jobs = max_jobs
+        self._jobs: dict[str, VerificationJob] = {}
+        self._lock = threading.Lock()
+
+    def create(self, job_id: str | None = None) -> VerificationJob | None:
+        """Create a queued job, evicting old terminal entries when full."""
+        with self._lock:
+            if len(self._jobs) >= self.max_jobs:
+                terminal = sorted(
+                    (job for job in self._jobs.values()
+                     if job.status in {"succeeded", "failed", "cancelled"}),
+                    key=lambda job: job.created_at)
+                for job in terminal:
+                    self._jobs.pop(job.job_id, None)
+                    if len(self._jobs) < self.max_jobs:
+                        break
+            if len(self._jobs) >= self.max_jobs:
+                return None
+            identifier = job_id or secrets.token_urlsafe(9)
+            if identifier in self._jobs:
+                return None
+            job = VerificationJob(identifier)
+            self._jobs[identifier] = job
+            return job
+
+    def job_ids(self) -> list[str]:
+        """Return a stable list of retained job identifiers."""
+        with self._lock:
+            return list(self._jobs)
+
+    def get(self, job_id: str) -> dict | None:
+        """Return a consistent state snapshot or ``None`` for an unknown job."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            return job.to_dict() if job is not None else None
+
+    def start(self, job_id: str) -> bool:
+        """Move a queued job to running exactly once."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.status != "queued":
+                return False
+            if job.token.is_cancelled:
+                job.status = "cancelled"
+                job.error = "任务已取消"
+                return False
+            job.status = "running"
+            return True
+
+    def progress(self, job_id: str, processed_frames: int) -> None:
+        """Accept progress only while the matching job is running."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is not None and job.status == "running":
+                job.processed_frames = max(job.processed_frames, processed_frames)
+
+    # pylint: disable=too-many-arguments
+    def finish(self, job_id: str, status: str, *, error: str | None = None,
+                result: dict | None = None, processed_frames: int | None = None) -> None:
+        """Set one terminal state; late callbacks cannot mutate it."""
+        if status not in {"succeeded", "failed", "cancelled"}:
+            raise ValueError(f"Not a terminal job status: {status}")
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.status not in {"queued", "running"}:
+                return
+            if processed_frames is not None:
+                job.processed_frames = max(job.processed_frames, processed_frames)
+            job.status = status
+            job.error = error
+            job.result = result
+
+    def finish_success(self, job_id: str, result: dict, publish: Callable[[], None]) -> bool:
+        """Publish the run and mark success atomically against cancellation."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.status not in {"queued", "running"}:
+                return False
+            if job.token.is_cancelled:
+                job.status = "cancelled"
+                job.error = "任务已取消"
+                job.result = None
+                return False
+            publish()
+            job.status = "succeeded"
+            job.error = None
+            job.result = result
+            return True
+
+    def cancel(self, job_id: str) -> str | None:
+        """Request cancellation for active jobs; return status or ``None``."""
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.status not in {"queued", "running"}:
+                return None
+            if job.status == "queued":
+                job.status = "cancelled"
+                job.error = "任务已取消"
+                return "queued"
+            job.token.cancel()
+            return job.status
+
+    def cancel_all(self) -> list[str]:
+        """Request cancellation for every active job and return their ids."""
+        with self._lock:
+            identifiers = []
+            for job in self._jobs.values():
+                if job.status in {"queued", "running"}:
+                    identifiers.append(job.job_id)
+                    if job.status == "queued":
+                        job.status = "cancelled"
+                        job.error = "任务已取消"
+                    else:
+                        job.token.cancel()
+            return identifiers
 
 
 @dataclass
@@ -56,6 +206,27 @@ class RunOutcome:
             "report_url": f"/api/runs/{self.run_id}/report.html" if self.html_path else "",
             **self.payload,
         }
+
+
+class ReportLease:  # pylint: disable=too-few-public-methods
+    """Keep a report and its split parts alive through response streaming."""
+
+    def __init__(self, store: RunStore, outcome: RunOutcome, path: Path,
+                 download_name: str):
+        self.path = path
+        self.download_name = download_name
+        self._store = store
+        self._outcome = outcome
+        self._released = False
+        self._lock = threading.Lock()
+
+    def release(self) -> None:
+        """Release this lease once; safe for response and error cleanup paths."""
+        with self._lock:
+            if self._released:
+                return
+            self._released = True
+            self._store.release_report(self._outcome)
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +300,7 @@ def _verdict_row(verdict: VerifyVerdict, report: VerifyReport) -> dict:
     }
 
 
-# pylint: disable=too-many-locals
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     """Per-message summary counted in FRAMES, not verdicts.
 
@@ -138,15 +309,21 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     a misleading channel tag.
 
     RC failures fold into one verdict (reports don't spam one line per
-    frame), so counting verdicts would shrink "1800 failed frames" into
-    "1 failure" and would also add CRC's per-frame verdicts to the folded RC
-    verdicts (1801 + 2 = 1803 — 0x421 once displayed "1802/1803, 1 failure").
-    Frames are therefore deduplicated by ``(frame_id, channel, timestamp)`` —
-    a frame counts as passed only when every check of that frame passed; the
-    per-frame RC outcomes come from ``rc_series``.
+    frame), so counting verdicts would shrink repeated failures into one. Frame
+    samples are identified by timestamp plus occurrence number so distinct frames
+    with identical timestamps are still counted separately.
     """
     frames: dict[tuple[int, int], dict] = {}
-    outcomes: dict[tuple[int, int], dict[float, bool]] = {}
+    outcomes: dict[tuple[int, int], dict[tuple[float, int], bool]] = {}
+    occurrences: dict[tuple[int, int, float, str], int] = {}
+
+    def outcome_key(frame_id: int, channel: int, timestamp: float,
+                    signal_name: str) -> tuple[float, int]:
+        """Assign duplicate signal timestamps distinct occurrence indices."""
+        base = (frame_id, channel, timestamp, signal_name)
+        index = occurrences.get(base, 0)
+        occurrences[base] = index + 1
+        return timestamp, index
 
     def frame_entry(frame_id: int, _timestamp: float, channel: int = 0) -> dict:
         key = (frame_id, channel)
@@ -187,9 +364,15 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     count_rc_verdicts = not report.rc_series
     for verdict in report.verdicts:
         frame = frame_entry(verdict.frame_id, verdict.timestamp, verdict.channel)
-        results = outcomes.setdefault((verdict.frame_id, verdict.channel), {})
-        results[verdict.timestamp] = (results.get(verdict.timestamp, True)
-                                      and verdict.is_pass)
+        # Folded RC verdicts describe failure episodes, not frame samples; the
+        # series below is authoritative when available. Keep their detail rows
+        # but do not add a second outcome for the same RC samples.
+        is_rc_episode = verdict.algorithm != "crc" and not count_rc_verdicts
+        if not is_rc_episode:
+            results = outcomes.setdefault((verdict.frame_id, verdict.channel), {})
+            key = outcome_key(verdict.frame_id, verdict.channel, verdict.timestamp,
+                              verdict.signal_name)
+            results[key] = results.get(key, True) and verdict.is_pass
         if not verdict.is_pass and len(frame["failures"]) < MAX_FAILURE_ROWS:
             frame["failures"].append(_verdict_row(verdict, report))
 
@@ -206,7 +389,8 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
         for timestamp, _value, is_pass, _category in points:
             frame = frame_entry(frame_id, timestamp, _channel)
             results = outcomes.setdefault((frame_id, _channel), {})
-            results[timestamp] = results.get(timestamp, True) and is_pass
+            key = outcome_key(frame_id, _channel, timestamp, signal_name)
+            results[key] = results.get(key, True) and is_pass
             entry = frame["signals"].get(signal_name)
             if entry is None:
                 if len(frame["signals"]) >= MAX_SIGNAL_ROWS:
@@ -263,9 +447,12 @@ def report_to_dict(report: VerifyReport) -> dict:
         "check_total": crc_total + rc_total,
         "check_pass": crc_pass + rc_pass,
         "check_fail": (crc_total - crc_pass) + (rc_total - rc_pass),
-        "pass_count": report.pass_count,
-        "fail_count": report.fail_count,
-        "pass_rate": report.pass_rate,
+        # Public aggregate counts follow per-frame/sample accounting; folded
+        # verdict counts remain available in total_verdicts and failures.
+        "pass_count": crc_pass + rc_pass,
+        "fail_count": (crc_total - crc_pass) + (rc_total - rc_pass),
+        "pass_rate": ((crc_pass + rc_pass) / (crc_total + rc_total)
+                      if crc_total + rc_total else 1.0),
         "crc_total": crc_total,
         "crc_pass": crc_pass,
         "crc_rate": crc_pass / crc_total if crc_total else 1.0,
@@ -324,6 +511,8 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
     only_failures: bool = False,
     run_id: str | None = None,
     report_dir: Path | None = None,
+    frame_progress_callback: Callable[[int, int | None], None] | None = None,
+    cancellation_token: CancellationToken | None = None,
 ) -> RunOutcome:
     """Verify one trace file against a project's config.
 
@@ -336,9 +525,12 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
         only_failures: Render the HTML report with failures only.
         run_id: Pre-allocated id (tests pass one; the API generates it).
         report_dir: Where to write ``<run_id>.html`` (skipped when ``None``).
+        frame_progress_callback: Optional per-frame progress observer.
+        cancellation_token: Optional cooperative cancellation signal.
 
     Raises:
         RunError: config or trace could not be used.
+        VerificationCancelled: the run was cancelled cooperatively.
     """
     started = time.monotonic()
     try:
@@ -351,10 +543,13 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
     cfg.only_failures = only_failures
 
     try:
-        setup, reports = run_config(cfg, [str(trace_path)])
+        setup, reports = run_config(
+            cfg, [str(trace_path)],
+            frame_progress_callback=frame_progress_callback,
+            cancellation_token=cancellation_token)
     except RunnerError as exc:
         raise RunError(str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001 - trace/DBC parse errors are user-facing
+    except (OSError, ValueError) as exc:
         raise RunError(f"校验执行失败: {exc}") from exc
 
     display_name = trace_name or trace_path.name
@@ -435,6 +630,8 @@ class RunStore:
     runs_dir: Path
     max_runs: int = MAX_RUNS
     _runs: dict[str, RunOutcome] = field(default_factory=dict)
+    _active_leases: dict[int, int] = field(default_factory=dict, repr=False)
+    _pending_cleanup: dict[int, RunOutcome] = field(default_factory=dict, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def __post_init__(self) -> None:
@@ -475,6 +672,70 @@ class RunStore:
                 outcome.last_access = time.time()
             return outcome
 
+    def acquire_report(self, run_id: str, filename: str) -> ReportLease | None:
+        """Resolve and lease a report atomically, returning ``None`` if absent.
+
+        ``filename`` is ``report``/the report stem or a split-part stem such
+        as ``<run_id>_p2``. The lease prevents eviction from deleting any part
+        of the response while Starlette is streaming it.
+        """
+        with self._lock:
+            outcome = self._runs.get(run_id)
+            if outcome is None or not outcome.html_path:
+                return None
+
+            path = outcome.html_path
+            label = f"crc_report_{run_id}.html"
+            if filename not in ("report", path.stem):
+                match = re.fullmatch(rf"{re.escape(run_id)}_p(\d+)", filename)
+                if match is None:
+                    return None
+                part_no = int(match.group(1))
+                path = path.with_name(f"{run_id}_p{part_no}.html")
+                label = f"crc_report_{run_id}_p{part_no}.html"
+
+            if not path.is_file():
+                return None
+            outcome.last_access = time.time()
+            outcome_key = id(outcome)
+            self._active_leases[outcome_key] = self._active_leases.get(outcome_key, 0) + 1
+            return ReportLease(self, outcome, path, label)
+
+    def release_report(self, outcome: RunOutcome) -> None:
+        """Public report-lease release entry point."""
+        self._release_report(outcome)
+
+    def _release_report(self, outcome: RunOutcome) -> None:
+        """Drop a lease and clean an evicted run after its last response."""
+        cleanup = None
+        outcome_key = id(outcome)
+        with self._lock:
+            count = self._active_leases.get(outcome_key, 0)
+            if count <= 1:
+                self._active_leases.pop(outcome_key, None)
+                cleanup = self._pending_cleanup.pop(outcome_key, None)
+            else:
+                self._active_leases[outcome_key] = count - 1
+        if cleanup is not None:
+            self._delete_outcome_reports(cleanup)
+
+    def _delete_outcome_reports(self, outcome: RunOutcome) -> None:
+        """Delete all report parts and the per-run directory, if any."""
+        if not outcome.html_path:
+            return
+        for path in _report_files(outcome.html_path):
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        parent = outcome.html_path.parent
+        if parent != self.runs_dir and parent.is_dir():
+            shutil.rmtree(parent, ignore_errors=True)
+
+    def discard(self, outcome: RunOutcome) -> None:
+        """Remove an unpublished outcome's reports without touching leases."""
+        self._delete_outcome_reports(outcome)
+
     def __len__(self) -> int:
         """Number of cached runs (diagnostics / tests)."""
         with self._lock:
@@ -494,11 +755,11 @@ class RunStore:
             self._runs.pop(stale.run_id, None)
             if not stale.html_path:
                 continue
-            for path in _report_files(stale.html_path):
-                try:
-                    path.unlink()
-                except OSError:
-                    pass
-            parent = stale.html_path.parent
-            if parent != self.runs_dir and parent.is_dir():
-                shutil.rmtree(parent, ignore_errors=True)
+            outcome_key = id(stale)
+            if self._active_leases.get(outcome_key, 0):
+                # FileResponse may still be streaming the main report or a
+                # split part. Keep the whole run directory until its last
+                # response releases the lease.
+                self._pending_cleanup[outcome_key] = stale
+            else:
+                self._delete_outcome_reports(stale)

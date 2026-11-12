@@ -24,6 +24,7 @@ from crc_checker.dbc.parser import (
 from crc_checker.protect.checksum import CRCVerifier
 from crc_checker.protect.rolling_counter import RollingCounterVerifier
 from crc_checker.trace.reader import TraceReader
+from crc_checker.verify.cancellation import CancellationToken, VerificationCancelled
 from crc_checker.verify.engine import VerifyEngine
 from crc_checker.verify.models import VerifyReport
 
@@ -290,24 +291,40 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
 def run_trace(protection_map, algorithms: list, trace_path: str,  # pylint: disable=too-many-arguments,too-many-positional-arguments
               frame_ids: list[int] | None = None,
               max_frames: int | None = None,
-              progress_callback=None) -> VerifyReport:
-    """Verify one trace file and return its report."""
+              progress_callback=None,
+              cancellation_token: CancellationToken | None = None) -> VerifyReport:
+    """Verify one trace file and return its report.
+
+    ``progress_callback`` receives every completed eligible frame count. A
+    cancellation request takes effect at the next eligible frame boundary.
+    """
     engine = VerifyEngine(protection_map, algorithms)
     with TraceReader(trace_path) as reader:
         report = engine.run(reader, frame_ids=frame_ids, max_frames=max_frames,
-                            progress_callback=progress_callback)
+                            progress_callback=progress_callback,
+                            cancellation_token=cancellation_token)
     report.dbc_paths = protection_map.dbc_paths
     return report
 
 
+# pylint: disable=too-many-locals
 def run_config(cfg: RunConfig, trace_paths: list[str] | None = None,
-               progress_callback=None) -> tuple[ProtectionSetup, list[VerifyReport]]:
+               progress_callback=None,
+               frame_progress_callback=None,
+               cancellation_token: CancellationToken | None = None
+               ) -> tuple[ProtectionSetup, list[VerifyReport]]:
     """Build the protection map from ``cfg`` and verify every configured trace.
 
     Args:
         cfg: Run configuration.
         trace_paths: Trace files to verify; defaults to ``cfg.get_trace_paths()``.
         progress_callback: Optional ``callback(done, total)`` per trace file.
+            This existing callback is called after each trace completes.
+        frame_progress_callback: Optional ``callback(processed, None)`` called
+            after every eligible frame completes, including frames without
+            protection groups.
+        cancellation_token: Optional cooperative token checked by the frame
+            loop; DBC and trace parser/setup stages are not interruptible.
 
     Returns:
         (setup, reports) — one report per trace file, in input order.
@@ -326,9 +343,27 @@ def run_config(cfg: RunConfig, trace_paths: list[str] | None = None,
     algorithms = build_algorithms(cfg.build_crc_params())
 
     reports = []
+    processed_offset = 0
     for index, trace_path in enumerate(paths):
-        reports.append(run_trace(setup.protection_map, algorithms, trace_path,
-                                 frame_ids=cfg.frame_ids, max_frames=cfg.max_frames))
+        trace_callback = None
+        if frame_progress_callback:
+            def _make_trace_callback(base_offset):
+                def callback(done, total):
+                    frame_progress_callback(base_offset + done, total)
+                return callback
+
+            trace_callback = _make_trace_callback(processed_offset)
+        try:
+            report = run_trace(
+                setup.protection_map, algorithms, trace_path,
+                frame_ids=cfg.frame_ids, max_frames=cfg.max_frames,
+                progress_callback=trace_callback,
+                cancellation_token=cancellation_token)
+        except VerificationCancelled as exc:
+            exc.processed_frames += processed_offset
+            raise
+        reports.append(report)
+        processed_offset += report.total_frames
         if progress_callback:
             progress_callback(index + 1, len(paths))
     return setup, reports

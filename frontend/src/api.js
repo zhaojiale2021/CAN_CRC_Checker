@@ -27,7 +27,9 @@ async function request(path, options = {}) {
     : await response.text()
   if (!response.ok) {
     const detail = body && typeof body === 'object' ? body.detail : body
-    throw new Error(formatApiDetail(detail, response.status))
+    const error = new Error(formatApiDetail(detail, response.status))
+    error.status = response.status
+    throw error
   }
   return body
 }
@@ -103,4 +105,16 @@ export function verifyManual({
   form.append('max_frames', maxFrames === null ? '' : String(maxFrames))
   form.append('only_failures', onlyFailures ? 'true' : 'false')
   return request('/api/verify-manual', { method: 'POST', body: form })
+}
+
+/** Read the current state and progress of an asynchronous verification job. */
+export function fetchJob(jobId) {
+  return request(`/api/jobs/${encodeURIComponent(jobId)}`)
+}
+
+/** Request server-side cancellation; terminal jobs may respond with HTTP 409. */
+export function cancelJob(jobId) {
+  return request(`/api/jobs/${encodeURIComponent(jobId)}/cancel`, {
+    method: 'POST',
+  })
 }

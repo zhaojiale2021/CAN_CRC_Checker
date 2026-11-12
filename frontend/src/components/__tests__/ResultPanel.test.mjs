@@ -193,6 +193,48 @@ describe('ResultPanel', () => {
     wrapper.unmount()
   })
 
+  it('趋势区提供图表开关与文本替代', async () => {
+    const wrapper = mountPanel(
+      makeResult({
+        report: {
+          rc_trends: [
+            {
+              frame_id_hex: '0x421',
+              frame_id: 0x421,
+              frame_name: 'FrameB',
+              channel: 1,
+              signal: 'RC_B',
+              points: [
+                [1, 0, 0, ''],
+                [2, 1, 1, 'STALE'],
+              ],
+              t0: 1,
+              tspan: 1,
+              bit_max: 3,
+              max_valid: 2,
+              samples: 2,
+              errors: 1,
+              episodes: 1,
+            },
+          ],
+        },
+      }),
+    )
+
+    expect(wrapper.find('.trend-charts').exists()).toBe(true)
+    expect(wrapper.find('.trend-alt').text()).toContain('首值 0，末值 1。')
+
+    await wrapper.find('.trend-section-head button').trigger('click')
+    expect(wrapper.find('.trend-charts').exists()).toBe(false)
+    expect(
+      wrapper.find('.trend-section-head button').attributes('aria-pressed'),
+    ).toBe('false')
+
+    await wrapper.find('.trend-section-head button').trigger('click')
+    expect(wrapper.find('.trend-charts').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('check_total 为 0 时显示专项提示且没有失败明细', () => {
     const wrapper = mountPanel(
       makeResult({

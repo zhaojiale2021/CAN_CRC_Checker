@@ -1,0 +1,28 @@
+# Git and Python build/test output
+.git/
+.gitignore
+.github/
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+build/
+.dist/
+.wheel-check/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local virtual environments and frontend dependencies
+.venv/
+.venv*/
+frontend/node_modules/
+
+# Local project/customer data and runtime outputs
+projects/
+data/
+
+# Local tooling and editor state
+.claude/
+.idea/
+.vscode/
+AGENTS.md

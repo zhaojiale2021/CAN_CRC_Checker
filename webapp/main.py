@@ -17,26 +17,29 @@ import os
 import re
 import secrets
 import shutil
+from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.concurrency import run_in_threadpool
+from starlette.background import BackgroundTask
 
 from crc_checker.config import DEFAULT_MAX_FRAMES
+from crc_checker.verify.cancellation import VerificationCancelled
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
-from webapp.catalog import PROJECT_ROOT, Project, get_project, scan_projects
-from webapp.service import RunStore, RunError, run_project
+from webapp.paths import FRONTEND_DIST, data_dir
+from webapp.catalog import Project, get_project, scan_projects
+from webapp.service import (JobRegistry, RunStore, RunError, run_project)
 from webapp.version import deployment_version
 
 logger = logging.getLogger("crc_checker.web")
 
-FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
-DATA_DIR = PROJECT_ROOT / "data" / "web"
-UPLOADS_DIR = DATA_DIR / "uploads"
-RUNS_DIR = DATA_DIR / "runs"
+# Static resources and runtime paths come from webapp.paths.
+DATA_DIR = data_dir()
+UPLOADS_DIR = DATA_DIR / "uploads"  # compatibility alias for existing callers
+RUNS_DIR = DATA_DIR / "runs"       # compatibility alias for existing callers
 
 DEFAULT_MAX_UPLOAD_MB = 200
 MAX_DBC_UPLOADS = 10
@@ -182,14 +185,80 @@ def _manual_project(upload_dir: Path, config_path: Path,
     )
 
 
-def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too-many-statements
+def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too-many-statements,too-many-locals
     """Build the ASGI app (``store`` is injectable for tests)."""
     api = FastAPI(title="CAN CRC Checker (Web)")
-    run_store = store if store is not None else RunStore(RUNS_DIR)
-    # Uploads are deleted in the request's ``finally`` block; a crash or a
-    # killed process leaves them behind forever. Clear the staging area on
-    # startup, like the report store already does for run directories.
-    shutil.rmtree(UPLOADS_DIR, ignore_errors=True)
+    data_root = data_dir()
+    uploads_dir = data_root / "uploads"
+    runs_dir = store.runs_dir if store is not None else data_root / "runs"
+    run_store = store if store is not None else RunStore(runs_dir)
+    job_registry = JobRegistry()
+    worker_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crc-job")
+    api.state.job_registry = job_registry
+    api.state.worker_pool = worker_pool
+    api.state.run_store = run_store
+    api.state.uploads_dir = uploads_dir
+    # Uploads are deleted in each job's terminal cleanup. A crash or killed
+    # process leaves them behind forever, so clear staging on startup.
+    shutil.rmtree(uploads_dir, ignore_errors=True)
+
+    @api.on_event("shutdown")
+    def shutdown_workers() -> None:
+        """Cancel queued jobs, signal active runs, and clean staged uploads."""
+        job_ids = job_registry.cancel_all()
+        worker_pool.shutdown(wait=False, cancel_futures=True)
+        for job_id in job_ids:
+            state = job_registry.get(job_id)
+            if state is not None and state["status"] == "cancelled":
+                shutil.rmtree(uploads_dir / job_id, ignore_errors=True)
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def enqueue(project: Project, trace_path: Path, trace_name: str,
+                frame_limit: int | None, only_failures: bool, run_id: str,
+                upload_dir: Path | None) -> dict:
+        """Register and schedule a staged run; caller owns staging on errors."""
+        job = job_registry.create(run_id)
+        if job is None:
+            raise HTTPException(503, "校验任务队列已满,请稍后重试")
+
+        def worker() -> None:
+            if not job_registry.start(job.job_id):
+                if upload_dir is not None:
+                    shutil.rmtree(upload_dir, ignore_errors=True)
+                return
+            try:
+                outcome = run_project(
+                    project, trace_path, trace_name, frame_limit, only_failures,
+                    job.job_id, run_store.runs_dir,
+                    frame_progress_callback=lambda done, _total:
+                        job_registry.progress(job.job_id, done),
+                    cancellation_token=job.token)
+                published = job_registry.finish_success(
+                    job.job_id, outcome.to_dict(), lambda: run_store.add(outcome))
+                if not published:
+                    run_store.discard(outcome)
+            except VerificationCancelled as exc:
+                job_registry.finish(
+                    job.job_id, "cancelled", error="任务已取消",
+                    processed_frames=exc.processed_frames)
+            except RunError as exc:
+                job_registry.finish(job.job_id, "failed", error=str(exc))
+            except Exception:  # noqa: BLE001 - shield unexpected worker failures  # pylint: disable=broad-exception-caught
+                logger.exception("Unexpected verification job failure: %s", job.job_id)
+                job_registry.finish(job.job_id, "failed",
+                                    error="服务器内部错误,请重试或查看服务端日志")
+            finally:
+                if upload_dir is not None:
+                    shutil.rmtree(upload_dir, ignore_errors=True)
+
+        try:
+            worker_pool.submit(worker)
+        except RuntimeError as exc:
+            job_registry.finish(job.job_id, "failed", error="任务无法启动,请重试")
+            if upload_dir is not None:
+                shutil.rmtree(upload_dir, ignore_errors=True)
+            raise HTTPException(503, "校验任务无法启动,请重试") from exc
+        return {"job_id": job.job_id, "status": "queued"}
 
     @api.exception_handler(Exception)
     async def unhandled_exception_handler(request, exc: Exception) -> JSONResponse:
@@ -254,7 +323,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                            allowed: frozenset = TRACE_SUFFIXES,
                            label: str = "trace") -> Path:
         """Stream one upload into ``data/web/uploads/<run_id>/`` (size-capped)."""
-        upload_dir = UPLOADS_DIR / run_id / subdir
+        upload_dir = uploads_dir / run_id / subdir
         upload_dir.mkdir(parents=True, exist_ok=True)
         name = safe_filename(file.filename or "")
         if Path(name).suffix.lower() not in allowed:
@@ -290,20 +359,15 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         frame_limit = _parse_frame_limit(max_frames)
 
         run_id = secrets.token_urlsafe(9)
-        upload_dir = UPLOADS_DIR / run_id
+        upload_dir = uploads_dir / run_id
         try:
             trace_path = await _save_upload(file, run_id)
-            outcome = await run_in_threadpool(
-                run_project, project, trace_path, trace_path.name,
-                frame_limit, _parse_bool(only_failures), run_id, run_store.runs_dir)
-        except RunError as exc:
-            raise HTTPException(400, str(exc)) from exc
-        finally:
-            # The trace is only needed while the run is in flight.
+            result = enqueue(project, trace_path, trace_path.name, frame_limit,
+                             _parse_bool(only_failures), run_id, upload_dir)
+        except BaseException:
             shutil.rmtree(upload_dir, ignore_errors=True)
-
-        run_store.add(outcome)
-        return outcome.to_dict()
+            raise
+        return JSONResponse(status_code=202, content=result)
 
     @api.post("/api/verify-manual")
     async def verify_manual(  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
@@ -323,7 +387,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         frame_limit = _parse_frame_limit(max_frames)
 
         run_id = secrets.token_urlsafe(9)
-        upload_dir = UPLOADS_DIR / run_id
+        upload_dir = uploads_dir / run_id
         try:
             dbc_paths = []
             for item in dbcs:
@@ -340,18 +404,13 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             config_path.write_text(
                 json.dumps(config_data, ensure_ascii=False), encoding="utf-8")
             project = _manual_project(upload_dir, config_path, dbc_paths)
-
-            outcome = await run_in_threadpool(
-                run_project, project, trace_path, trace_path.name,
-                frame_limit, _parse_bool(only_failures), run_id, run_store.runs_dir)
-        except RunError as exc:
-            raise HTTPException(400, str(exc)) from exc
-        finally:
-            # Uploads are only needed while the run is in flight.
-            shutil.rmtree(upload_dir, ignore_errors=True)
-
-        run_store.add(outcome)
-        return outcome.to_dict()
+            result = enqueue(project, trace_path, trace_path.name, frame_limit,
+                             _parse_bool(only_failures), run_id, upload_dir)
+        except BaseException:
+            if not job_registry.get(run_id):
+                shutil.rmtree(upload_dir, ignore_errors=True)
+            raise
+        return JSONResponse(status_code=202, content=result)
 
     @api.post("/api/verify-sample")
     async def verify_sample(
@@ -376,40 +435,43 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         frame_limit = _parse_frame_limit(max_frames)
 
         run_id = secrets.token_urlsafe(9)
-        try:
-            outcome = await run_in_threadpool(
-                run_project, project, trace_path, trace_name,
-                frame_limit, _parse_bool(only_failures), run_id, run_store.runs_dir)
-        except RunError as exc:
-            raise HTTPException(400, str(exc)) from exc
-        run_store.add(outcome)
-        return outcome.to_dict()
+        result = enqueue(project, trace_path, trace_name, frame_limit,
+                         _parse_bool(only_failures), run_id, None)
+        return JSONResponse(status_code=202, content=result)
+
+    @api.get("/api/jobs/{job_id}")
+    def get_job(job_id: str) -> dict:
+        """Return asynchronous job status and its result when complete."""
+        state = job_registry.get(job_id)
+        if state is None:
+            raise HTTPException(404, "校验任务不存在或已过期")
+        return state
+
+    @api.post("/api/jobs/{job_id}/cancel")
+    def cancel_job(job_id: str) -> dict:
+        """Request cooperative cancellation for an active verification."""
+        status = job_registry.cancel(job_id)
+        if status is None:
+            if job_registry.get(job_id) is None:
+                raise HTTPException(404, "校验任务不存在或已过期")
+            raise HTTPException(409, "校验任务已结束,无法取消")
+        return {"job_id": job_id,
+                "status": "cancelled" if status == "queued" else status,
+                "cancel_requested": True}
 
     @api.get("/api/runs/{run_id}/{filename}.html")
     def run_report(run_id: str, filename: str) -> FileResponse:
-        """Download the HTML report of a finished run (or one of its split parts).
-
-        ``filename`` is ``report`` (main file) or the split-part name the page's
-        nav links produce on disk (``<run_id>_p2.html``… resolved relative to
-        the report URL). Unknown parts 404.
-        """
-        outcome = run_store.get(run_id)
-        if outcome is None or not outcome.html_path:
+        """Download a report or split part while protecting it from eviction."""
+        lease = run_store.acquire_report(run_id, filename)
+        if lease is None:
             raise HTTPException(404, "报告不存在或已过期,请重新校验")
-
-        path = outcome.html_path
-        label = f"crc_report_{run_id}.html"
-        if filename not in ("report", Path(path).stem):  # else maybe a split part
-            match = re.fullmatch(rf"{re.escape(run_id)}_p(\d+)", filename)
-            if match is None:
-                raise HTTPException(404, "报告分片不存在或已过期,请重新校验")
-            part_no = int(match.group(1))
-            path = path.with_name(f"{run_id}_p{part_no}.html")
-            label = f"crc_report_{run_id}_p{part_no}.html"
-
-        if not path.exists():
-            raise HTTPException(404, "报告文件已被清理,请重新校验")
-        return FileResponse(str(path), media_type="text/html", filename=label)
+        try:
+            return FileResponse(
+                str(lease.path), media_type="text/html", filename=lease.download_name,
+                background=BackgroundTask(lease.release))
+        except Exception:
+            lease.release()
+            raise
 
     if FRONTEND_DIST.is_dir():
         # Mounted last so every /api route above wins.

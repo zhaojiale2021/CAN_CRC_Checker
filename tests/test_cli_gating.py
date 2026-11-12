@@ -46,12 +46,47 @@ class TestExitCodes:
         assert result.exit_code == 1
         assert "SUMMARY:" in result.output
 
+    def test_fail_on_failure_fails_when_trace_is_truncated(self, tmp_path):
+        """A clean prefix cannot pass when a frame cap omitted the rest."""
+        config = _config(tmp_path, "example.blf", filter={"max_frames": 10})
+        result = _run("-c", config, "--fail-on-failure")
+        assert result.exit_code == 1
+        assert "WARNING: stopped at the frame cap" in result.output
+
+    def test_allow_truncated_is_explicit_gate_exception(self, tmp_path):
+        """The truncation exception opts a capped trace back into the gate."""
+        config = _config(tmp_path, "example.blf", filter={"max_frames": 10})
+        result = _run("-c", config, "--fail-on-failure", "--allow-truncated")
+        assert result.exit_code == 0, result.output
+
     def test_min_pass_rate_gate(self, tmp_path):
         """The percentage gate fails a broken trace and passes a clean one."""
         good = _config(tmp_path, "example.blf")
         assert _run("-c", good, "--min-pass-rate", "100").exit_code == 0
         bad = _config(tmp_path, "example_bad.blf")
         assert _run("-c", bad, "--min-pass-rate", "100").exit_code == 1
+
+    def test_gate_fails_when_no_checks_were_performed(self, tmp_path):
+        """An enabled gate fails closed for a report with no protection checks."""
+        dbc = tmp_path / "empty.dbc"
+        dbc.write_text('VERSION ""\nNS_ :\nBS_ :\nBU_: ECU\n', encoding="utf-8")
+        trace = EXAMPLE / "trace" / "example.blf"
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(dbc), "--trace", str(trace),
+            "--fail-on-failure",
+        ])
+        assert result.exit_code == 1, result.output
+
+    def test_allow_empty_is_explicit_gate_exception(self, tmp_path):
+        """The empty-result exception preserves an explicitly requested run."""
+        dbc = tmp_path / "empty.dbc"
+        dbc.write_text('VERSION ""\nNS_ :\nBS_ :\nBU_: ECU\n', encoding="utf-8")
+        trace = EXAMPLE / "trace" / "example.blf"
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(dbc), "--trace", str(trace),
+            "--fail-on-failure", "--allow-empty",
+        ])
+        assert result.exit_code == 0, result.output
 
     def test_no_flag_keeps_historical_exit_zero(self, tmp_path):
         """Existing scripts must not start failing without opting in."""
@@ -105,6 +140,76 @@ class TestSummaries:
         assert "filtre" in combined
 
 
+class TestVerifyOutput:
+    """The direct CLI supports clean machine-readable JSON output."""
+
+    def test_json_stdout_is_one_document(self):
+        """Verbose JSON output on stdout remains one parseable document."""
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(EXAMPLE / "dbc"),
+            "--trace", str(EXAMPLE / "trace" / "example.blf"),
+            "--algo", "CRC8/SAE-J1850", "--max-frames", "10",
+            "--output", "json", "-v",
+        ])
+        assert result.exit_code == 0, result.output
+        document = json.loads(result.stdout)
+        assert document["schema_version"] == 1
+        assert document["summary"]["checks"] > 0
+        assert "CRC Algorithm:" in result.stderr
+
+    def test_json_only_failures_filters_details_but_keeps_counts(self, tmp_path):
+        """JSON failure-only output omits passes without altering sample totals."""
+        config = _config(
+            tmp_path, "example.blf",
+            output={"format": "json", "only_failures": True},
+        )
+        result = _run("-c", config)
+        assert result.exit_code == 0, result.output
+        report = json.loads(result.stdout)["reports"][0]
+        assert report["verdicts"] == []
+        assert report["summary"]["checks"] > 0
+        assert report["summary"]["passed"] == report["summary"]["checks"]
+
+    def test_json_file_receives_document(self, tmp_path):
+        """The JSON-file option writes one document and leaves stdout empty."""
+        output = tmp_path / "result.json"
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(EXAMPLE / "dbc"),
+            "--trace", str(EXAMPLE / "trace" / "example.blf"),
+            "--algo", "CRC8/SAE-J1850", "--max-frames", "10",
+            "--output", "json", "--json-file", str(output),
+        ])
+        assert result.exit_code == 0, result.output
+        assert json.loads(output.read_text(encoding="utf-8"))["schema_version"] == 1
+        assert result.output == ""
+
+    def test_json_file_rejects_non_json_output(self):
+        """The JSON file option requires JSON output mode."""
+        result = CliRunner().invoke(cli, [
+            "verify", "--dbc", str(EXAMPLE / "dbc"),
+            "--trace", str(EXAMPLE / "trace" / "example.blf"),
+            "--json-file", "out.json",
+        ])
+        assert result.exit_code == 2
+        assert "requires --output json" in result.output
+
+    def test_range_bounds_require_nonnegative_start_and_exclusive_end(self):
+        """Reject invalid byte bounds and empty/reversed custom intervals."""
+        base = [
+            "verify", "--dbc", str(EXAMPLE / "dbc"),
+            "--trace", str(EXAMPLE / "trace" / "example.blf"),
+        ]
+        for extra in (("--range", "custom_range", "--range-start", "-1"),
+                      ("--range", "custom_range", "--range-end", "-2"),
+                      ("--range", "custom_range", "--range-start", "5",
+                       "--range-end", "3"),
+                      ("--range", "custom_range", "--range-start", "3",
+                       "--range-end", "3")):
+            result = CliRunner().invoke(cli, [*base, *extra])
+            assert result.exit_code == 2
+            assert "must be" in result.output
+
+
 class TestVerifyErrors:
     """Bad user input is a usage error, not a traceback."""
 
@@ -127,6 +232,16 @@ class TestVerifyErrors:
             "--trace", str(EXAMPLE / "trace" / "example.blf"),
             "--algo", "CRC8/SAE-J1850", "--max-frames", "5",
             "--dataid-xlsx", str(bad),
+        ])
+        assert result.exit_code == 2
+        assert "Traceback" not in result.output
+
+    def test_preprocess_corrupt_workbook_is_a_usage_error(self, tmp_path):
+        """Invalid Excel archives fail cleanly rather than leaking tracebacks."""
+        bad = tmp_path / "bad.xlsx"
+        bad.write_bytes(b"not a zip file")
+        result = CliRunner().invoke(cli, [
+            "preprocess-dataid", "--xlsx", str(bad), "-o", str(tmp_path / "out.json")
         ])
         assert result.exit_code == 2
         assert "Traceback" not in result.output

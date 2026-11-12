@@ -1,5 +1,6 @@
 @echo off
-REM CAN CRC Checker web launcher. Usage: run_web.bat [port]
+REM CAN CRC Checker web launcher. Usage: run_web.bat [port] [host]
+REM Defaults to localhost only. Set CRC_WEB_HOST=0.0.0.0 or pass a host to expose it.
 REM
 REM frontend/dist is committed to git, so deploy machines do not need Node:
 REM   after changing the frontend run: cd frontend && npm run build
@@ -19,6 +20,9 @@ cd /d "%~dp0"
 
 set PORT=%~1
 if "%PORT%"=="" set PORT=8000
+set HOST=%~2
+if "%HOST%"=="" set HOST=%CRC_WEB_HOST%
+if "%HOST%"=="" set HOST=127.0.0.1
 
 set "PY="
 for %%P in ("%~dp0.venv\Scripts\python.exe" "python") do (
@@ -41,9 +45,9 @@ if not defined PY (
 
 echo CAN CRC Checker Web
 echo   Local:  http://127.0.0.1:%PORT%
-echo   Bind:   0.0.0.0:%PORT%  (LAN clients can connect if the firewall allows)
+echo   Host:   %HOST%:%PORT%
 echo   Python: %PY%
 
-"%PY%" -m uvicorn webapp.main:app --host 0.0.0.0 --port %PORT%
+"%PY%" -m uvicorn webapp.main:app --host "%HOST%" --port %PORT%
 
 endlocal

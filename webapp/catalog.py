@@ -25,12 +25,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROJECTS_DIR = PROJECT_ROOT / "projects"
 EXAMPLES_DIR = PROJECT_ROOT / "examples"
 
-# Scan cache: (root, stat signature) -> projects. ``get_project`` runs on
-# every verify request; re-reading every config.json each time made the scan
-# the per-request cost. The signature is stat-only (names + mtimes), so a
-# new/removed project, an edited config or a changed trace/DBC directory all
-# invalidate it, while repeated scans cost a few stat calls.
-_SCAN_CACHE: dict[tuple[str, tuple], list[Project]] = {}
+# Scan cache: root -> (project-tree signature, external-DBC signature, projects).
+_SCAN_CACHE: dict[str, tuple[tuple, tuple, list[Project]]] = {}
 _SCAN_CACHE_MAX_ROOTS = 8
 _SCAN_LOCK = threading.Lock()
 
@@ -201,9 +197,61 @@ def _dir_signature(base: Path) -> tuple:
                 entries.append(item)
             return tuple(entries)
 
-        return snapshot(base, 3)
+        return snapshot(base, 4)
     except OSError:
         return ()
+
+
+def _external_dbc_paths(base: Path) -> tuple[Path, ...]:
+    """Return configured DBC paths that live outside the scanned tree."""
+    paths = set()
+    for entry in sorted(p for p in base.iterdir() if p.is_dir()):
+        model_dirs = [entry] if (entry / "config.json").is_file() else sorted(
+            p for p in entry.iterdir() if p.is_dir())
+        for model_dir in model_dirs:
+            config_path = model_dir / "config.json"
+            if not config_path.is_file():
+                continue
+            config = _read_config(config_path)
+            configured = ([config["dbc"]] if config.get("dbc") else [])
+            configured.extend(config.get("dbcs") or [])
+            for raw in configured:
+                path = Path(str(raw))
+                if not path.is_absolute():
+                    path = model_dir / path
+                path = path.resolve()
+                try:
+                    path.relative_to(model_dir.resolve())
+                except ValueError:
+                    paths.add(path)
+    return tuple(sorted(paths))
+
+
+def _paths_signature(paths: tuple[Path, ...]) -> tuple:
+    """Stat external DBC files/directories and their immediate DBC children."""
+    signatures = []
+    for path in paths:
+        try:
+            stat = path.stat()
+            item = (str(path), stat.st_mode, stat.st_size, stat.st_mtime_ns,
+                    stat.st_ctime_ns)
+        except OSError:
+            item = (str(path), None)
+        if path.is_dir():
+            children = []
+            try:
+                for child in sorted(path.glob("*.dbc")):
+                    try:
+                        child_stat = child.stat()
+                        children.append((child.name, child_stat.st_size,
+                                         child_stat.st_mtime_ns, child_stat.st_ctime_ns))
+                    except OSError:
+                        continue
+            except OSError:
+                pass
+            item = (*item, tuple(children))
+        signatures.append(item)
+    return tuple(signatures)
 
 
 def scan_projects(root: Path | None = None) -> list[Project]:
@@ -217,18 +265,22 @@ def scan_projects(root: Path | None = None) -> list[Project]:
         return []
 
     key = str(base.resolve())
-    signature = _dir_signature(base)
+    external_paths = _external_dbc_paths(base)
+    project_signature = _dir_signature(base)
+    external_signature = _paths_signature(external_paths)
     with _SCAN_LOCK:
         cached = _SCAN_CACHE.get(key)
-        if cached is not None and cached[0] == signature:
-            return cached[1]
+        if cached is not None and (
+                cached[0] == project_signature
+                and cached[1] == external_signature):
+            return cached[2]
 
     projects = _scan_projects_uncached(base)
     with _SCAN_LOCK:
         # Tests pass a fresh tmp root per case — keep the cache bounded.
         if key not in _SCAN_CACHE and len(_SCAN_CACHE) >= _SCAN_CACHE_MAX_ROOTS:
             _SCAN_CACHE.pop(next(iter(_SCAN_CACHE)))
-        _SCAN_CACHE[key] = (signature, projects)
+        _SCAN_CACHE[key] = (project_signature, external_signature, projects)
     return projects
 
 

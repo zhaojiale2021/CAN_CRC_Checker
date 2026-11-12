@@ -3,7 +3,12 @@ import json
 import os
 import tempfile
 import pytest
-from crc_checker.dataid.parser import DataIDMap
+from crc_checker.dataid import mappings, matching, models, multi, parser
+from crc_checker.dataid.parser import (
+    ColumnMapping,
+    DataIDMap,
+    _add_dataid_row,
+)
 
 
 class TestDataIDMapSerialization:
@@ -98,8 +103,42 @@ class TestDataIDMapSerialization:
                 os.unlink(tmp_path)
 
 
+def test_parser_facade_preserves_public_and_private_imports():
+    """Legacy parser imports remain aliases of the decomposed modules."""
+    assert parser.DataIDMap is models.DataIDMap
+    assert parser.normalize_signal_key is models.normalize_signal_key
+    assert parser.ColumnMapping is mappings.ColumnMapping
+    assert parser.BUILTIN_MAPPINGS is mappings.BUILTIN_MAPPINGS
+    assert parser.resolve_mapping is mappings.resolve_mapping
+    assert parser.match_sheet_to_dbc is matching.match_sheet_to_dbc
+    assert parser.parse_dataid_xlsx_multi is multi.parse_dataid_xlsx_multi
+
+    for name in parser.__all__:
+        assert hasattr(parser, name)
+
+
 class TestDataIDMapUpdate:
     """Test merging of DataIDMap instances."""
+
+    def test_add_without_profile_clears_previous_profile(self):
+        """An overwrite without profile metadata clears the old profile."""
+        data = DataIDMap()
+        data.add(0x100, "Checksum_X", 0x10, "Profile 5")
+        data.add(0x100, "Checksum_X", 0x20)
+        assert data.get(0x100, "Checksum_X") == 0x20
+        assert data.get_profile(0x100, "Checksum_X") is None
+        assert data.get_profile_normalized(0x100, "checksum_x") is None
+
+    def test_update_without_profile_clears_previous_profile(self):
+        """Updating an entry without profile metadata clears the old profile."""
+        current = DataIDMap()
+        current.add(0x100, "Checksum_X", 0x10, "Profile 5")
+        replacement = DataIDMap()
+        replacement.add(0x100, "Checksum_X", 0x20)
+        current.update(replacement)
+        assert current.get(0x100, "Checksum_X") == 0x20
+        assert current.get_profile(0x100, "Checksum_X") is None
+        assert current.get_profile_normalized(0x100, "checksum_x") is None
 
     def test_update_adds_new_and_overwrites_duplicates(self):
         """Update adds new entries, overwrites duplicates; existing kept."""
@@ -117,6 +156,19 @@ class TestDataIDMapUpdate:
         assert dm1.get(0x100, "Checksum_X") == 0x0010  # unchanged
         assert dm1.get(0x200, "Checksum_Y") == 0x0099  # overwritten
         assert dm1.get(0x300, "Checksum_Z") == 0x0030  # new
+
+    def test_row_skips_missing_message_id_header(self):
+        """A missing header column never reads the row's final cell as an ID."""
+
+        mapping = ColumnMapping(
+            col_signal_name="Signal", col_message_id="Message ID",
+            col_dataid_hi="DataID", col_dataid_lo=-1,
+            dataid_format="single_16bit", use_header_names=True,
+            signal_name_filter=[],
+        ).resolve_columns(["Signal", "DataID"])
+        target = DataIDMap()
+        assert _add_dataid_row(["Checksum_X", "0x1234"], mapping, target) is False
+        assert len(target) == 0
 
     def test_update_empty_other(self):
         """Merging empty DataIDMap is a no-op."""

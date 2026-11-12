@@ -10,8 +10,11 @@ all failed the P01 check.
 
 from __future__ import annotations
 
+import pytest
+
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
 from crc_checker.trace.reader import CanFrame
+from crc_checker.verify.cancellation import CancellationToken, VerificationCancelled
 from crc_checker.verify.engine import VerifyEngine
 
 
@@ -89,6 +92,47 @@ class TestDlcGate:
         engine = VerifyEngine(_build_map(dlc=32), algorithms=[])
         reader = _Reader([_frame(64), _frame(32)])
         assert not list(engine.run_stream(reader))
+
+
+class TestFrameProgressAndCancellation:
+    """Progress counts every eligible frame and cancellation stops iteration."""
+
+    def test_progress_counts_frames_without_protection_groups(self):
+        """Unknown frame IDs are counted and reported to progress callbacks."""
+        engine = VerifyEngine(DBCProtectionMap(), algorithms=[])
+        seen = []
+        report = engine.run(
+            _Reader([_frame(8)] * 4),
+            progress_callback=lambda n, _: seen.append(n))
+        assert report.total_frames == 4
+        assert seen == [1, 2, 3, 4]
+
+    def test_cancellation_stops_at_next_eligible_frame(self):
+        """Cancellation from a callback prevents the following frame processing."""
+        engine = VerifyEngine(DBCProtectionMap(), algorithms=[])
+        token = CancellationToken()
+        seen = []
+
+        def request_cancel(processed, _total):
+            seen.append(processed)
+            if processed == 3:
+                token.cancel()
+
+        with pytest.raises(VerificationCancelled) as caught:
+            engine.run(_Reader([_frame(8)] * 10),
+                       progress_callback=request_cancel,
+                       cancellation_token=token)
+        assert caught.value.processed_frames == 3
+        assert seen == [1, 2, 3]
+
+    def test_cancellation_ignores_filtered_out_frame_ids(self):
+        """Frame-ID filtered records do not poll or count as processed frames."""
+        engine = VerifyEngine(DBCProtectionMap(), algorithms=[])
+        token = CancellationToken()
+        token.cancel()
+        report = engine.run(_Reader([_frame(8)]), frame_ids=[0x999],
+                            cancellation_token=token)
+        assert report.total_frames == 0
 
 
 class TestFrameCap:

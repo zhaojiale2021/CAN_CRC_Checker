@@ -12,10 +12,10 @@
 ```bash
 pip install -r requirements.txt
 ./run_web.sh 8000          # Windows: run_web.bat 8000
-# 浏览器访问 http://<服务器IP>:8000
+# 默认仅监听本机: http://127.0.0.1:8000
 ```
 
-> 网页版**没有认证**，默认绑定 `0.0.0.0`。请只在可信内网运行，或放在带认证的反向代理后面。
+> 网页版**没有认证**，启动脚本默认绑定 `127.0.0.1`。如需局域网访问，可传入 host 参数或设置 `CRC_WEB_HOST`；网络暴露时必须放在带认证的反向代理或等效访问控制之后。
 
 前端产物 `frontend/dist` 已提交进 git，部署机无需 Node。改前端时：
 
@@ -74,9 +74,11 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | GET | `/api/projects` | 项目列表（服务端扫描项目目录） |
 | GET | `/api/presets` | 内置算法列表及验证状态 |
 | GET | `/api/limits` | 上传上限与默认值（页面从这里取,不硬编码） |
-| POST | `/api/verify` | multipart 上传 trace 并按项目配置校验 |
-| POST | `/api/verify-sample` | 直接校验项目自带的示例 trace（只传项目 id + 文件名） |
-| POST | `/api/verify-manual` | multipart 上传 DBC + trace（+ DataID）并按页面填写的配置校验 |
+| POST | `/api/verify` | multipart 上传 trace 并创建项目校验任务 |
+| POST | `/api/verify-sample` | 创建示例 trace 校验任务（只传项目 id + 文件名） |
+| POST | `/api/verify-manual` | multipart 上传 DBC + trace（+ DataID）并创建手动配置任务 |
+| GET | `/api/jobs/{job_id}` | 查询任务状态、进度与完成结果 |
+| POST | `/api/jobs/{job_id}/cancel` | 请求取消活动任务 |
 | GET | `/api/runs/{run_id}/report.html` | 下载本次校验的 HTML 报告 |
 | GET | `/api/version` | 部署版本（commit 节点），`Cache-Control: no-store` |
 
@@ -133,46 +135,39 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | `only_failures` | 否 | `"true"` 时 HTML 报告只写失败项 |
 
 上限 `CRC_WEB_MAX_UPLOAD_MB`（默认 200MB）。上传文件写到
-`data/web/uploads/<run_id>/`，**跑完即删**；只保留生成的报告。
+`<CRC_CHECKER_DATA_DIR>/uploads/<job_id>/`（默认 `data/web/uploads/`），提交成功后保留到后台任务结束，
+无论成功、失败或取消都会清理。提交接口只做验证与 staging，不同步等待校验。
 
-响应（节选）：
+`POST /api/verify`、`POST /api/verify-sample` 和 `POST /api/verify-manual`
+校验通过后均立即返回 HTTP `202`：
+
+```json
+{"job_id": "DnM0oBFVUVEl", "status": "queued"}
+```
+
+通过 `GET /api/jobs/{job_id}` 查询。状态为 `queued`、`running`、`succeeded`、
+`failed` 或 `cancelled`；`processed_frames` 是已处理帧数（任务运行期间单调递增）。
+完成时 `result` 是原有同步接口的完整 RunOutcome JSON；成功结果也会写入报告 RunStore，
+可用其中 `report_url` 下载 HTML 报告。失败时 `error` 为用户可见错误；意外内部错误只返回通用中文错误。
 
 ```json
 {
-  "run_id": "DnM0oBFVUVEl",
-  "project_id": "examples/example",
-  "trace_name": "example.blf",
-  "report_url": "/api/runs/DnM0oBFVUVEl/report.html",
-  "elapsed_ms": 415,
-  "setup": {
-    "dbc_names": ["network.dbc"],
-    "channels": {},
-    "dataid_entries": 2, "dataid_sheet": "",
-    "counts": {"profiles": 4, "auto_classify": 3},
-    "notes": ["DBC files: 1 file(s)", "..."],
-    "config_warnings": [],
-    "max_frames": 6000
-  },
-  "reports": [{
-    "total_frames": 160, "total_verdicts": 320,
-    "check_total": 320, "check_pass": 320, "check_fail": 0,
-    "pass_count": 320, "fail_count": 0, "pass_rate": 1.0,
-    "crc_total": 160, "crc_pass": 160, "crc_rate": 1.0,
-    "rc_total": 160, "rc_pass": 160, "rc_rate": 1.0,
-    "failures": [],
-    "failures_truncated": false,
-    "frames": [{
-      "frame_id_hex": "0x100", "frame_name": "MsgAlpha", "channel": 0,
-      "dbc_source": "network.dbc",
-      "total": 40, "pass": 40, "fail": 0, "rate": 1.0,
-      "signals": [{"signal": "Checksum_Alpha", "algorithm": "crc",
-                   "total": 40, "pass": 40, "fail": 0, "last_detail": ""}]
-    }],
-    "frames_truncated": false,
-    "trace_truncated": false, "trace_frame_limit": null
-  }]
+  "job_id": "DnM0oBFVUVEl", "status": "succeeded", "processed_frames": 160,
+  "error": null,
+  "result": {"run_id": "DnM0oBFVUVEl", "project_id": "examples/example",
+              "trace_name": "example.blf", "report_url": "/api/runs/DnM0oBFVUVEl/report.html",
+              "elapsed_ms": 415, "setup": {}, "project": {}, "reports": [], "report_note": ""}
 }
 ```
+
+`POST /api/jobs/{job_id}/cancel` 会对 queued/running 任务设置协作取消请求，响应
+`{"job_id":"...","status":"running","cancel_requested":true}`；queued 会立即转成
+`cancelled`，响应状态也是 `cancelled`；running 在当前帧完成后停止并转成 `cancelled`。再次取消已结束任务返回 `409`，
+未知/已淘汰任务返回 `404`。状态登记有界，空间不足时淘汰最早终态任务；若所有槽位都被活动任务占用，
+提交返回 `503`。校验参数错误返回 `400`，错误体为 `{"detail":"..."}`；意外内部错误返回
+`500` 和通用 `{"message":"..."}`。报告渲染失败时任务仍可成功，但 `result.report_url` 为空。
+任务状态登记仅保存在当前进程且有界；部署必须使用单 worker，以便状态查询、取消和报告下载命中同一进程。
+
 
 `check_*` 是逐帧采样口径（与 CLI/HTML 报告一致）；`total_verdicts`/`fail_count`
 是折叠后的 verdict 口径。`trace_truncated` 表示 trace 因帧上限被截断，
@@ -193,7 +188,8 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | `max_frames` | 否 | 同 `/api/verify` |
 | `only_failures` | 否 | 同 `/api/verify` |
 
-响应与 `/api/verify` 相同。服务端只接受目录列表里出现过的文件名，浏览器仍不传路径。
+服务端只接受目录列表里出现过的文件名，浏览器仍不传路径。响应为 HTTP `202`，
+body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{job_id}` 获取完成结果。
 
 ### `GET /api/presets`
 
@@ -256,11 +252,11 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 
 ## 运行产物
 
-写入 `data/`（已 gitignore）：
+写入 `CRC_CHECKER_DATA_DIR`（默认 `data/web/`，已 gitignore）：
 
 ```
-data/web/uploads/<run_id>/              # 上传的 trace / DBC / DataID,跑完即删
-data/web/runs/<run_id>/<run_id>.html    # 生成的报告,最多保留最近 20 次(LRU)
+<数据目录>/uploads/<job_id>/             # 上传的 trace / DBC / DataID，终态后清理
+<数据目录>/runs/<run_id>/<run_id>.html    # 报告，最多保留最近 20 次(LRU)
 ```
 
 每个 run 一个子目录：报告主文件与 `_pN` 分片只落在自己的目录里，路由不会命中

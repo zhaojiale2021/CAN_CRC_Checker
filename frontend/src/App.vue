@@ -17,9 +17,23 @@
         :closable="false"
         class="block"
         :title="`项目列表加载失败：${loadError}`"
-      />
+      >
+        <el-button
+          size="small"
+          :loading="projectLoading"
+          :disabled="projectLoading || running"
+          @click="loadProjects"
+        >
+          重试项目列表
+        </el-button>
+      </el-alert>
 
-      <el-card class="block" shadow="never">
+      <el-card
+        class="block"
+        shadow="never"
+        :inert="running"
+        :aria-busy="projectLoading"
+      >
         <div class="mode-bar">
           <el-radio-group v-model="mode">
             <el-radio-button value="project">项目配置</el-radio-button>
@@ -38,7 +52,12 @@
       </el-card>
 
       <!-- 1. 项目 / DBC -->
-      <el-card v-if="mode === 'project'" class="block" shadow="never">
+      <el-card
+        v-if="mode === 'project'"
+        class="block"
+        shadow="never"
+        :aria-busy="projectLoading"
+      >
         <template #header>
           <div class="card-head">
             <span class="step">1</span>
@@ -54,6 +73,8 @@
           v-model="projectId"
           filterable
           clearable
+          :disabled="projectLoading || running"
+          :loading="projectLoading"
           placeholder="按分组 / 项目选择"
           class="project-select"
         >
@@ -70,7 +91,15 @@
             />
           </el-option-group>
         </el-select>
-        <div v-if="!projects.length && !loadError" class="empty-projects">
+        <div
+          v-if="projectLoading"
+          class="empty-projects"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="muted">正在加载项目列表…</span>
+        </div>
+        <div v-else-if="!projects.length && !loadError" class="empty-projects">
           <span class="muted"
             >服务端没有扫描到项目。可以直接上传 DBC 和 trace 手动校验。</span
           >
@@ -275,11 +304,31 @@
           <span v-if="!runnable && !running" class="muted">{{
             prerequisite
           }}</span>
-          <span v-else-if="running" class="muted">
-            大 trace 可能需要几十秒，请勿关闭页面。
-          </span>
+          <span v-else-if="running" class="muted">后台任务运行中。</span>
+          <el-button
+            v-if="running && currentJobId"
+            size="large"
+            :loading="cancelling"
+            :disabled="cancelling"
+            @click="cancelVerification"
+          >
+            {{ cancelling ? '正在请求取消…' : '取消校验' }}
+          </el-button>
         </div>
       </el-card>
+
+      <div
+        v-if="jobStatus"
+        class="job-status block"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span>{{ jobStatusText }}</span>
+        <span v-if="processedFrames !== null" class="mono">
+          已处理 {{ processedFrames }} 帧
+        </span>
+      </div>
 
       <el-alert
         v-if="runError"
@@ -290,7 +339,15 @@
         @close="runError = ''"
       />
 
-      <el-card v-if="result" id="result-panel" class="block" shadow="never">
+      <el-card
+        v-if="result"
+        id="result-panel"
+        ref="resultPanel"
+        class="block"
+        shadow="never"
+        tabindex="-1"
+        aria-live="polite"
+      >
         <template #header>
           <div class="card-head">
             <span class="step">4</span>
@@ -308,12 +365,21 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+} from 'vue'
 import { ElMessage } from 'element-plus'
 import VersionPanel from './components/VersionPanel.vue'
 import ResultPanel from './components/ResultPanel.vue'
 import ManualOptionsForm from './components/ManualOptionsForm.vue'
 import {
+  cancelJob,
+  fetchJob,
   fetchLimits,
   fetchPresets,
   fetchProjects,
@@ -348,10 +414,33 @@ const frameMode = ref('config')
 const customFrames = ref(DEFAULT_LIMITS.manualDefaultFrames)
 const onlyFailures = ref(false)
 const running = ref(false)
+const projectLoading = ref(false)
 const loadError = ref('')
 const runError = ref('')
 const result = ref(null)
+const resultPanel = ref(null)
+const jobStatus = ref('')
+const processedFrames = ref(null)
+const currentJobId = ref('')
+const cancelling = ref(false)
+const POLL_INTERVAL_MS = 1000
+const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'cancelled'])
+let pollTimer = null
+let resolvePollWait = null
+let activeRun = 0
+let isUnmounted = false
 
+const jobStatusText = computed(() => {
+  const labels = {
+    queued: '校验任务排队中',
+    running: '校验正在进行',
+    succeeded: '校验完成',
+    failed: '校验失败',
+    cancelled: '校验已取消',
+    error: '校验状态查询失败',
+  }
+  return labels[jobStatus.value] || ''
+})
 // 手动模式
 const presets = ref([])
 const presetError = ref('')
@@ -380,7 +469,7 @@ const runnable = computed(() =>
     ? canRun({
         projectId: projectId.value,
         file: selectedFile.value,
-        running: running.value,
+        running: running.value || projectLoading.value,
       })
     : manualCanRun({
         dbcFiles: dbcFiles.value,
@@ -391,6 +480,7 @@ const runnable = computed(() =>
 
 const prerequisite = computed(() => {
   if (mode.value === 'project') {
+    if (projectLoading.value) return '正在加载项目列表。'
     if (!projectId.value) return '请先选择项目。'
     if (!selectedFile.value) return '请先上传 trace 文件。'
     return ''
@@ -478,77 +568,180 @@ async function showResult(payload) {
   result.value = payload
   reportMessage(payload)
   await nextTick()
-  document.getElementById('result-panel')?.scrollIntoView({
+  resultPanel.value?.$el?.focus?.()
+  resultPanel.value?.$el?.scrollIntoView?.({
     behavior: 'smooth',
     block: 'start',
   })
 }
 
-async function run() {
-  running.value = true
-  runError.value = ''
-  try {
-    if (mode.value === 'manual') {
-      await showResult(
-        await verifyManual({
-          dbcs: dbcFiles.value,
-          trace: selectedFile.value,
-          dataid: dataidFile.value,
-          config: manualConfig.value,
-          maxFrames: maxFramesPayload(),
-          onlyFailures: onlyFailures.value,
-        }),
-      )
-    } else {
-      await showResult(
-        await verifyTrace({
-          projectId: projectId.value,
-          file: selectedFile.value,
-          maxFrames: maxFramesPayload(),
-          onlyFailures: onlyFailures.value,
-        }),
-      )
-    }
-  } catch (err) {
-    runError.value = err.message
-    result.value = null
-  } finally {
-    running.value = false
+function clearPollTimer() {
+  if (pollTimer !== null) {
+    clearTimeout(pollTimer)
+    pollTimer = null
+  }
+  if (resolvePollWait) {
+    resolvePollWait()
+    resolvePollWait = null
   }
 }
 
-async function runSample(traceName) {
+function updateJobState(job) {
+  jobStatus.value = job.status || ''
+  processedFrames.value = Number.isFinite(job.processed_frames)
+    ? job.processed_frames
+    : null
+}
+
+function waitForNextPoll() {
+  return new Promise((resolve) => {
+    resolvePollWait = resolve
+    pollTimer = setTimeout(() => {
+      pollTimer = null
+      resolvePollWait = null
+      resolve()
+    }, POLL_INTERVAL_MS)
+  })
+}
+
+async function pollJob(jobId, runId) {
+  while (!isUnmounted && runId === activeRun) {
+    try {
+      const job = await fetchJob(jobId)
+      if (isUnmounted || runId !== activeRun) return null
+      runError.value = ''
+      updateJobState(job)
+      if (TERMINAL_JOB_STATES.has(job.status)) return job
+    } catch (err) {
+      if (isUnmounted || runId !== activeRun) return null
+      if (err.status === 404) {
+        return {
+          status: 'failed',
+          error:
+            '校验任务状态已失效（可能是服务重启或任务已过期），请重新提交。',
+        }
+      }
+      // Keep the job handle and retry transient status failures; users can still
+      // cancel the server-side job while status polling is recovering.
+      runError.value = `读取校验进度失败，将自动重试：${err.message}`
+    }
+    await waitForNextPoll()
+  }
+  return null
+}
+
+async function executeVerification(submit) {
+  const runId = ++activeRun
+  clearPollTimer()
   running.value = true
+  cancelling.value = false
+  currentJobId.value = ''
+  processedFrames.value = null
+  jobStatus.value = ''
   runError.value = ''
   try {
-    await showResult(
-      await verifySample({
-        projectId: projectId.value,
-        traceName,
+    const submission = await submit()
+    if (isUnmounted || runId !== activeRun) return
+    if (!submission?.job_id) {
+      throw new Error('服务未返回校验任务 ID。')
+    }
+    currentJobId.value = submission.job_id
+    updateJobState(submission)
+    const job = await pollJob(submission.job_id, runId)
+    if (!job || isUnmounted || runId !== activeRun) return
+    updateJobState(job)
+    if (job.status === 'succeeded' && job.result) {
+      await showResult(job.result)
+    } else if (job.status === 'failed') {
+      runError.value = job.error || '校验任务失败。'
+      result.value = null
+    } else if (job.status === 'cancelled') {
+      result.value = null
+    }
+  } catch (err) {
+    if (!isUnmounted && runId === activeRun) {
+      jobStatus.value = 'error'
+      runError.value = err.message
+      result.value = null
+    }
+  } finally {
+    if (!isUnmounted && runId === activeRun) {
+      running.value = false
+      cancelling.value = false
+      currentJobId.value = ''
+      clearPollTimer()
+    }
+  }
+}
+
+async function cancelVerification() {
+  const jobId = currentJobId.value
+  if (!jobId || !running.value || cancelling.value) return
+  cancelling.value = true
+  try {
+    const state = await cancelJob(jobId)
+    if (!isUnmounted && currentJobId.value === jobId) updateJobState(state)
+  } catch (err) {
+    if (!isUnmounted && currentJobId.value === jobId) {
+      // 409 means the job became terminal before cancellation was accepted;
+      // the poll loop remains authoritative and will retrieve its final state.
+      if (err.status !== 409) runError.value = err.message
+    }
+  } finally {
+    if (!isUnmounted && currentJobId.value === jobId) cancelling.value = false
+  }
+}
+
+function run() {
+  if (mode.value === 'manual') {
+    return executeVerification(() =>
+      verifyManual({
+        dbcs: dbcFiles.value,
+        trace: selectedFile.value,
+        dataid: dataidFile.value,
+        config: manualConfig.value,
         maxFrames: maxFramesPayload(),
         onlyFailures: onlyFailures.value,
       }),
     )
-  } catch (err) {
-    runError.value = err.message
-    result.value = null
-  } finally {
-    running.value = false
   }
+  return executeVerification(() =>
+    verifyTrace({
+      projectId: projectId.value,
+      file: selectedFile.value,
+      maxFrames: maxFramesPayload(),
+      onlyFailures: onlyFailures.value,
+    }),
+  )
+}
+
+function runSample(traceName) {
+  return executeVerification(() =>
+    verifySample({
+      projectId: projectId.value,
+      traceName,
+      maxFrames: maxFramesPayload(),
+      onlyFailures: onlyFailures.value,
+    }),
+  )
 }
 
 async function loadProjects() {
+  if (projectLoading.value || running.value) return
+  projectLoading.value = true
   try {
     const data = await fetchProjects()
     projects.value = data.projects || []
     // A single project is the common local case; preselect it so the page is
     // one upload away from a result instead of asking for a pointless choice.
-    if (projects.value.length === 1) {
-      projectId.value = projects.value[0].id
+    if (!projects.value.some((item) => item.id === projectId.value)) {
+      projectId.value = projects.value.length === 1 ? projects.value[0].id : ''
     }
     loadError.value = ''
   } catch (err) {
     loadError.value = err.message
+  } finally {
+    projectLoading.value = false
   }
 }
 
@@ -582,9 +775,16 @@ async function loadLimits() {
 }
 
 onMounted(() => {
+  isUnmounted = false
   loadProjects()
   loadPresets()
   loadLimits()
+})
+
+onBeforeUnmount(() => {
+  isUnmounted = true
+  activeRun += 1
+  clearPollTimer()
 })
 </script>
 
@@ -656,6 +856,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 .project-detail {
   margin-top: 14px;
@@ -699,5 +900,50 @@ onMounted(() => {
   padding: 12px 0;
   background: var(--el-bg-color);
   border-top: 1px solid var(--el-border-color-lighter);
+}
+@media (max-width: 720px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .brand {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .content {
+    padding: 14px 12px 32px;
+  }
+  .card-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .card-head .muted {
+    width: 100%;
+    margin-left: 30px;
+  }
+  .mode-bar {
+    align-items: flex-start;
+  }
+  .mode-bar > .muted {
+    width: 100%;
+  }
+  .project-select {
+    width: 100%;
+  }
+  .empty-projects {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .run-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .run-bar .el-button {
+    width: 100%;
+  }
 }
 </style>

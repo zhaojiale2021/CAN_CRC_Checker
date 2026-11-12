@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Tests for the web version: project catalog, runner sharing, API endpoints.
 
 The API tests use the synthetic project under ``examples/example`` so the whole
@@ -10,6 +11,7 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -20,14 +22,15 @@ from crc_checker.config import DEFAULT_MAX_FRAMES, load_config
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
 from crc_checker.protect.rolling_counter import RollingCounterVerifier
 from crc_checker.trace.models import CanFrame
+from crc_checker.verify.cancellation import CancellationToken, VerificationCancelled
 from crc_checker.verify.engine import VerifyEngine
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
 from crc_checker.verify.runner import RunnerError, build_protection_map, run_config
 from webapp.catalog import get_project, scan_projects
-from webapp.main import (UPLOADS_DIR, MAX_DBC_UPLOADS, create_app,
+from webapp.main import (MAX_DBC_UPLOADS, create_app,
                          max_upload_bytes, safe_filename)
-from webapp.service import (RunStore, RunOutcome, report_to_dict,
-                            resolve_max_frames)
+from webapp.service import (JobRegistry, RunError, RunStore, RunOutcome,
+                            report_to_dict, resolve_max_frames)
 from webapp.version import DeploymentVersion, read_revision
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -49,9 +52,33 @@ def isolate_projects_root(monkeypatch):
 
 
 @pytest.fixture(name="client")
-def client_fixture(tmp_path):
-    """API client backed by a throwaway run store (no writes into data/)."""
-    return TestClient(create_app(store=RunStore(tmp_path / "runs", max_runs=3)))
+def client_fixture(tmp_path, monkeypatch):
+    """API client backed by a throwaway run and upload store."""
+    monkeypatch.setenv("CRC_CHECKER_DATA_DIR", str(tmp_path / "web-data"))
+    store = RunStore(tmp_path / "runs", max_runs=3)
+    client = TestClient(create_app(store=store))
+    client.app.state.run_store = store
+    return client
+
+
+def wait_for_job(client, response):
+    """Poll a queued API submission to terminal state and return its snapshot."""
+    assert response.status_code == 202, response.text
+    job_id = response.json()["job_id"]
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        state = client.get(f"/api/jobs/{job_id}").json()
+        if state["status"] in {"succeeded", "failed", "cancelled"}:
+            return state
+        time.sleep(0.01)
+    raise AssertionError(f"job {job_id} did not finish in time")
+
+
+def wait_for_result(client, response):
+    """Return a successful asynchronous result, asserting worker success."""
+    state = wait_for_job(client, response)
+    assert state["status"] == "succeeded", state
+    return state["result"]
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +202,39 @@ class TestRunner:
         assert reports[0].dbc_paths
         assert any(note.startswith("Using DBC") for note in setup.notes)
 
+    def test_run_config_forwards_per_frame_progress_and_token(self):
+        """The additive frame callback and cancellation token reach the engine."""
+        cfg = load_config(str(EXAMPLE_DIR / "config.json"))
+        cfg.max_frames = 10
+        token = CancellationToken()
+        frames = []
+        _, reports = run_config(
+            cfg, [str(EXAMPLE_TRACE)],
+            frame_progress_callback=lambda done, _: frames.append(done),
+            cancellation_token=token)
+        assert len(reports) == 1
+        assert frames == list(range(1, reports[0].total_frames + 1))
+        assert reports[0].total_frames == 10
+
+    def test_run_config_cancellation_reports_total_processed_frames(self):
+        """Cancellation through the runner retains accurate aggregate progress."""
+        cfg = load_config(str(EXAMPLE_DIR / "config.json"))
+        cfg.max_frames = 20
+        token = CancellationToken()
+        seen = []
+
+        def request_cancel(done, _total):
+            seen.append(done)
+            if done == 7:
+                token.cancel()
+
+        with pytest.raises(VerificationCancelled) as caught:
+            run_config(cfg, [str(EXAMPLE_TRACE)],
+                       frame_progress_callback=request_cancel,
+                       cancellation_token=token)
+        assert caught.value.processed_frames == 7
+        assert seen == list(range(1, 8))
+
     def test_missing_dbc_raises_runner_error(self, tmp_path):
         """A missing DBC path surfaces as RunnerError, not FileNotFoundError."""
         cfg = load_config(str(EXAMPLE_DIR / "config.json"))
@@ -242,6 +302,44 @@ class TestServiceHelpers:
                              trace_name="t", payload={}))
         assert not list(tmp_path.glob("*.html"))
 
+    def test_report_lease_defers_cleanup_until_last_release(self, tmp_path):
+        """An evicted report and its split parts remain until every lease closes."""
+        store = RunStore(tmp_path, max_runs=1)
+        run_dir = tmp_path / "r0"
+        run_dir.mkdir()
+        report = run_dir / "r0.html"
+        part = run_dir / "r0_p2.html"
+        report.write_text("main", encoding="utf-8")
+        part.write_text("part", encoding="utf-8")
+        store.add(RunOutcome(run_id="r0", created_at=0.0, project_id="p",
+                             trace_name="t", payload={}, html_path=report))
+
+        first = store.acquire_report("r0", "report")
+        second = store.acquire_report("r0", "r0_p2")
+        assert first is not None and second is not None
+        assert first.path == report and second.path == part
+        store.add(RunOutcome(run_id="r1", created_at=time.time() + 1,
+                             project_id="p", trace_name="t", payload={}))
+        assert store.get("r0") is None
+        assert report.is_file() and part.is_file()
+
+        first.release()
+        first.release()  # release is idempotent
+        assert report.is_file() and part.is_file()
+        second.release()
+        assert not run_dir.exists()
+
+    def test_report_lease_rejects_bad_names_and_missing_files(self, tmp_path):
+        """Only a valid main or an existing split file can be leased."""
+        store = RunStore(tmp_path, max_runs=1)
+        report = tmp_path / "r0" / "r0.html"
+        report.parent.mkdir()
+        report.write_text("main", encoding="utf-8")
+        store.add(RunOutcome(run_id="r0", created_at=0.0, project_id="p",
+                             trace_name="t", payload={}, html_path=report))
+        assert store.acquire_report("r0", "r0_p2") is None
+        assert store.acquire_report("r0", "../r0") is None
+
     def test_new_store_purges_stale_reports(self, tmp_path):
         """After a restart the run index is gone, but stale report files
         must still be purged (otherwise they pile up forever).
@@ -278,8 +376,8 @@ class TestApi:
             response = client.post("/api/verify", data={
                 "project_id": EXAMPLE_PROJECT, "max_frames": "1500",
             }, files={"file": (EXAMPLE_TRACE.name, handle)})
-        assert response.status_code == 200, response.text
-        body = response.json()
+        assert response.status_code == 202, response.text
+        body = wait_for_result(client, response)
         report = body["reports"][0]
         assert report["total_frames"] > 0
         assert report["fail_count"] == 0
@@ -292,8 +390,8 @@ class TestApi:
             response = client.post("/api/verify", data={
                 "project_id": EXAMPLE_PROJECT, "max_frames": "500",
             }, files={"file": (BAD_TRACE.name, handle)})
-        assert response.status_code == 200, response.text
-        report = response.json()["reports"][0]
+        assert response.status_code == 202, response.text
+        report = wait_for_result(client, response)["reports"][0]
         assert report["fail_count"] > 0
         first = report["failures"][0]
         assert {"frame_id_hex", "signal", "expected_hex", "actual_hex", "detail"} <= set(first)
@@ -305,8 +403,8 @@ class TestApi:
             response = client.post("/api/verify", data={
                 "project_id": EXAMPLE_PROJECT, "max_frames": "500",
             }, files={"file": (BAD_TRACE.name, handle)})
-        assert response.status_code == 200, response.text
-        trends = response.json()["reports"][0]["rc_trends"]
+        body = wait_for_result(client, response)
+        trends = body["reports"][0]["rc_trends"]
         assert trends, "expected RC trend data for the example trace"
         first = trends[0]
         assert {"signal", "frame_id_hex", "channel", "bit_max", "max_valid",
@@ -326,9 +424,10 @@ class TestApi:
     def test_report_download_and_cache(self, client, tmp_path):
         """The HTML report is downloadable; unknown runs 404."""
         with open(EXAMPLE_TRACE, "rb") as handle:
-            body = client.post("/api/verify", data={
+            response = client.post("/api/verify", data={
                 "project_id": EXAMPLE_PROJECT, "max_frames": "300",
-            }, files={"file": (EXAMPLE_TRACE.name, handle)}).json()
+            }, files={"file": (EXAMPLE_TRACE.name, handle)})
+        body = wait_for_result(client, response)
         report = client.get(body["report_url"])
         assert report.status_code == 200
         assert "CAN CRC Check Report" in report.text
@@ -345,9 +444,10 @@ class TestApi:
         """
         monkeypatch.setattr(html_mod, "SPLIT_MAX_SECTIONS", 100)
         with open(EXAMPLE_TRACE, "rb") as handle:
-            body = client.post("/api/verify", data={
+            response = client.post("/api/verify", data={
                 "project_id": EXAMPLE_PROJECT, "max_frames": "300",
-            }, files={"file": (EXAMPLE_TRACE.name, handle)}).json()
+            }, files={"file": (EXAMPLE_TRACE.name, handle)})
+        body = wait_for_result(client, response)
         run_id = body["run_id"]
         main = client.get(body["report_url"])
         assert main.status_code == 200
@@ -394,11 +494,12 @@ class TestApi:
     def test_upload_is_deleted_after_run(self, client):
         """The temp trace must not survive the request."""
         with open(EXAMPLE_TRACE, "rb") as handle:
-            client.post("/api/verify", data={
+            response = client.post("/api/verify", data={
                 "project_id": EXAMPLE_PROJECT, "max_frames": "200",
             }, files={"file": (EXAMPLE_TRACE.name, handle)})
-        uploads = REPO_ROOT / "data" / "web" / "uploads"
-        assert not uploads.exists() or not any(uploads.iterdir())
+        wait_for_result(client, response)
+        assert not (client.app.state.uploads_dir).exists() or not any(
+            client.app.state.uploads_dir.iterdir())
 
 
 class TestFrameAccounting:
@@ -425,7 +526,7 @@ class TestFrameAccounting:
                 """Yield the scripted frames, one per value."""
                 for index, value in enumerate(values):
                     data = bytes(7) + bytes([value & 0x0F])
-                    yield CanFrame(timestamp=float(index), arbitration_id=0x421,
+                    yield CanFrame(timestamp=float(index // 2), arbitration_id=0x421,
                                    dlc=8, data=data, channel=0)
 
         return engine.run(Reader())
@@ -448,6 +549,15 @@ class TestFrameAccounting:
         assert payload["check_pass"] == 3
         assert payload["check_fail"] == 2
         assert payload["rc_pass"] == 3 and payload["rc_total"] == 5
+        assert payload["pass_count"] == 3 and payload["fail_count"] == 2
+        assert payload["pass_rate"] == 0.6
+
+    def test_equal_timestamps_count_as_distinct_frames(self):
+        """Two identical timestamps still represent two processed frames."""
+        report = self._report([0, 1, 2, 2])
+        payload = report_to_dict(report)
+        row = payload["frames"][0]
+        assert (row["total"], row["pass"], row["fail"]) == (4, 3, 1)
 
     def test_same_id_on_two_channels_stays_separate(self):
         """A gateway trace carries the same CAN ID on two buses."""
@@ -479,8 +589,7 @@ class TestSampleTraceApi:
             "trace_name": "example.blf",
             "max_frames": "100",
         })
-        assert response.status_code == 200, response.text
-        body = response.json()
+        body = wait_for_result(client, response)
         assert body["trace_name"] == "example.blf"
         assert body["reports"][0]["total_frames"] == 100
         assert body["report_url"].endswith("/report.html")
@@ -555,8 +664,8 @@ class TestManualApi:
             "filter": {"max_frames": 1500},
         }
         response = self._post(client, config, dataid=EXAMPLE_DIR / "dbc" / "dataid.json")
-        assert response.status_code == 200, response.text
-        body = response.json()
+        assert response.status_code == 202, response.text
+        body = wait_for_result(client, response)
         assert body["project_id"] == "manual"
         assert body["project"]["name"] == "手动配置"
         assert body["setup"]["dbc_names"] == ["network.dbc"]
@@ -593,9 +702,9 @@ class TestManualApi:
         lives in the RunStore's own directory).
         """
         response = self._post(client, {"filter": {"max_frames": 100}})
-        assert response.status_code == 200, response.text
-        run_id = response.json()["run_id"]
-        assert not (UPLOADS_DIR / run_id).exists()
+        body = wait_for_result(client, response)
+        run_id = body["run_id"]
+        assert not (client.app.state.uploads_dir / run_id).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -647,6 +756,33 @@ class TestCatalogCache:
         (tmp_path / "oem" / "a" / "config.json").unlink()
         assert scan_projects(tmp_path) == []
 
+    def test_external_dbc_change_invalidates_cached_catalog(self, tmp_path):
+        """Removing an out-of-tree configured DBC refreshes cached names."""
+        root = tmp_path / "projects"
+        model = root / "oem" / "a"
+        model.mkdir(parents=True)
+        external = tmp_path / "shared.dbc"
+        external.write_text("first", encoding="utf-8")
+        (model / "config.json").write_text(
+            json.dumps({"dbc": str(external)}), encoding="utf-8")
+        assert scan_projects(root)[0].dbc_files == ["shared.dbc"]
+
+        external.unlink()
+        assert scan_projects(root)[0].dbc_files == []
+
+    def test_external_dbc_directory_changes_invalidate_cache(self, tmp_path):
+        """New DBCs in an out-of-tree configured directory are picked up."""
+        root = tmp_path / "projects"
+        model = root / "oem" / "a"
+        model.mkdir(parents=True)
+        external = tmp_path / "shared"
+        external.mkdir()
+        (model / "config.json").write_text(
+            json.dumps({"dbc": str(external)}), encoding="utf-8")
+        assert scan_projects(root)[0].dbc_files == []
+        (external / "added.dbc").write_text("dbc", encoding="utf-8")
+        assert scan_projects(root)[0].dbc_files == ["added.dbc"]
+
     def test_edited_config_changes_the_summary(self, tmp_path):
         """A config edit (in-place, no create/delete) invalidates the summary."""
         self._make_project(tmp_path, "oem", "a")
@@ -672,19 +808,241 @@ class TestUnhandledErrors:  # pylint: disable=too-few-public-methods
             raise RuntimeError("boom in C:\\secret\\path.blf")
 
         monkeypatch.setattr("webapp.main.run_project", explode)
-        client = TestClient(
-            create_app(store=RunStore(tmp_path / "runs", max_runs=1)),
-            raise_server_exceptions=False)
+        store = RunStore(tmp_path / "runs", max_runs=1)
+        client = TestClient(create_app(store=store), raise_server_exceptions=False)
         response = client.post(
             "/api/verify",
             data={"project_id": EXAMPLE_PROJECT},
             files={"file": ("trace.blf", EXAMPLE_TRACE.read_bytes())},
         )
-        assert response.status_code == 500
-        message = response.json()["message"]
+        assert response.status_code == 202
+        state = wait_for_job(client, response)
+        assert state["status"] == "failed"
+        message = state["error"]
         assert "服务器内部错误" in message
         # No internals leak: not the exception text, not the filesystem.
         assert "boom" not in message and "secret" not in message
+        assert len(store) == 0
+
+
+class TestJobLifecycle:
+    """Deterministic asynchronous status, progress, cancellation and cleanup."""
+
+    def test_running_job_reports_progress_and_persists_result(self, client, monkeypatch):
+        """Worker callback updates running state; success enters RunStore."""
+        entered = threading.Event()
+        release = threading.Event()
+        original = __import__("webapp.main", fromlist=["run_project"]).run_project
+
+        def blocking(*args, frame_progress_callback=None, cancellation_token=None, **kwargs):
+            frame_progress_callback(3, None)
+            entered.set()
+            assert release.wait(5)
+            return original(*args, frame_progress_callback=frame_progress_callback,
+                            cancellation_token=cancellation_token, **kwargs)
+
+        monkeypatch.setattr("webapp.main.run_project", blocking)
+        with open(EXAMPLE_TRACE, "rb") as handle:
+            response = client.post("/api/verify", data={
+                "project_id": EXAMPLE_PROJECT, "max_frames": "5",
+            }, files={"file": (EXAMPLE_TRACE.name, handle)})
+        assert response.status_code == 202
+        assert entered.wait(5)
+        job_id = response.json()["job_id"]
+        state = client.get(f"/api/jobs/{job_id}").json()
+        assert state["status"] == "running"
+        assert state["processed_frames"] == 3
+        release.set()
+        state = wait_for_job(client, response)
+        assert state["status"] == "succeeded"
+        assert state["result"]["run_id"] == job_id
+        assert client.app.state.run_store.get(job_id) is not None
+        assert state["processed_frames"] >= 3
+
+    def test_cancel_running_job_and_cleanup_uploads(self, client, monkeypatch):
+        """Cancellation is cooperative and staged files survive until terminal."""
+        entered = threading.Event()
+        cancelled = threading.Event()
+        release = threading.Event()
+
+        def blocking(_project, _trace_path, *_args, **kwargs):
+            entered.set()
+            assert kwargs.get("cancellation_token") is not None
+            assert release.wait(5)
+            cancelled.set()
+            raise VerificationCancelled(2)
+
+        monkeypatch.setattr("webapp.main.run_project", blocking)
+        response = client.post("/api/verify", data={"project_id": EXAMPLE_PROJECT},
+                               files={"file": ("trace.blf", EXAMPLE_TRACE.read_bytes())})
+        assert response.status_code == 202
+        job_id = response.json()["job_id"]
+        upload_dir = client.app.state.uploads_dir / job_id
+        assert entered.wait(5)
+        assert upload_dir.exists()
+        cancel = client.post(f"/api/jobs/{job_id}/cancel")
+        assert cancel.json()["status"] == "running"
+        release.set()
+        state = wait_for_job(client, response)
+        assert cancelled.is_set()
+        assert state["status"] == "cancelled"
+        assert state["processed_frames"] == 2
+        assert not upload_dir.exists()
+        assert client.post(f"/api/jobs/{job_id}/cancel").status_code == 409
+
+    def test_cancel_after_report_render_discards_unpublished_report(self, client, monkeypatch):
+        """A cancellation racing completed rendering leaves no orphaned report."""
+        rendered = threading.Event()
+        release = threading.Event()
+
+        def render_then_block(project, trace_path, _trace_name, _limit, _only_failures,
+                              run_id, report_dir, **_kwargs):
+            run_dir = report_dir / run_id
+            run_dir.mkdir(parents=True)
+            report = run_dir / f"{run_id}.html"
+            report.write_text("rendered", encoding="utf-8")
+            rendered.set()
+            assert release.wait(5)
+            return RunOutcome(run_id, time.time(), project.id, trace_path.name,
+                              {"reports": []}, html_path=report)
+
+        monkeypatch.setattr("webapp.main.run_project", render_then_block)
+        response = client.post("/api/verify", data={"project_id": EXAMPLE_PROJECT},
+                               files={"file": ("trace.blf", EXAMPLE_TRACE.read_bytes())})
+        assert response.status_code == 202
+        job_id = response.json()["job_id"]
+        assert rendered.wait(5)
+        report_dir = client.app.state.run_store.runs_dir / job_id
+        assert (report_dir / f"{job_id}.html").is_file()
+        assert client.post(f"/api/jobs/{job_id}/cancel").status_code == 200
+        release.set()
+        state = wait_for_job(client, response)
+        assert state["status"] == "cancelled"
+        assert client.app.state.run_store.get(job_id) is None
+        assert not report_dir.exists()
+
+    def test_cancel_queued_job(self, client, monkeypatch):
+        """Cancelling before worker entry keeps it terminal and cleans staging."""
+        submitted = threading.Event()
+        release_submit = threading.Event()
+        pool = client.app.state.worker_pool
+        real_submit = pool.submit
+
+        def defer(fn, *args, **kwargs):
+            submitted.set()
+            assert release_submit.wait(5)
+            return real_submit(fn, *args, **kwargs)
+
+        monkeypatch.setattr(pool, "submit", defer)
+        result = {}
+
+        def request():
+            result["response"] = client.post(
+                "/api/verify", data={"project_id": EXAMPLE_PROJECT},
+                files={"file": ("trace.blf", EXAMPLE_TRACE.read_bytes())})
+
+        thread = threading.Thread(target=request)
+        thread.start()
+        assert submitted.wait(5)
+        job_id = client.app.state.job_registry.job_ids()[0]
+        assert client.post(f"/api/jobs/{job_id}/cancel").json()["status"] == "cancelled"
+        release_submit.set()
+        thread.join(5)
+        response = result["response"]
+        assert response.status_code == 202
+        state = wait_for_job(client, response)
+        assert state["status"] == "cancelled"
+        assert not (client.app.state.uploads_dir / job_id).exists()
+
+    def test_expected_run_error_is_friendly(self, client, monkeypatch):
+        """Expected runner errors are terminal with their user-facing detail."""
+        def fail(*_args, **_kwargs):
+            raise RunError("配置不正确")
+
+        monkeypatch.setattr("webapp.main.run_project", fail)
+        response = client.post("/api/verify", data={"project_id": EXAMPLE_PROJECT},
+                               files={"file": ("trace.blf", EXAMPLE_TRACE.read_bytes())})
+        state = wait_for_job(client, response)
+        assert state["status"] == "failed"
+        assert state["error"] == "配置不正确"
+        assert state["result"] is None
+
+    def test_job_status_unknown_and_terminal_cancel(self, client):
+        """Unknown job ids 404 and terminal job cancellations conflict."""
+        assert client.get("/api/jobs/unknown").status_code == 404
+        registry = client.app.state.job_registry
+        job = registry.create("terminal")
+        registry.finish(job.job_id, "failed", error="x")
+        assert client.post("/api/jobs/terminal/cancel").status_code == 409
+
+
+class TestJobRegistry:
+    """Registry bounds and transitions stay atomic under concurrent access."""
+
+    def test_capacity_rejects_all_active_jobs_and_evicts_terminal(self):
+        """Active work is never evicted; oldest terminal state frees capacity."""
+        registry = JobRegistry(max_jobs=2)
+        first = registry.create("first")
+        registry.create("second")
+        assert registry.create("third") is None
+        registry.finish(first.job_id, "failed", error="done")
+        third = registry.create("third")
+        assert third is not None
+        assert registry.get("first") is None
+        assert registry.get("second")["status"] == "queued"
+
+    def test_queued_cancel_is_terminal_and_cannot_start(self):
+        """A pre-start cancellation prevents execution and reports terminal."""
+        registry = JobRegistry(max_jobs=1)
+        job = registry.create("queued")
+        assert registry.cancel(job.job_id) == "queued"
+        assert not registry.start(job.job_id)
+        assert registry.get(job.job_id)["status"] == "cancelled"
+
+    def test_progress_and_terminal_transitions_ignore_late_callbacks(self):
+        """Progress is accepted only while running, and finish happens once."""
+        registry = JobRegistry(max_jobs=1)
+        job = registry.create("job")
+        registry.progress(job.job_id, 9)
+        assert registry.get(job.job_id)["processed_frames"] == 0
+        assert registry.start(job.job_id)
+        registry.progress(job.job_id, 4)
+        registry.progress(job.job_id, 2)
+        registry.finish(job.job_id, "failed", error="failure")
+        registry.progress(job.job_id, 99)
+        registry.finish(job.job_id, "succeeded", result={})
+        state = registry.get(job.job_id)
+        assert state["status"] == "failed"
+        assert state["processed_frames"] == 4
+        assert state["error"] == "failure"
+        assert state["result"] is None
+
+    def test_concurrent_progress_and_cancel_finish_have_one_terminal_state(self):
+        """Cancellation, finish, and progress races do not corrupt snapshots."""
+        registry = JobRegistry(max_jobs=1)
+        job = registry.create("race")
+        assert registry.start(job.job_id)
+        barrier = threading.Barrier(3)
+
+        def progress():
+            barrier.wait()
+            for count in range(100):
+                registry.progress(job.job_id, count)
+
+        def cancel():
+            barrier.wait()
+            registry.cancel(job.job_id)
+            registry.finish(job.job_id, "cancelled", error="cancelled")
+
+        threads = [threading.Thread(target=progress), threading.Thread(target=cancel)]
+        for thread in threads:
+            thread.start()
+        barrier.wait()
+        registry.finish(job.job_id, "succeeded", result={"ok": True})
+        for thread in threads:
+            thread.join()
+        assert registry.get(job.job_id)["status"] in {"succeeded", "cancelled"}
+        assert registry.get(job.job_id)["processed_frames"] <= 99
 
 
 class TestRunStoreConcurrency:

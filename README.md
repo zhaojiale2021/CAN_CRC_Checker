@@ -77,9 +77,11 @@ bundled sample traces are one click away — no download-then-upload detour.
 The browser only sends project ids or uploaded files; paths stay server-side.
 Projects are scanned from `projects/` (or `examples/` when `projects/` does not
 exist; override with `CRC_CHECKER_PROJECTS_DIR`). The Vue frontend is committed
-as `frontend/dist`, so a deployment machine needs no Node. The web server has
-no authentication and binds `0.0.0.0`: run it on a trusted LAN or behind an
-authenticated reverse proxy. See [docs/web-api.md](docs/web-api.md).
+as `frontend/dist`, so a deployment machine needs no Node. The launcher binds to
+`127.0.0.1` by default; set `CRC_WEB_HOST` or pass a host argument to opt into
+LAN binding. The web server has no authentication, so network exposure should be
+behind an authenticated reverse proxy or equivalent access controls. See
+[docs/web-api.md](docs/web-api.md).
 
 ## 🌟 What you get
 
@@ -190,7 +192,8 @@ tests/                  pytest suite
 ## 🧪 Development
 
 ```bash
-pytest --cov=crc_checker --cov=cli --cov=webapp   # 80% gate in CI
+pytest --tb=short --cov=crc_checker --cov=cli --cov=webapp \
+  --cov-report=term --cov-fail-under=80          # CI backend test command
 pylint $(git ls-files '*.py')                     # must stay 10.00/10
 cd frontend && npm run lint                       # eslint + prettier check
 cd frontend && npm test                           # node --test (pure logic)
@@ -199,16 +202,17 @@ cd frontend && npm install && npm run build       # rebuild committed dist
 python examples/generate_example.py               # regenerate the example
 ```
 
-CI runs the same pylint and pytest checks on Python 3.9, 3.11 and 3.13, a
-Windows pytest job, the frontend unit tests, and a check that `frontend/dist`
-matches the committed build. The pre-push hook runs lint + tests in a
-CI-parity environment.
+CI runs pylint and coverage-gated pytest on Python 3.9, 3.11 and 3.13, plus a
+Windows pytest job and frontend lint/tests/build freshness checks. The pre-push
+hook runs pylint and the same 80%-coverage backend pytest command using Python
+3.11 when `uv` is installed; otherwise it uses the active Python environment.
+It does not replace the full CI matrix or frontend checks.
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. Please run the lint and test commands above
-before opening a PR; CI runs the same checks on Python 3.9, 3.11 and 3.13, the
-frontend unit tests, and a committed-`dist` freshness check.
+Issues and pull requests are welcome. Before opening a PR, run the development
+checks above; CI additionally covers the Python matrix, Windows, frontend
+checks, and committed-`dist` freshness.
 
 ## 📄 License
 

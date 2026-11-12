@@ -534,7 +534,7 @@ CONFIG_SCHEMA_DOC = """
 
   // === Output ===
   "output": {
-    "format": "html",                    // table | html
+    "format": "html",                    // table | html | json
     "file": "report.html",
     "only_failures": false,
     // Frame-section cap per report (a per-frame hex dump is ~1KB/section).
@@ -712,6 +712,10 @@ def load_config(config_path: str) -> RunConfig:
                                        "range.start_byte", minimum=0)
         cfg.range_end = _require_int(rng.get("end_byte", -1),
                                      "range.end_byte", minimum=-1)
+        if cfg.range_mode == "custom_range" and cfg.range_end >= 0:
+            if cfg.range_end <= cfg.range_start:
+                raise ValueError(
+                    "range.end_byte must be greater than range.start_byte (exclusive)")
 
     # DataID
     did = _require_mapping(data, "dataid")
@@ -771,8 +775,8 @@ def load_config(config_path: str) -> RunConfig:
     out = _require_mapping(data, "output")
     if out:
         cfg.output_format = out.get("format", "table")
-        if cfg.output_format not in ("table", "html"):
-            raise ValueError("output.format must be 'table' or 'html'")
+        if cfg.output_format not in ("table", "html", "json"):
+            raise ValueError("output.format must be 'table', 'html', or 'json'")
         cfg.output_file = out.get("file", "")
         cfg.only_failures = out.get("only_failures", False)
         raw_sections = out.get("max_report_sections")

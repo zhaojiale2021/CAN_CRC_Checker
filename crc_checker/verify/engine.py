@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from crc_checker.trace.reader import TraceReader
 from crc_checker.dbc.models import DBCProtectionMap
 from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.verify.cancellation import CancellationToken
 from crc_checker.verify.models import VerifyReport
 from crc_checker.protect.rolling_counter import RollingCounterVerifier
 
@@ -62,10 +63,11 @@ class VerifyEngine:
         """
         return [p for p in protections if not p.dlc or p.dlc == frame.dlc]
 
-    def run(self, reader: TraceReader,  # pylint: disable=too-many-branches,too-many-locals
+    def run(self, reader: TraceReader,  # pylint: disable=too-many-branches,too-many-locals,too-many-arguments,too-many-positional-arguments
             frame_ids: list[int] | None = None,
             max_frames: int | None = None,
-            progress_callback=None) -> VerifyReport:
+            progress_callback=None,
+            cancellation_token: CancellationToken | None = None) -> VerifyReport:
         """Run verification on all frames in the trace.
 
         Args:
@@ -73,6 +75,8 @@ class VerifyEngine:
             frame_ids: Optional list of CAN IDs to filter (None = all).
             max_frames: Optional limit on total frames processed.
             progress_callback: Optional callback(processed_count, total_count).
+            cancellation_token: Optional cooperative cancellation signal. The
+                frame loop checks it at every eligible frame boundary.
 
         Returns:
             VerifyReport with all verification results.
@@ -100,8 +104,12 @@ class VerifyEngine:
             if target_ids and frame.arbitration_id not in target_ids:
                 continue
 
-            # Checked before any `continue` below, so the cap is exact:
-            # frames without a protection group must still count towards it.
+            # Cancellation is cooperative: parser iteration and the current
+            # frame are not interrupted, but every eligible frame boundary is
+            # checked, including frames with no protection groups.
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled(frame_count)
+
             # Reaching this branch means at least one more frame exists, so
             # the report can honestly say the trace was cut short.
             if max_frames and frame_count >= max_frames:
@@ -110,7 +118,7 @@ class VerifyEngine:
                 break
 
             frame_count += 1
-            report.total_frames += 1
+            report.total_frames = frame_count
 
             # Find protection groups for this frame (channel-aware)
             protections = self.protection_map.get_protections(
@@ -121,6 +129,10 @@ class VerifyEngine:
                     report.dlc_mismatch_skipped += 1
                 protections = matched
             if not protections:
+                if progress_callback:
+                    progress_callback(frame_count, None)
+                if cancellation_token is not None:
+                    cancellation_token.raise_if_cancelled(frame_count)
                 continue
 
             # Store frame data for hex-dump display (include channel). Only
@@ -143,6 +155,8 @@ class VerifyEngine:
 
             if progress_callback:
                 progress_callback(frame_count, None)
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled(frame_count)
 
         # Collect the RC value series (every frame) for the HTML trend charts
         self._collect_rc_series(report)

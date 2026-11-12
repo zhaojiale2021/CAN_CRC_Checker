@@ -7,7 +7,7 @@ name = "crc-checker"
 dynamic = ["version"]
 description = "CAN bus CRC / rolling-counter verification from DBC files and trace logs"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.9"
 dependencies = [
     "python-can>=4.5",
@@ -44,6 +44,10 @@ include = ["crc_checker*", "cli*", "webapp*"]
 
 [tool.setuptools.package-data]
 crc_checker = ["data/*.yaml"]
+webapp = [
+    "static/dist/index.html",
+    "static/dist/assets/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

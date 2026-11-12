@@ -107,16 +107,43 @@
     </svg>
 
     <div v-if="trends.length" class="trends">
-      <div class="section-head">
-        <h3>Rolling Counter 趋势</h3>
+      <div class="section-head trend-section-head">
+        <h3 id="rc-trends-heading">Rolling Counter 趋势</h3>
         <span class="muted">
           {{ trends.length }} 个信号 · 异常 {{ trendEpisodeCount }} 段 ({{
             trendErrorCount
           }}
           帧) (横轴为相对 t0 的精确时间,悬浮看每帧数值)
         </span>
+        <el-button
+          size="small"
+          :aria-pressed="chartsVisible"
+          @click="chartsVisible = !chartsVisible"
+        >
+          {{ chartsVisible ? '隐藏趋势图' : '显示趋势图' }}
+        </el-button>
       </div>
-      <RcTrendChart v-for="t in trends" :key="t.key" :trend="t" />
+      <div
+        v-if="chartsVisible"
+        class="trend-charts"
+        aria-labelledby="rc-trends-heading"
+      >
+        <RcTrendChart v-for="t in trends" :key="t.key" :trend="t" />
+      </div>
+      <details class="trend-alt">
+        <summary>查看趋势数据文本（{{ trends.length }} 个信号）</summary>
+        <ul>
+          <li v-for="t in trends" :key="t.key">
+            <strong>{{ t.signal }}</strong>（{{ t.frame_id_hex }}，{{
+              t.frame_name
+            }}）： {{ t.samples }} 个采样点，{{ t.errors }} 帧异常、{{
+              t.episodes || 0
+            }}
+            段； 首值 {{ t.points[0]?.[1] ?? '无' }}，末值
+            {{ t.points[t.points.length - 1]?.[1] ?? '无' }}。
+          </li>
+        </ul>
+      </details>
     </div>
 
     <el-collapse class="setup" @change="onSetupChange">
@@ -334,6 +361,7 @@ const props = defineProps({
 
 const failureSearch = ref('')
 const onlyFailingFrames = ref(false)
+const chartsVisible = ref(true)
 
 const report = computed(() => props.result?.reports?.[0] || null)
 // HTML 报告的降级/截断提示(超帧段上限时后端自动只写失败项,并在报告顶部写明)
@@ -520,6 +548,35 @@ function openReport() {
 .trends {
   margin-bottom: 16px;
 }
+.trend-section-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.trend-section-head .muted {
+  flex: 1 1 280px;
+}
+.trend-section-head .el-button {
+  margin-left: auto;
+}
+.trend-alt {
+  margin: 8px 0 16px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.trend-alt summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.trend-alt ul {
+  padding-left: 22px;
+  line-height: 1.8;
+}
+.trend-alt li {
+  overflow-wrap: anywhere;
+}
+.trend-alt strong {
+  color: var(--el-text-color-primary);
+}
 .signals {
   padding: 4px 8px;
   display: flex;
@@ -534,5 +591,31 @@ function openReport() {
 }
 .sig-name {
   min-width: 170px;
+}
+@media (max-width: 640px) {
+  .toolbar,
+  .section-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .toolbar .muted,
+  .section-head > .muted {
+    width: 100%;
+  }
+  .search {
+    width: 100%;
+    margin-left: 0;
+  }
+  .trend-section-head .el-button {
+    margin-left: 0;
+  }
+  .signal-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .sig-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

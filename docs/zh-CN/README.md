@@ -73,8 +73,9 @@ MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若�
 可以直接点选校验，不需要先下载再上传。浏览器只提交项目 id 或上传文件，路径始终在
 服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，可用
 `CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
-无需 Node。网页版没有认证，请只在可信内网运行。详见
-[docs/web-api.md](../web-api.md)。
+无需 Node。启动脚本默认仅监听 `127.0.0.1`；可传入 host 参数或设置 `CRC_WEB_HOST`
+显式开放局域网访问。网页版没有认证，网络暴露时必须放在带认证的反向代理或等效访问控制后。
+详见 [docs/web-api.md](../web-api.md)。
 
 ## 🌟 能力一览
 
@@ -185,7 +186,8 @@ tests/                  pytest 测试
 ## 🧪 开发
 
 ```bash
-pytest --cov=crc_checker --cov=cli --cov=webapp   # CI 门槛 80%
+pytest --tb=short --cov=crc_checker --cov=cli --cov=webapp \
+  --cov-report=term --cov-fail-under=80          # CI 后端测试命令
 pylint $(git ls-files '*.py')                     # 必须 10.00/10
 cd frontend && npm run lint                       # eslint + prettier 检查
 cd frontend && npm test                           # node --test(纯逻辑单测)
@@ -194,14 +196,16 @@ cd frontend && npm install && npm run build       # 重新构建 dist
 python examples/generate_example.py               # 重新生成示例
 ```
 
-CI 在 Python 3.9、3.11、3.13 上跑同样的 pylint 与 pytest,另有一个 Windows
-pytest 作业,并额外跑前端 lint、纯逻辑单测、组件测试和 `frontend/dist`
-是否与源码构建一致。pre-push 钩子会用 CI 同环境跑 lint + 测试。
+CI 在 Python 3.9、3.11、3.13 上运行 pylint 与带覆盖率门槛的 pytest，另有一个
+Windows pytest 作业，以及前端 lint、单测、组件测试和 `frontend/dist`
+新鲜度检查。pre-push 钩子会运行 pylint 和同样要求 80% 覆盖率的后端 pytest；
+安装了 `uv` 时使用 Python 3.11，否则使用当前 Python 环境。钩子不替代完整 CI
+矩阵或前端检查。
 
 ## 🤝 贡献
 
-欢迎提 issue / PR。提交前请先跑上面的 lint 与测试;CI 会跑同样的检查,
-外加前端 lint / 单测 / 组件测试和 dist 新鲜度检查。
+欢迎提 issue / PR。提交前请运行上面的开发检查；CI 还会覆盖 Python 矩阵、Windows、
+前端检查和已提交 `dist` 的新鲜度。
 
 ## 📄 许可证
 
