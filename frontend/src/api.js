@@ -40,6 +40,11 @@ export function fetchPresets() {
   return request('/api/presets')
 }
 
+/** 服务端限额(上传大小 / DBC 个数 / 手动模式默认帧数)。 */
+export function fetchLimits() {
+  return request('/api/limits')
+}
+
 export function fetchVersion() {
   return request('/api/version')
 }
@@ -47,7 +52,12 @@ export function fetchVersion() {
 /**
  * 上传 trace 并校验。帧数上限:null = 用项目配置里的默认值,0 = 不限。
  */
-export function verifyTrace({ projectId, file, maxFrames = null, onlyFailures = false }) {
+export function verifyTrace({
+  projectId,
+  file,
+  maxFrames = null,
+  onlyFailures = false,
+}) {
   const form = new FormData()
   form.append('project_id', projectId)
   form.append('file', file)
@@ -59,7 +69,12 @@ export function verifyTrace({ projectId, file, maxFrames = null, onlyFailures = 
 /**
  * 校验项目自带的示例 trace(服务端路径,浏览器只提交项目 id + 文件名)。
  */
-export function verifySample({ projectId, traceName, maxFrames = null, onlyFailures = false }) {
+export function verifySample({
+  projectId,
+  traceName,
+  maxFrames = null,
+  onlyFailures = false,
+}) {
   const form = new FormData()
   form.append('project_id', projectId)
   form.append('trace_name', traceName)

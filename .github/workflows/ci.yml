@@ -71,9 +71,17 @@ jobs:
     - name: Install
       working-directory: frontend
       run: npm ci
-    - name: Unit tests
+    - name: Lint (eslint + prettier)
+      working-directory: frontend
+      run: |
+        npm run lint
+        npm run format:check
+    - name: Unit tests (pure logic)
       working-directory: frontend
       run: npm test
+    - name: Component tests
+      working-directory: frontend
+      run: npm run test:component
     - name: Build committed dist
       working-directory: frontend
       run: npm run build

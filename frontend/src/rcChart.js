@@ -45,7 +45,7 @@ export function rcChartGeometry(trend) {
     xTicks.push({
       x: xOf(t0 + tRel),
       label: tRel.toFixed(xDec),
-      anchor: i === 0 ? 'start' : (i === n ? 'end' : 'middle'),
+      anchor: i === 0 ? 'start' : i === n ? 'end' : 'middle',
     })
   }
 
@@ -62,10 +62,15 @@ export function rcChartGeometry(trend) {
   const errDots = points
     .filter((p) => p[2] === 1)
     .map(([t, v, , cat]) => ({
-      x: xOf(t), y: yOf(v), cat: cat || 'ERROR', t, v,
+      x: xOf(t),
+      y: yOf(v),
+      cat: cat || 'ERROR',
+      t,
+      v,
     }))
 
-  const hasThreshold = trend.max_valid && 0 < trend.max_valid && trend.max_valid < yTop
+  const hasThreshold =
+    trend.max_valid && 0 < trend.max_valid && trend.max_valid < yTop
   return {
     xTicks,
     yTicks,
@@ -90,7 +95,8 @@ export function rcNearest(points, t) {
     if (points[mid][0] < t) lo = mid + 1
     else hi = mid
   }
-  if (lo > 0 && Math.abs(points[lo - 1][0] - t) < Math.abs(points[lo][0] - t)) lo -= 1
+  if (lo > 0 && Math.abs(points[lo - 1][0] - t) < Math.abs(points[lo][0] - t))
+    lo -= 1
   return points[lo]
 }
 

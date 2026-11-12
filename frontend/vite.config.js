@@ -10,4 +10,10 @@ export default defineConfig({
     proxy: { '/api': 'http://127.0.0.1:8000' },
   },
   build: { outDir: 'dist', emptyOutDir: true },
+  // 组件冒烟测试(npm run test:component)跑在 happy-dom 里;
+  // 只收 src 下的组件测试,tests/*.test.mjs 归 node --test(npm test)管。
+  test: {
+    environment: 'happy-dom',
+    include: ['src/**/__tests__/**/*.test.mjs'],
+  },
 })

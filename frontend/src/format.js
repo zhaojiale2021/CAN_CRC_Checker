@@ -55,7 +55,11 @@ export function versionLabel(running) {
 
 /** 部署目录 commit 与运行 commit 是否不一致(用于页面提示)。 */
 export function checkoutChanged(info) {
-  if (!info || info.checkout_changed === null || info.checkout_changed === undefined) {
+  if (
+    !info ||
+    info.checkout_changed === null ||
+    info.checkout_changed === undefined
+  ) {
     return false
   }
   return Boolean(info.checkout_changed)

@@ -46,9 +46,11 @@ export function buildManualConfig(state = {}) {
   const frameIds = parseFrameIds(state.frameIds)
   if (frameIds.length) config.filter = { frame_ids: frameIds }
 
-  if (hasValue(state.rcMaxValid)) config.rc = { max_valid: Number(state.rcMaxValid) }
+  if (hasValue(state.rcMaxValid))
+    config.rc = { max_valid: Number(state.rcMaxValid) }
 
-  if (state.checksumPattern) config.signals = { checksum_pattern: state.checksumPattern }
+  if (state.checksumPattern)
+    config.signals = { checksum_pattern: state.checksumPattern }
   if (state.rcPattern) {
     config.signals = { ...(config.signals || {}), rc_pattern: state.rcPattern }
   }

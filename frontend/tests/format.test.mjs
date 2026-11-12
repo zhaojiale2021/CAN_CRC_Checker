@@ -41,8 +41,14 @@ test('formatTimestamp 保留微秒', () => {
 })
 
 test('versionLabel:commit 短号 + 有修改 / 版本未知', () => {
-  assert.equal(versionLabel({ commit: 'abcdef1234567890', dirty: false }), '版本 abcdef1')
-  assert.equal(versionLabel({ commit: 'abcdef1234567890', dirty: true }), '版本 abcdef1 · 有修改')
+  assert.equal(
+    versionLabel({ commit: 'abcdef1234567890', dirty: false }),
+    '版本 abcdef1',
+  )
+  assert.equal(
+    versionLabel({ commit: 'abcdef1234567890', dirty: true }),
+    '版本 abcdef1 · 有修改',
+  )
   assert.equal(versionLabel({ commit: null, dirty: null }), '版本未知')
   assert.equal(versionLabel(null), '版本未知')
   assert.equal(shortCommit(null), '')

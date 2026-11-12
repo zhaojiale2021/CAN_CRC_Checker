@@ -35,7 +35,10 @@ export function summaryHighlights(project) {
   }
   if (summary.range && summary.range !== 'exclude_crc') {
     const end = summary.range_end === -1 ? '末尾' : summary.range_end
-    items.push({ label: '范围', value: `${summary.range}_${summary.range_start}..${end}` })
+    items.push({
+      label: '范围',
+      value: `${summary.range}_${summary.range_start}..${end}`,
+    })
   }
   if (summary.dbc_merge) items.push({ label: 'DBC', value: '合并为一个映射' })
   return items

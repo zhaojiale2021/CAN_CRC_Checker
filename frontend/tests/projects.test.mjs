@@ -13,14 +13,22 @@ import {
 } from '../src/projects.js'
 
 const projects = [
-  { id: 'demo/basic', oem: 'demo', model: 'basic', summary: { crc: 'P5', dataid: '无' } },
+  {
+    id: 'demo/basic',
+    oem: 'demo',
+    model: 'basic',
+    summary: { crc: 'P5', dataid: '无' },
+  },
   { id: 'demo/advanced', oem: 'demo', model: 'advanced', summary: {} },
   { id: 'other/unit', oem: 'other', model: 'unit', summary: {} },
 ]
 
 test('groupByOem 按客户分组并保持后端顺序', () => {
   const groups = groupByOem(projects)
-  assert.deepEqual(groups.map((g) => g.label), ['DEMO', 'OTHER'])
+  assert.deepEqual(
+    groups.map((g) => g.label),
+    ['DEMO', 'OTHER'],
+  )
   assert.equal(groups[0].items.length, 2)
   assert.deepEqual(groupByOem([]), [])
 })
@@ -31,7 +39,11 @@ test('findProject 命中 / 未命中', () => {
 })
 
 test('canRun 需要项目 + 文件 + 非运行中', () => {
-  const base = { projectId: 'demo/basic', file: { name: 't.blf' }, running: false }
+  const base = {
+    projectId: 'demo/basic',
+    file: { name: 't.blf' },
+    running: false,
+  }
   assert.equal(canRun(base), true)
   assert.equal(canRun({ ...base, projectId: '' }), false)
   assert.equal(canRun({ ...base, file: null }), false)
@@ -40,14 +52,24 @@ test('canRun 需要项目 + 文件 + 非运行中', () => {
 
 test('summaryHighlights 跳过默认值,只留值得看的项', () => {
   const items = summaryHighlights({
-    summary: { crc: 'CRC16/CCITT', dataid: 'dataid.json', range: 'exclude_crc' },
+    summary: {
+      crc: 'CRC16/CCITT',
+      dataid: 'dataid.json',
+      range: 'exclude_crc',
+    },
   })
-  assert.deepEqual(items.map((i) => i.label), ['算法', 'DataID'])
+  assert.deepEqual(
+    items.map((i) => i.label),
+    ['算法', 'DataID'],
+  )
 
   const withRange = summaryHighlights({
     summary: { crc: 'C', range: 'custom_range', range_start: 0, range_end: 56 },
   })
-  assert.equal(withRange.find((i) => i.label === '范围').value, 'custom_range_0..56')
+  assert.equal(
+    withRange.find((i) => i.label === '范围').value,
+    'custom_range_0..56',
+  )
 })
 
 test('failureRows 按报文+信号合并并累计次数', () => {
@@ -69,8 +91,20 @@ test('failureRows 按报文+信号合并并累计次数', () => {
 test('failureRows 累加 RC 折叠帧数并按通道分开', () => {
   const report = {
     failures: [
-      { frame_id: 0x421, channel: 0, signal: 'RC_A', timestamp: 1, repeat_count: 1800 },
-      { frame_id: 0x421, channel: 1, signal: 'RC_A', timestamp: 1, repeat_count: 2 },
+      {
+        frame_id: 0x421,
+        channel: 0,
+        signal: 'RC_A',
+        timestamp: 1,
+        repeat_count: 1800,
+      },
+      {
+        frame_id: 0x421,
+        channel: 1,
+        signal: 'RC_A',
+        timestamp: 1,
+        repeat_count: 2,
+      },
     ],
   }
   const rows = failureRows(report)
@@ -82,8 +116,16 @@ test('failureRows 累加 RC 折叠帧数并按通道分开', () => {
 })
 
 test('frameRows 可按只失败筛选', () => {
-  const report = { frames: [{ frame_id: 1, fail: 0 }, { frame_id: 2, fail: 3 }] }
+  const report = {
+    frames: [
+      { frame_id: 1, fail: 0 },
+      { frame_id: 2, fail: 3 },
+    ],
+  }
   assert.equal(frameRows(report).length, 2)
-  assert.deepEqual(frameRows(report, true).map((f) => f.frame_id), [2])
+  assert.deepEqual(
+    frameRows(report, true).map((f) => f.frame_id),
+    [2],
+  )
   assert.deepEqual(frameRows(null, true), [])
 })
