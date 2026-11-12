@@ -25,10 +25,13 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
+from crc_checker.config import DEFAULT_MAX_FRAMES
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
 from webapp.catalog import PROJECT_ROOT, Project, get_project, scan_projects
 from webapp.service import RunStore, RunError, run_project
 from webapp.version import deployment_version
+
+logger = logging.getLogger("crc_checker.web")
 
 FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 DATA_DIR = PROJECT_ROOT / "data" / "web"
@@ -99,7 +102,10 @@ def safe_filename(name: str) -> str:
 
 
 def _parse_frame_limit(max_frames: str) -> int | None:
-    """``""``=配置默认, ``0``=不限, ``N``=前 N 帧;非法值是 400 不是 500。"""
+    """``""`` = config default, ``0`` = unlimited, ``N`` = first N frames.
+
+    Invalid values are a 400, not a 500.
+    """
     raw = max_frames.strip()
     try:
         value = int(raw) if raw else None
@@ -184,6 +190,33 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
     # killed process leaves them behind forever. Clear the staging area on
     # startup, like the report store already does for run directories.
     shutil.rmtree(UPLOADS_DIR, ignore_errors=True)
+
+    @api.exception_handler(Exception)
+    async def unhandled_exception_handler(request, exc: Exception) -> JSONResponse:
+        """Last-resort 500 for anything the routes did not anticipate.
+
+        Mirrors the CLI's rule that a traceback must never reach the user:
+        the response is a generic message, the detail goes to the server log
+        only. (Starlette logs the exception again after the response — the
+        duplication is expected.)
+        """
+        logger.error("Unhandled error on %s %s: %s",
+                     request.method, request.url.path, exc)
+        return JSONResponse(status_code=500,
+                            content={"message": "服务器内部错误,请重试或查看服务端日志"})
+
+    @api.get("/api/limits")
+    def limits() -> dict:
+        """Upload caps and defaults the page would otherwise hardcode.
+
+        Single source of truth: when the server's cap changes (e.g. via
+        ``CRC_WEB_MAX_UPLOAD_MB``), the page follows instead of lying.
+        """
+        return {
+            "max_upload_mb": max_upload_bytes() // (1024 * 1024),
+            "max_dbc_files": MAX_DBC_UPLOADS,
+            "manual_default_frames": DEFAULT_MAX_FRAMES,
+        }
 
     @api.get("/api/projects")
     def list_projects() -> dict:

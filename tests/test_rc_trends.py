@@ -24,7 +24,7 @@ from crc_checker.verify.engine import VerifyEngine
 
 
 def _all_pages(file_path: str) -> str:
-    """报告主文件 + 所有分片的内容拼接(断言时跨页看)。"""
+    """Concatenation of the main report file + all split parts (for cross-page assertions)."""
     stem = os.path.splitext(file_path)[0]
     text = ""
     for path in sorted(pathlib.Path(os.path.dirname(file_path)).glob(
@@ -272,7 +272,9 @@ class TestHtmlTrendCharts:
 
 
 class TestReportSizeLimit:
-    """大 trace 报告体积上限:超限先降级成只留失败帧,再超才截断(都写明)。"""
+    """Large-trace report size cap: over the limit, first downgrade to
+    failures-only frames, only then truncate (both announced).
+    """
 
     def _report(self, values):
         pm = DBCProtectionMap()
@@ -288,31 +290,36 @@ class TestReportSizeLimit:
         return note, _all_pages(path)
 
     def test_full_report_below_limit_is_untouched(self):
-        """帧段没超限时照常全量输出,也没有提示。"""
+        """Below the section limit the full report is written as usual, with no notice."""
         note, pages = self._write(self._report([0, 1, 2, 3, 4]), max_sections=100)
         assert note == ""
         assert 'class="report-note"' not in pages
         assert pages.count('class="frame-section') == 5
 
     def test_huge_report_falls_back_to_failures_only(self):
-        """逐帧全量超限 → 自动只留失败帧 + 顶部写明(不静默丢数据)。"""
-        # 30 帧正常 + 1 段失败(连续两帧 14):32 个帧段、1 段异常
+        """Full per-frame output over the limit -> automatically keep only
+        failing frames + say so at the top (no silent data loss).
+        """
+        # 30 clean frames + 1 failure episode (two consecutive 14s): 32 frame
+        # sections, 1 bad episode
         values = [i % 15 for i in range(30)] + [14, 14]
         note, pages = self._write(self._report(values), max_sections=10)
         assert "已自动改为只保留失败帧" in note
         assert 'class="report-note"' in pages
-        assert pages.count('class="frame-section') == 1     # 只剩失败帧
+        assert pages.count('class="frame-section') == 1     # only the failing frame
 
     def test_sections_truncated_when_failures_also_exceed_limit(self):
-        """失败帧也超限时才截断,并说明只给了前 N 段。"""
-        values = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]   # 多段失败
+        """Truncate only when failing frames alone also exceed the limit,
+        and say that only the first N sections are given.
+        """
+        values = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]   # several failure episodes
         note, pages = self._write(self._report(values), only_failures=True,
                                   max_sections=2)
         assert "已截断为前 2 段" in note
         assert pages.count('class="frame-section') == 2
 
     def test_zero_limit_keeps_everything(self):
-        """max_sections=0 → 不限(给需要全量逐帧报告的场合留口子)。"""
+        """max_sections=0 -> unlimited (escape hatch for full per-frame reporting)."""
         note, pages = self._write(self._report([0, 1, 2, 3, 4, 5, 6, 7, 8]),
                                   max_sections=0)
         assert note == ""
@@ -320,7 +327,9 @@ class TestReportSizeLimit:
 
 
 class TestRcErrorAccounting:
-    """报告/结果视图的异常口径:帧数与连续异常段数并列,通过率不虚报 100%。"""
+    """Error accounting for the report/result view: frame counts and
+    consecutive-failure episode counts side by side, pass rate never a fake 100%.
+    """
 
     def _report(self, values):
         pm = DBCProtectionMap()
@@ -335,7 +344,7 @@ class TestRcErrorAccounting:
         return TestHtmlTrendCharts._render(report)  # pylint: disable=protected-access
 
     def test_count_rc_episodes(self):
-        """连续失败算一段;恢复后再失败是新的一段。"""
+        """Consecutive failures are one episode; failing again after recovery starts a new one."""
         def pts(flags):
             return [(float(i), 0, ok, "" if ok else "STALE")
                     for i, ok in enumerate(flags)]
@@ -347,25 +356,29 @@ class TestRcErrorAccounting:
         assert count_rc_episodes([]) == 0
 
     def test_chart_header_shows_frames_and_episodes(self):
-        """卡死计数器:标题给「N 帧 · 1 段」,不再是让人读成 N 次错误的裸帧数。"""
+        """Stuck counter: the header shows "N frames · 1 episode" instead of
+        a bare frame count that reads as N separate errors.
+        """
         html = self._render(self._report([0, 1, 2, 2, 2, 2, 2, 2, 2, 2]))
         assert ('errors: <span class="err">7</span> frames · '
                 '<span class="err">1</span> episode') in html
         assert "samples: 10" in html
 
     def test_clean_chart_header_shows_zero(self):
-        """全过的图只显示绿色 0,不带段数。"""
+        """A clean chart shows only a green 0, with no episode count."""
         html = self._render(self._report([0, 1, 2, 3, 4]))
         assert '<span class="ok">errors: 0</span>' in html
         assert "episodes" not in html
 
     def test_isolated_failures_count_as_separate_episodes(self):
-        """偶发失败(不连续)按段数累计。"""
+        """Sporadic (non-consecutive) failures are counted per episode."""
         html = self._render(self._report([0, 1, 1, 2, 3, 3, 4]))
         assert '<span class="err">2</span> episodes' in html
 
     def test_format_rate_never_rounds_away_a_failure(self):
-        """1 个失败 / 40 万帧也必须显示成非 100%(原来 .1% 会写成 100.0%)。"""
+        """Even 1 failure in 400k frames must show as non-100% (a naive .1%
+        format would round it up to 100.0%).
+        """
         assert format_rate(3, 3) == "100.0%"
         assert format_rate(0, 0) == "-"
         assert format_rate(4217, 4218) == "99.98%"
@@ -373,19 +386,21 @@ class TestRcErrorAccounting:
         assert format_rate(244587, 244588) == "99.9996%"
 
     def test_summary_card_not_green_when_failures_exist(self):
-        """RC 有失败时卡片不再是绿色 pass(避免绿 100% 旁边列着失败项)。"""
+        """With RC failures the card is no longer a green pass (a green
+        100% must not sit next to listed failure items).
+        """
         html = self._render(self._report([0, 1, 2, 2, 2]))
         assert '<div class="card fail"><div class="label">RC Pass</div>' in html
         assert '<div class="card pass"><div class="label">RC Pass</div>' not in html
 
     def test_rc_card_counts_samples_not_folded_verdicts(self):
-        """RC 卡片按采样计:折叠的失败帧不能被缩成 1 个校验项。"""
+        """The RC card counts samples: folded failing frames must not shrink into 1 check item."""
         report = self._report([0, 1, 2, 2, 2])
-        assert report.fail_count == 1          # 折叠成一条 episode
+        assert report.fail_count == 1          # folded into one episode
         html = self._render(report)
-        assert "<div class=\"value\">3/5</div>" in html   # 5 采样 / 3 通过
+        assert "<div class=\"value\">3/5</div>" in html   # 5 samples / 3 pass
 
     def test_summary_cards_stay_green_when_clean(self):
-        """全过时卡片仍是绿色 pass。"""
+        """With everything passing the card stays a green pass."""
         html = self._render(self._report([0, 1, 2, 3, 4]))
         assert '<div class="card pass"><div class="label">RC Pass</div>' in html

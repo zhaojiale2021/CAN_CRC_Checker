@@ -1,10 +1,14 @@
-"""滚动计数器趋势图与报告口径辅助(与报告 HTML 骨架分离)。
+"""Rolling-counter trend charts and report accounting helpers.
 
-* 一张图一个 RC 信号:内联 SVG 折线 + 错误红点 + max_valid 阈值线;
-  HTML 报告 `report/html.py` 与网页结果视图共用这里的几何/抽稀逻辑。
-* 口径辅助:`count_rc_episodes()`(连续异常段数)与 `rc_sample_stats()`
-  (采样口径的通过/总数)、`format_rate()`(有失败时不写成 100%)—— 折叠 verdict
-  不能拿去汇总(见 CLAUDE.md「Accounting」)。
+Separated from the report HTML skeleton (``report/html.py``).
+
+* One chart per RC signal: inline SVG line + error dots + max_valid
+  threshold line. Both the HTML report and the web results view share the
+  geometry / decimation logic here.
+* Accounting helpers: ``count_rc_episodes()`` (consecutive error runs),
+  ``rc_sample_stats()`` / ``crc_sample_stats()`` / ``check_sample_stats()``
+  (sample-based pass/total) and ``format_rate()`` (never rounds a failing
+  run up to 100%) — folded verdicts must never be summed (see CLAUDE.md).
 """
 
 from __future__ import annotations
@@ -20,8 +24,9 @@ RC_X0, RC_X1 = 44, 984
 RC_Y0, RC_Y1 = 210, 14
 RC_MAX_POINTS = 1000          # drawn pass points (min/max-decimated beyond this)
 RC_MAX_ERROR_DOTS = 2000      # drawn error dots (uniformly thinned beyond this)
-# 顶点标记只给稀疏点:8px 标记需要 ~8px 间距(940px 绘图区 ≈ 117 点);
-# 密集时画干净折线,逐点读数交给 hover 十字线(与标记无关)。
+# Vertex markers only for sparse series: an 8px marker needs ~8px spacing
+# (940px plot ≈ 117 points). Dense series draw a clean line; the per-point
+# readout is the hover crosshair's job (independent of the markers).
 RC_MARKER_LIMIT = 120
 
 # Valid sample points: one shared marker referenced by sparse charts'
@@ -99,13 +104,22 @@ def _split_trend_points(points: list) -> tuple[list, list]:
     return pass_pts, fail_pts
 
 
-def rc_sample_stats(report) -> tuple[int, int]:
-    """RC 的采样口径 ``(通过, 总数)``。
+def crc_sample_stats(report) -> tuple[int, int]:
+    """CRC accounting ``(passed, total)`` — one verdict per frame."""
+    total = sum(1 for v in report.verdicts if v.algorithm == "crc")
+    passed = sum(1 for v in report.verdicts if v.algorithm == "crc" and v.is_pass)
+    return passed, total
 
-    连续失败帧被折叠成 1 条 verdict(报告不逐帧刷屏),所以逐帧的通过率只能
-    从 ``rc_series`` 数 —— 否则 1800 个失败帧在汇总里缩成「1 个校验项」,
-    卡片就会出现 242788/242789 = 99.9996% 这种和趋势图对不上的数字
-    series 缺失时(例如 run_stream)退回 verdict 计数。
+
+def rc_sample_stats(report) -> tuple[int, int]:
+    """RC accounting ``(passed, total)`` counted by sample, not by verdict.
+
+    Consecutive failing frames fold into ONE verdict (so reports don't spam
+    one line per frame), so the per-frame pass rate can only be counted from
+    ``rc_series`` — otherwise 1800 failing frames shrink to "1 check" in the
+    summary and the card shows 242788/242789 = 99.9996%, a number that cannot
+    be reconciled with the trend chart. Falls back to verdict counts when the
+    series is missing (e.g. run_stream).
     """
     if not report.rc_series:
         total = sum(1 for v in report.verdicts if v.algorithm != "crc")
@@ -118,11 +132,23 @@ def rc_sample_stats(report) -> tuple[int, int]:
     return passed, total
 
 
-def count_rc_episodes(points: list) -> int:
-    """RC series → 连续异常段数(每段是一串挨着的失败帧,如计数器卡死)。
+def check_sample_stats(report) -> tuple[int, int]:
+    """All checks ``(passed, total)``: CRC verdicts + RC samples.
 
-    报告和结果视图都按「段」和「帧」两个口径展示:一个卡死计数器会连续失败
-    上千帧,只显示帧数会让人以为有一千次独立错误。
+    The one accounting both the CLI summary and the web results view use, so
+    the two cannot drift apart.
+    """
+    crc_pass, crc_total = crc_sample_stats(report)
+    rc_pass, rc_total = rc_sample_stats(report)
+    return crc_pass + rc_pass, crc_total + rc_total
+
+
+def count_rc_episodes(points: list) -> int:
+    """RC series → number of consecutive error runs ("episodes").
+
+    Both the report and the results view show episodes AND frames: a stuck
+    counter fails thousands of frames in a row, and frames alone read as
+    thousands of independent errors.
     """
     episodes = 0
     prev_failed = False
@@ -134,10 +160,12 @@ def count_rc_episodes(points: list) -> int:
 
 
 def format_rate(passed: int, total: int) -> str:
-    """通过率文案:有失败项时绝不四舍五入成 100%(卡片绿 100% 却又列着失败)。
+    """Pass-rate text that never rounds a failing run up to 100%.
 
-    ``0/0`` 表示没有执行任何校验,返回 ``-`` 而不是 100% —— 否则 RC-only
-    或未识别到保护信号的运行会显示一个假的满分。
+    A green "100%" card next to listed failures is a lie, so the rate gains
+    decimals until it visibly drops below 100. ``0/0`` means no checks ran
+    and yields ``-`` instead of 100% — otherwise an RC-only run or one with
+    no recognized protection signals would show a perfect score.
     """
     if total <= 0:
         return "-"
@@ -152,10 +180,11 @@ def format_rate(passed: int, total: int) -> str:
 
 
 def _rc_error_stats(errors: int, episodes: int) -> str:
-    """RC 趋势图标题里的异常口径(HTML):帧数 + 段数,数字保持红/绿着色。
+    """Chart-header error accounting (HTML): frames + episodes, coloured.
 
-    一个卡死计数器会连续失败上千帧,只显示帧数会读成上千次独立错误 —— 帧数
-    与段数并列。
+    A stuck counter fails thousands of frames in a row; frames alone would
+    read as thousands of independent errors, so the episode count sits
+    alongside.
     """
     if not errors:
         return '<span class="ok">errors: 0</span>'

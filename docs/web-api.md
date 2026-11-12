@@ -73,6 +73,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 |------|------|------|
 | GET | `/api/projects` | 项目列表（服务端扫描项目目录） |
 | GET | `/api/presets` | 内置算法列表及验证状态 |
+| GET | `/api/limits` | 上传上限与默认值（页面从这里取,不硬编码） |
 | POST | `/api/verify` | multipart 上传 trace 并按项目配置校验 |
 | POST | `/api/verify-sample` | 直接校验项目自带的示例 trace（只传项目 id + 文件名） |
 | POST | `/api/verify-manual` | multipart 上传 DBC + trace（+ DataID）并按页面填写的配置校验 |
@@ -105,6 +106,20 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 ```
 
 只返回文件名，不返回任何服务端路径。
+
+### `GET /api/limits`
+
+服务端单源下发上传/默认值限制，前端页面据此渲染提示与默认值
+（改 `CRC_WEB_MAX_UPLOAD_MB` 环境变量后页面自动跟随，不会出现提示与
+实际限制不一致）：
+
+```json
+{
+  "max_upload_mb": 200,
+  "max_dbc_files": 10,
+  "manual_default_frames": 6000
+}
+```
 
 ### `POST /api/verify`
 

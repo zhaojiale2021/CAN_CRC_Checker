@@ -21,7 +21,9 @@ pytest
 pytest tests/test_crc_engine.py::TestCRCEngine::test_crc8_autosar_known_vector
 pytest --cov=crc_checker --cov=cli --cov=webapp   # CI gate: 80%
 pylint $(git ls-files '*.py')                     # must stay at 10.00/10
+cd frontend && npm run lint                       # eslint + prettier (CI gate)
 cd frontend && npm test                           # node --test
+cd frontend && npm run test:component             # vitest component smoke tests
 cd frontend && npm run build                      # rebuild committed frontend/dist
 
 crc-check presets
@@ -98,6 +100,15 @@ See [docs/web-api.md](docs/web-api.md).
   validation status; add a known-answer test.
 - **New project** → put `config.json` (+ DBC/DataID/trace) under `projects/`.
 
+### Language conventions
+
+Code comments, docstrings and CLI messages are English. User-facing product
+text stays Chinese: HTML report copy, the web UI, and web API error messages
+(the tests assert those literals byte-for-byte). `classify.py`'s `'另附'`
+string is functional — it matches Chinese DBC comments; never translate it.
+Server caps/defaults are single-sourced: `GET /api/limits` feeds the frontend;
+don't hardcode 200MB / 10 DBCs / 6000 frames in `frontend/src`.
+
 ## Configuration reference
 
 See `crc_checker/config.py` (`CONFIG_SCHEMA_DOC`) and
@@ -109,4 +120,6 @@ See `crc_checker/config.py` (`CONFIG_SCHEMA_DOC`) and
 resolver matching, custom patterns, profile/DataID logic, RC folding and trend
 charts, report size limits and summary accounting, CLI exit-code gates, the web
 layer (catalog, version, sample-trace API, run store), and the synthetic example
-end to end. The frontend's pure-logic tests run with `cd frontend && npm test`.
+end to end. The frontend's pure-logic tests run with `cd frontend && npm test`,
+component smoke tests with `npm run test:component`, and `npm run lint`
+(eslint + prettier) gates CI alongside pylint.

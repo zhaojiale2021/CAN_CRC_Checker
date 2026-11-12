@@ -17,12 +17,22 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROJECTS_DIR = PROJECT_ROOT / "projects"
 EXAMPLES_DIR = PROJECT_ROOT / "examples"
+
+# Scan cache: (root, stat signature) -> projects. ``get_project`` runs on
+# every verify request; re-reading every config.json each time made the scan
+# the per-request cost. The signature is stat-only (names + mtimes), so a
+# new/removed project, an edited config or a changed trace/DBC directory all
+# invalidate it, while repeated scans cost a few stat calls.
+_SCAN_CACHE: dict[tuple[str, tuple], list[Project]] = {}
+_SCAN_CACHE_MAX_ROOTS = 8
+_SCAN_LOCK = threading.Lock()
 
 
 def projects_root() -> Path:
@@ -162,16 +172,68 @@ def _project_for(group: str, model_dir: Path) -> Project:
     )
 
 
+def _dir_signature(base: Path) -> tuple:
+    """Stat-only snapshot of the project tree, three levels deep.
+
+    Layout is ``<root>/<group>/<project>/...``: a project's ``config.json``
+    and its ``dbc/`` + ``trace/`` directories sit two levels below the scan
+    root, so three stat levels cover every file the scan reads. Files are
+    listed individually because a *directory's* mtime only moves on
+    create/delete/rename — editing config.json in place changes the file's
+    own mtime, not its parent's.
+    """
+    try:
+        def snapshot(path: Path, depth: int) -> tuple:
+            entries = []
+            for child in sorted(path.iterdir()):
+                try:
+                    stat = child.stat()
+                    # Size alongside mtime: on Windows two writes within one
+                    # timer tick (~15ms) can carry the same mtime.
+                    item = (child.name, stat.st_size, stat.st_mtime_ns)
+                except OSError:
+                    continue
+                if depth > 1 and child.is_dir():
+                    try:
+                        item = (*item, snapshot(child, depth - 1))
+                    except OSError:
+                        pass
+                entries.append(item)
+            return tuple(entries)
+
+        return snapshot(base, 3)
+    except OSError:
+        return ()
+
+
 def scan_projects(root: Path | None = None) -> list[Project]:
     """Scan the projects directory and return every runnable project.
 
-    Directories without a ``config.json`` are skipped (both as a project and as
-    a group).
+    Directories without a ``config.json`` are skipped (both as a project and
+    as a group). Results are cached per root until the stat signature changes.
     """
     base = Path(root) if root else projects_root()
     if not base.is_dir():
         return []
 
+    key = str(base.resolve())
+    signature = _dir_signature(base)
+    with _SCAN_LOCK:
+        cached = _SCAN_CACHE.get(key)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
+
+    projects = _scan_projects_uncached(base)
+    with _SCAN_LOCK:
+        # Tests pass a fresh tmp root per case — keep the cache bounded.
+        if key not in _SCAN_CACHE and len(_SCAN_CACHE) >= _SCAN_CACHE_MAX_ROOTS:
+            _SCAN_CACHE.pop(next(iter(_SCAN_CACHE)))
+        _SCAN_CACHE[key] = (signature, projects)
+    return projects
+
+
+def _scan_projects_uncached(base: Path) -> list[Project]:
+    """Read every project under ``base`` (config.json, DBC/trace listings)."""
     projects: list[Project] = []
     for entry in sorted(p for p in base.iterdir() if p.is_dir()):
         if (entry / "config.json").is_file():

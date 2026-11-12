@@ -30,8 +30,8 @@ class TestCRCEngine:
         assert result == 0x4B, f"CRC8/SAE-J1850('123456789') expected 0x4B, got 0x{result:02X}"
 
     def test_crc8_h2f_known_vector(self):
-        """CRC8/H2F: 0x2F, init=0xFF, xor=0xFF, no reflect(MSB-first)——
-        与固件 Crc_CalculateCRC8H2F 一致(CRC_8H2F_Tbl[1]=0x2F)。
+        """CRC8/H2F: 0x2F, init=0xFF, xor=0xFF, no reflect (MSB-first) —
+        matches the firmware Crc_CalculateCRC8H2F (CRC_8H2F_Tbl[1]=0x2F).
         Known vector: "123456789" → 0xDF
         """
         params = get_preset("CRC8/H2F")
@@ -40,7 +40,9 @@ class TestCRCEngine:
         assert result == 0xDF, f"CRC8/H2F('123456789') expected 0xDF, got 0x{result:02X}"
 
     def test_dataid_width_one_appends_low_byte_only(self):
-        """P02:DataIDList[counter] 单字节进 CRC —— dataid_width=1 只追加低字节。"""
+        """P02: DataIDList[counter] single byte enters the CRC —
+        dataid_width=1 appends the low byte only.
+        """
         params = get_preset("CRC8/H2F")
         engine = CRCEngine(params)
         rng = CRCRange(mode="custom_range", start_byte=2, end_byte=-1,
@@ -48,7 +50,7 @@ class TestCRCEngine:
                        dataid_byte_order="lo_hi", dataid_width=1)
         frame = CanFrame(timestamp=1.0, arbitration_id=0x400, dlc=8,
                          data=bytes([0x20, 0x00, 0x01, 0x10, 0, 0, 0, 0]))
-        # CRC 输入 = bytes 2..7 + 单字节 0xFF(不是 0xFF 0x00 两个字节)
+        # CRC input = bytes 2..7 + single byte 0xFF (not the two bytes 0xFF 0x00)
         expected = engine.compute(bytes(frame.data[2:8]) + b"\xFF")
         result = engine.compute_for_frame(frame, rng, 8, 8, "little_endian")
         assert result == expected
@@ -183,7 +185,8 @@ class TestCRCEngineCaching:
     """Build the lookup table once per parameter set (large-trace baseline)."""
 
     def test_engine_built_once_per_params_not_per_frame(self):
-        """逐报文参数不等同默认参数时,不能每帧重建查找表。
+        """Per-message params differing from the default must not rebuild
+        the lookup table every frame.
 
         Per-message parameters must not rebuild the 256-entry table per frame;
         a large trace used to take 49s (3.8s after caching).
@@ -214,11 +217,11 @@ class TestCRCEngineCaching:
                                  data=bytes([0x11] * 7 + [0x00]))
                 verifier.verify(frame, prot)
 
-        # 2 = 默认参数 + 该报文的参数;绝不随帧数增长
+        # 2 = default params + this message's params; must never grow with frames
         assert len(builds) == 2, f"built {len(builds)} tables for 50 frames"
 
     def test_distinct_message_params_share_one_engine(self):
-        """不同报文但参数相同 → 共用同一引擎(按值缓存)。"""
+        """Different messages with identical params share one engine (cached by value)."""
         # pylint: disable=import-outside-toplevel,protected-access
         from crc_checker.protect.checksum import CRCVerifier
 

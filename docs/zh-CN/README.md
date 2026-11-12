@@ -187,19 +187,21 @@ tests/                  pytest 测试
 ```bash
 pytest --cov=crc_checker --cov=cli --cov=webapp   # CI 门槛 80%
 pylint $(git ls-files '*.py')                     # 必须 10.00/10
-cd frontend && npm test                           # node --test（29 个）
+cd frontend && npm run lint                       # eslint + prettier 检查
+cd frontend && npm test                           # node --test(纯逻辑单测)
+cd frontend && npm run test:component             # vitest 组件冒烟测试
 cd frontend && npm install && npm run build       # 重新构建 dist
 python examples/generate_example.py               # 重新生成示例
 ```
 
-CI 在 Python 3.9、3.11、3.13 上跑同样的 pylint 与 pytest，另有一个 Windows
-pytest 作业，并额外跑前端单测和 `frontend/dist` 是否与源码构建一致。
-pre-push 钩子会用 CI 同环境跑 lint + 测试。
+CI 在 Python 3.9、3.11、3.13 上跑同样的 pylint 与 pytest,另有一个 Windows
+pytest 作业,并额外跑前端 lint、纯逻辑单测、组件测试和 `frontend/dist`
+是否与源码构建一致。pre-push 钩子会用 CI 同环境跑 lint + 测试。
 
 ## 🤝 贡献
 
-欢迎提 issue / PR。提交前请先跑上面的 lint 与测试；CI 会跑同样的检查，
-外加前端单测和 dist 新鲜度检查。
+欢迎提 issue / PR。提交前请先跑上面的 lint 与测试;CI 会跑同样的检查,
+外加前端 lint / 单测 / 组件测试和 dist 新鲜度检查。
 
 ## 📄 许可证
 

@@ -403,29 +403,32 @@ def _build_frame_html(verdicts: list[VerifyVerdict], frame_data: bytes,
     </div>"""
 
 
-# 单文件帧段数上限 —— 超过则拆分为多份完整页面(report.html + report_p2.html…),
-# 每份 ≤ SPLIT_MAX_SECTIONS 个帧段,浏览器可加载;各份之间相对链接互跳。
+# Frame-section cap per single file — beyond it the report splits into
+# several complete pages (report.html + report_p2.html…), each with at most
+# SPLIT_MAX_SECTIONS sections so a browser can load it; pages cross-link.
 SPLIT_MAX_SECTIONS = 20000
 
-# 单次报告(所有分片合计)的帧段上限 —— 逐帧十六进制转储约 1KB/段,不限帧的大
-# trace(几十万帧)会写出几百 MB 的报告:超限时先自动降级成「只保留失败帧」,
-# 仍超限再截断,并在报告顶部写明。0 = 不限(也见 config.output.max_report_sections)。
+# Frame-section cap for one report (all split parts combined) — a per-frame
+# hex dump is ~1KB/section, so an unlimited big trace (hundreds of thousands
+# of frames) would write a report of several hundred MB: beyond the limit the
+# report first downgrades to failures-only, then truncates, saying so at the
+# top. 0 = unlimited (also see config.output.max_report_sections).
 REPORT_FULL_MAX_SECTIONS = 30000
 
 def _split_part_path(file_path: str, page_no: int) -> str:
-    """report.html → report_p2.html(与主文件同目录,页面内相对链接互跳)。"""
+    """report.html → report_p2.html (same directory; pages cross-link)."""
     path = Path(file_path)
     return str(path.with_name(f"{path.stem}_p{page_no}{path.suffix}"))
 
 
 def _split_nav(page_no: int, total: int, file_path: str) -> str:
-    """拆分页导航条(第一页是提示 + 下一页;其余是 上一页/下一页)。"""
+    """Split-page nav bar (first page: notice + next; others: prev/next)."""
     path = Path(file_path)
     stem = path.stem
 
     def part_name(n: int) -> str:
         # Part files keep the configured suffix (``report.htm`` → ``report_p2.htm``);
-        # linking to ``.html`` regardless produced dead 上一页/下一页 links.
+        # linking to ``.html`` regardless produced dead prev/next links.
         return path.name if n == 1 else f"{stem}_p{n}{path.suffix}"
 
     links = [f"第 {page_no}/{total} 页"]
@@ -674,17 +677,22 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     - Full payload hex dump with CRC/RC highlighting
     - Hover tooltips, collapsible sections, filter buttons
 
-    帧段超过 ``SPLIT_MAX_SECTIONS`` 时拆分为多份完整页面:主文件(带 RC 趋势图
-    和拆分提示)+ ``<stem>_p2.html``… 每份之间相对链接互跳(CLI 同目录;
-    web 由 /api/runs/<id>/<filename> 路由映射到缓存目录里的同名分片)。
+    Beyond ``SPLIT_MAX_SECTIONS`` frame sections the report splits into
+    several complete pages: the main file (with RC trend charts and the split
+    notice) plus ``<stem>_p2.html``…, cross-linked relatively (CLI writes them
+    side by side; the web maps /api/runs/<id>/<filename> onto the cached
+    parts).
 
-    ``max_sections`` 是**单次报告**的帧段上限(``None`` → ``REPORT_FULL_MAX_SECTIONS``,
-    0 = 不限)。逐帧十六进制转储约 1KB/段,不限帧的大 trace 会生成几百 MB:超限时
-    先自动降级成「只保留失败帧」,仍然超限才截断前 N 段 —— 两种情况都在报告顶部
-    写明,不静默丢数据。
+    ``max_sections`` caps the frame sections of ONE report (``None`` →
+    ``REPORT_FULL_MAX_SECTIONS``, 0 = unlimited). A per-frame hex dump is
+    ~1KB/section, so an unlimited big trace yields several hundred MB: beyond
+    the limit the report first downgrades to failures-only, and only beyond
+    that truncates to the first N sections — both are announced at the top of
+    the report, never silently dropped.
 
     Returns:
-        给调用方看的提示文本(空串 = 没有降级/截断),web 结果页直接展示。
+        Notice for the caller (empty string = no downgrade/truncation); the
+        web results page shows it directly.
     """
 
     limit = REPORT_FULL_MAX_SECTIONS if max_sections is None else max_sections
@@ -697,7 +705,8 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
 
     grouped = _group_verdicts(verdicts)
     if limit and not only_failures and len(grouped) > limit and report.failed:
-        # 大 trace 默认给逐帧全量报告会写出几百 MB;失败帧视图才是要看的
+        # A full per-frame report of a big trace would be hundreds of MB;
+        # the failures-only view is what there is to see.
         notes.append(
             f"帧段 {len(grouped)} 超过单份报告上限 {limit},"
             "已自动改为只保留失败帧(完整逐帧视图请分段校验或调大 "
@@ -733,8 +742,9 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
         )
         frame_sections.append(section_html)
 
-    # Compute separate CRC and RC stats. RC 用采样口径:失败帧被折叠成一条
-    # verdict,数 verdict 会让 1800 个失败帧只算一个校验项。
+    # Compute separate CRC and RC stats. RC is counted by sample: failing
+    # frames fold into one verdict, so counting verdicts makes 1800 failing
+    # frames one check item.
     crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
     crc_pass = sum(1 for v in report.verdicts if v.algorithm == "crc" and v.is_pass)
     rc_pass, rc_total = rc_sample_stats(report)

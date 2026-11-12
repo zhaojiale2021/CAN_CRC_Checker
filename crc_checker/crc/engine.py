@@ -149,7 +149,7 @@ class CRCEngine:
 
         Byte order is controlled by crc_range.dataid_byte_order:
           - "lo_hi": low byte first (default)
-          - "hi_lo": high byte first (E2E 反序)
+          - "hi_lo": high byte first (E2E byte-swapped)
 
         Args:
             frame: The CAN frame with payload data.
@@ -186,7 +186,7 @@ class CRCEngine:
             dataid_lo = crc_range.dataid & 0xFF
             dataid_hi = (crc_range.dataid >> 8) & 0xFF
             if crc_range.dataid_width == 1:
-                # P02: CRC 输入只含 DataIDList[counter] 一个字节(低字节)
+                # P02: the CRC input is the single DataIDList[counter] byte (low byte)
                 dataid_bytes = bytes([dataid_lo])
             elif crc_range.dataid_byte_order == "hi_lo":
                 dataid_bytes = bytes([dataid_hi, dataid_lo])

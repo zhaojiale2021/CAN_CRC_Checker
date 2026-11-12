@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,8 @@ from crc_checker.verify.engine import VerifyEngine
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
 from crc_checker.verify.runner import RunnerError, build_protection_map, run_config
 from webapp.catalog import get_project, scan_projects
-from webapp.main import UPLOADS_DIR, create_app, safe_filename
+from webapp.main import (UPLOADS_DIR, MAX_DBC_UPLOADS, create_app,
+                         max_upload_bytes, safe_filename)
 from webapp.service import (RunStore, RunOutcome, report_to_dict,
                             resolve_max_frames)
 from webapp.version import DeploymentVersion, read_revision
@@ -99,7 +101,7 @@ class TestCatalog:
 
 
 # ---------------------------------------------------------------------------
-# Deployment version (commit 节点)
+# Deployment version (commit node)
 # ---------------------------------------------------------------------------
 
 class TestVersion:
@@ -150,7 +152,7 @@ class TestVersion:
         assert info["started_at"].endswith("+00:00")
 
     def test_unknown_checkout_is_none_not_false(self, tmp_path):
-        """No .git -> "版本未知": checkout_changed must be JSON null, not false."""
+        """No .git -> "version unknown": checkout_changed must be JSON null, not false."""
         info = DeploymentVersion(tmp_path).info()
         assert info["running"]["commit"] is None
         assert info["checkout_changed"] is None
@@ -216,7 +218,7 @@ class TestServiceHelpers:
         assert resolve_max_frames(None, 2000) == 2000     # config default
         assert resolve_max_frames(500, 2000) == 500       # explicit override
         assert resolve_max_frames(0, 2000) is None        # unlimited
-        assert resolve_max_frames(None, None) == DEFAULT_MAX_FRAMES  # 默认帧上限
+        assert resolve_max_frames(None, None) == DEFAULT_MAX_FRAMES  # default frame cap
 
     def test_run_store_evicts_oldest(self, tmp_path):
         """Only the newest runs stay downloadable."""
@@ -228,7 +230,9 @@ class TestServiceHelpers:
         assert store.get("r2") is not None
 
     def test_run_store_removes_split_parts_on_evict(self, tmp_path):
-        """淘汰旧 run 时连分片一起删(只删主文件会把分片永久留在磁盘上)。"""
+        """Evicting a run also removes its split parts (deleting only the
+        main file would leave the parts on disk forever).
+        """
         store = RunStore(tmp_path, max_runs=1)
         for part in ("r0.html", "r0_p2.html", "r0_p3.html"):
             (tmp_path / part).write_text("x", encoding="utf-8")
@@ -239,7 +243,9 @@ class TestServiceHelpers:
         assert not list(tmp_path.glob("*.html"))
 
     def test_new_store_purges_stale_reports(self, tmp_path):
-        """重启后 run 索引没了,旧报告文件也应清掉(否则无限攒)。"""
+        """After a restart the run index is gone, but stale report files
+        must still be purged (otherwise they pile up forever).
+        """
         (tmp_path / "old.html").write_text("x", encoding="utf-8")
         (tmp_path / "old_p2.html").write_text("x", encoding="utf-8")
         RunStore(tmp_path)
@@ -305,7 +311,8 @@ class TestApi:
         first = trends[0]
         assert {"signal", "frame_id_hex", "channel", "bit_max", "max_valid",
                 "samples", "errors", "episodes", "t0", "tspan", "points"} <= set(first)
-        # 段数与帧数同口径:段数 ≤ 帧数,且每个错误点至少属于一段
+        # Same accounting as frame counts: episodes <= frames, and every
+        # error point belongs to at least one episode.
         assert all(t["episodes"] <= t["errors"] for t in trends)
         assert all(t["errors"] == 0 or t["episodes"] >= 1 for t in trends)
         # signals with errors first: once a clean signal appears, none follows with errors
@@ -326,14 +333,16 @@ class TestApi:
         assert report.status_code == 200
         assert "CAN CRC Check Report" in report.text
         assert client.get("/api/runs/does-not-exist/report.html").status_code == 404
-        # 每个 run 一份独立子目录:主文件写在 runs/<run_id>/<run_id>.html
+        # One sub-directory per run: the main file goes to runs/<run_id>/<run_id>.html
         run_id = body["run_id"]
         main = tmp_path / "runs" / run_id / f"{run_id}.html"
         assert main.is_file()
         assert not (tmp_path / "runs" / f"{run_id}.html").exists()
 
     def test_report_split_parts_served(self, client, monkeypatch):
-        """超上限报告拆分:主文件带导航条,分片 URL 可下载,未知分片 404。"""
+        """Over-limit reports are split: the main file carries a nav bar,
+        part URLs are downloadable, unknown parts 404.
+        """
         monkeypatch.setattr(html_mod, "SPLIT_MAX_SECTIONS", 100)
         with open(EXAMPLE_TRACE, "rb") as handle:
             body = client.post("/api/verify", data={
@@ -342,7 +351,7 @@ class TestApi:
         run_id = body["run_id"]
         main = client.get(body["report_url"])
         assert main.status_code == 200
-        assert "page-nav" in main.text  # 拆分提示 + 上一/下一页链接
+        assert "page-nav" in main.text  # split notice + prev/next page links
         assert f'href="{run_id}_p2.html"' in main.text
         # The nav's relative link resolves to the part route and works.
         part = client.get(f"/api/runs/{run_id}/{run_id}_p2.html")
@@ -351,7 +360,7 @@ class TestApi:
         # Unknown part names (traversal / made-up) are rejected.
         assert client.get(f"/api/runs/{run_id}/{run_id}_p9.html").status_code == 404
         assert client.get(f"/api/runs/{run_id}/..%2F..%2Fetc.html").status_code == 404
-        # 别的 run 的分片名也不能借当前 run 的 URL 取到(目录隔离)
+        # Parts of another run must not be reachable via this run's URL (directory isolation)
         assert client.get(f"/api/runs/{run_id}/otherrun_p2.html").status_code == 404
 
     def test_verify_unknown_project(self, client):
@@ -393,7 +402,7 @@ class TestApi:
 
 
 class TestFrameAccounting:
-    """报文汇总按「帧」计,不按折叠后的 verdict 计。"""
+    """Message summaries are counted per frame, not per folded verdict."""
 
     @staticmethod
     def _report(values: list[int]) -> object:
@@ -422,9 +431,9 @@ class TestFrameAccounting:
         return engine.run(Reader())
 
     def test_folded_frames_still_count_as_frames(self):
-        """0,1,2,2,2 → 5 帧 / 3 通过 / 2 失败(verdict 只有一条 ×2)。"""
+        """0,1,2,2,2 -> 5 frames / 3 pass / 2 fail (only one verdict, x2)."""
         report = self._report([0, 1, 2, 2, 2])
-        assert report.fail_count == 1            # 折叠成一条 episode
+        assert report.fail_count == 1            # folded into one episode
         payload = report_to_dict(report)
         row = payload["frames"][0]
         assert (row["total"], row["pass"], row["fail"]) == (5, 3, 2)
@@ -433,7 +442,7 @@ class TestFrameAccounting:
         assert signal["last_detail"].startswith("STALE")
 
     def test_check_totals_are_sample_based(self):
-        """卡片口径:校验项/失败也按帧采样,不按折叠 verdict。"""
+        """Card accounting: checks/failures count per frame sample, not per folded verdict."""
         payload = report_to_dict(self._report([0, 1, 2, 2, 2]))
         assert payload["check_total"] == 5
         assert payload["check_pass"] == 3
@@ -461,7 +470,7 @@ class TestFrameAccounting:
 
 
 class TestSampleTraceApi:
-    """项目自带 trace 可直接校验,不需要先下载再上传。"""
+    """The project's own trace verifies directly — no download-then-upload round trip."""
 
     def test_sample_trace_runs_without_upload(self, client):
         """The catalog's sample trace name is enough."""
@@ -486,23 +495,23 @@ class TestSampleTraceApi:
 
 
 class TestStartupLogging:
-    """uvicorn 的启动横幅过滤器:0.0.0.0 不是可访问地址,不打印。"""
+    """uvicorn startup banner filter: 0.0.0.0 is not a reachable address, so not printed."""
 
     @staticmethod
     def _banner(host):
-        """构造一条 uvicorn "Uvicorn running on ..." 日志记录。"""
+        """Build a uvicorn "Uvicorn running on ..." log record."""
         return logging.LogRecord(
             "uvicorn.error", logging.INFO, __file__, 1,
             "Uvicorn running on %s (Press CTRL+C to quit)",
             (f"http://{host}:8000",), None)
 
     def test_bind_any_banner_is_dropped(self):
-        """监听 0.0.0.0 时,那条误导性的启动行被过滤掉。"""
+        """When listening on 0.0.0.0, the misleading banner line is filtered out."""
         logger = logging.getLogger("uvicorn.error")
         assert logger.filter(self._banner("0.0.0.0")) is False
 
     def test_other_banners_and_logs_pass(self):
-        """具体地址的横幅和普通日志不受影响。"""
+        """Banners with a concrete address and normal log records are unaffected."""
         logger = logging.getLogger("uvicorn.error")
         # Logger.filter() returns the LogRecord on Python 3.12+ and True on
         # older versions; only "not filtered" is part of the contract.
@@ -514,7 +523,7 @@ class TestStartupLogging:
 
 
 class TestManualApi:
-    """手动上传模式:DBC + trace + 页面填写的 config。"""
+    """Manual upload mode: DBC + trace + a page-filled config."""
     @staticmethod
     def _post(client, config, trace=EXAMPLE_TRACE, dataid=None):
         dbc_path = EXAMPLE_DIR / "dbc" / "network.dbc"
@@ -555,13 +564,13 @@ class TestManualApi:
         assert body["reports"][0]["total_frames"] > 0
 
     def test_manual_rejects_browser_paths(self, client):
-        """路径字段只能来自上传,手写 config 里的 traces 会被拒绝。"""
+        """Path fields only come from uploads; hand-written config traces are rejected."""
         response = self._post(client, {"traces": ["C:/secret.blf"]})
         assert response.status_code == 400
         assert "traces" in response.json()["detail"]
 
     def test_manual_rejects_wrong_upload_type(self, client):
-        """DBC 槽位必须是 .dbc。"""
+        """DBC upload slots must be .dbc files."""
         response = client.post("/api/verify-manual", data={"config": "{}"},
                                files=[("dbcs", ("network.txt", b"x")),
                                       ("trace", (EXAMPLE_TRACE.name,
@@ -570,7 +579,7 @@ class TestManualApi:
         assert "network.txt" in response.json()["detail"]
 
     def test_manual_rejects_too_many_dbcs(self, client):
-        """服务端执行与页面一致的 10 个 DBC 上限。"""
+        """The server enforces the same 10-DBC cap as the page."""
         dbc_bytes = (EXAMPLE_DIR / "dbc" / "network.dbc").read_bytes()
         files = [("dbcs", (f"n{i}.dbc", dbc_bytes)) for i in range(11)]
         files.append(("trace", (EXAMPLE_TRACE.name, EXAMPLE_TRACE.read_bytes())))
@@ -580,8 +589,142 @@ class TestManualApi:
         assert "最多" in response.json()["detail"]
 
     def test_manual_does_not_leak_uploads(self, client):
-        """跑完删掉该 run 的上传目录(报告在 RunStore 自己的目录)。"""
+        """The run's upload directory is deleted afterwards (the report
+        lives in the RunStore's own directory).
+        """
         response = self._post(client, {"filter": {"max_frames": 100}})
         assert response.status_code == 200, response.text
         run_id = response.json()["run_id"]
         assert not (UPLOADS_DIR / run_id).exists()
+
+
+# ---------------------------------------------------------------------------
+# Server limits + hardening
+# ---------------------------------------------------------------------------
+
+class TestLimitsEndpoint:
+    """GET /api/limits — the page must follow the server's caps, not hardcode them."""
+
+    def test_limits_exposed(self, client):
+        """The payload carries upload cap, DBC limit and the frame default."""
+        body = client.get("/api/limits").json()
+        assert body["max_upload_mb"] == max_upload_bytes() // (1024 * 1024)
+        assert body["max_dbc_files"] == MAX_DBC_UPLOADS
+        assert body["manual_default_frames"] == DEFAULT_MAX_FRAMES
+
+    def test_upload_cap_override_is_visible(self, client, monkeypatch):
+        """Changing the cap via the env var changes what the API reports."""
+        monkeypatch.setenv("CRC_WEB_MAX_UPLOAD_MB", "7")
+        assert client.get("/api/limits").json()["max_upload_mb"] == 7
+
+    def test_upload_cap_falls_back_on_garbage(self, client, monkeypatch):
+        """A non-numeric env override falls back to the default, not an error."""
+        monkeypatch.setenv("CRC_WEB_MAX_UPLOAD_MB", "not-a-number")
+        body = client.get("/api/limits").json()
+        assert body["max_upload_mb"] == max_upload_bytes() // (1024 * 1024)
+
+
+class TestCatalogCache:
+    """scan_projects caches per stat signature — freshness must survive it."""
+
+    @staticmethod
+    def _make_project(root: Path, group: str, name: str) -> None:
+        target = root / group / name
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "config.json").write_text("{}", encoding="utf-8")
+
+    def test_new_project_is_seen_after_cached_scan(self, tmp_path):
+        """A project created after a cached scan is picked up."""
+        self._make_project(tmp_path, "oem", "a")
+        assert [p.id for p in scan_projects(tmp_path)] == ["oem/a"]
+        self._make_project(tmp_path, "oem", "b")
+        assert [p.id for p in scan_projects(tmp_path)] == ["oem/a", "oem/b"]
+
+    def test_removed_project_disappears_after_cached_scan(self, tmp_path):
+        """Deleting a project's config drops it from the next scan."""
+        self._make_project(tmp_path, "oem", "a")
+        assert len(scan_projects(tmp_path)) == 1
+        (tmp_path / "oem" / "a" / "config.json").unlink()
+        assert scan_projects(tmp_path) == []
+
+    def test_edited_config_changes_the_summary(self, tmp_path):
+        """A config edit (in-place, no create/delete) invalidates the summary."""
+        self._make_project(tmp_path, "oem", "a")
+        config = tmp_path / "oem" / "a" / "config.json"
+        assert scan_projects(tmp_path)[0].summary["crc"] == "RC only"
+        content = '{"crc": {"preset": "CRC8/AUTOSAR"}}'
+        config.write_text(content, encoding="utf-8")
+        # Windows can stamp two writes within one timer tick (~15ms) with the
+        # same mtime; nudge it so the test exercises the signature logic, not
+        # clock granularity.
+        stamp = config.stat().st_mtime_ns + 10 ** 9
+        os.utime(config, ns=(stamp, stamp))
+        assert scan_projects(tmp_path)[0].summary["crc"] == "CRC8/AUTOSAR"
+
+
+class TestUnhandledErrors:  # pylint: disable=too-few-public-methods
+    """The 500 fallback: like the CLI, a traceback never reaches the client."""
+
+    def test_unexpected_error_is_a_json_500(self, tmp_path, monkeypatch):
+        """An error outside the expected set is a generic JSON 500, no internals."""
+
+        def explode(*_args, **_kwargs):
+            raise RuntimeError("boom in C:\\secret\\path.blf")
+
+        monkeypatch.setattr("webapp.main.run_project", explode)
+        client = TestClient(
+            create_app(store=RunStore(tmp_path / "runs", max_runs=1)),
+            raise_server_exceptions=False)
+        response = client.post(
+            "/api/verify",
+            data={"project_id": EXAMPLE_PROJECT},
+            files={"file": ("trace.blf", EXAMPLE_TRACE.read_bytes())},
+        )
+        assert response.status_code == 500
+        message = response.json()["message"]
+        assert "服务器内部错误" in message
+        # No internals leak: not the exception text, not the filesystem.
+        assert "boom" not in message and "secret" not in message
+
+
+class TestRunStoreConcurrency:
+    """add/get/sweep run in the threadpool — the store must stay consistent."""
+
+    def test_concurrent_adds_respect_max_runs(self, tmp_path):
+        """Parallel adds never exceed max_runs and stay readable afterwards."""
+        store = RunStore(tmp_path / "runs", max_runs=5)
+        outcomes = [RunOutcome(run_id=f"r{i}", created_at=float(i),
+                               project_id="p", trace_name="t.blf", payload={})
+                    for i in range(40)]
+
+        def add_all() -> None:
+            for outcome in outcomes:
+                store.add(outcome)
+
+        threads = [threading.Thread(target=add_all) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert len(store) <= 5
+        for run_id in list(store._runs):  # pylint: disable=protected-access
+            assert store.get(run_id) is not None
+
+    def test_concurrent_gets_and_sweeps_are_safe(self, tmp_path):
+        """Readers racing the evictor never see a broken store."""
+        store = RunStore(tmp_path / "runs", max_runs=2)
+        for i in range(3):
+            store.add(RunOutcome(run_id=f"r{i}", created_at=float(i),
+                                 project_id="p", trace_name="t.blf", payload={}))
+
+        def churn() -> None:
+            for i in range(20):
+                store.get(f"r{i}")   # may or may not exist — either is fine
+                store.sweep()
+
+        threads = [threading.Thread(target=churn) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert len(store) <= 2

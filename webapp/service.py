@@ -7,10 +7,10 @@ and a small cache of finished runs so the HTML report stays downloadable.
 
 from __future__ import annotations
 
-import json
 import re
 import secrets
 import shutil
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,7 +19,7 @@ from crc_checker.config import DEFAULT_MAX_FRAMES, RunConfig, load_config
 from crc_checker.report.html import write_html
 from crc_checker.report.trends import (RC_MAX_POINTS, _minmax_decimate,
                                        _split_trend_points, count_rc_episodes,
-                                       rc_sample_stats)
+                                       crc_sample_stats, rc_sample_stats)
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
 from crc_checker.verify.runner import RunnerError, run_config
 from webapp.catalog import Project
@@ -92,8 +92,9 @@ def _rc_trend_rows(report: VerifyReport) -> list[dict]:
             "max_valid": meta.get("max_valid"),
             "samples": len(points),
             "errors": sum(1 for p in points if not p[2]),
-            # 连续异常段数:卡死计数器会连续失败上千帧,只有帧数会读成上千次
-            # 独立错误(HTML 报告同口径,见 count_rc_episodes)。
+            # Episode count: a stuck counter fails thousands of frames in a
+            # row, which would read as thousands of independent errors (same
+            # accounting as the HTML report, see count_rc_episodes).
             "episodes": count_rc_episodes(points),
             "t0": points[0][0],
             "tspan": points[-1][0] - points[0][0],
@@ -136,11 +137,13 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
     same CAN ID on two buses, and merging them produces a wrong pass rate and
     a misleading channel tag.
 
-    RC 连续失败会被折叠成一条 verdict(报告不逐帧刷屏),所以数 verdict 会把
-    「1800 帧失败」缩成「失败 1」,还会把 CRC 的逐帧 verdict 和折叠后的 RC
-    verdict 加在一起(1801 + 2 = 1803):0x421 曾显示成「1802/1803、失败 1」
-    。这里按 (frame_id, channel, timestamp) 去重成帧 ——
-    一条帧的所有校验都通过才算通过帧;RC 的逐帧结果来自 ``rc_series``。
+    RC failures fold into one verdict (reports don't spam one line per
+    frame), so counting verdicts would shrink "1800 failed frames" into
+    "1 failure" and would also add CRC's per-frame verdicts to the folded RC
+    verdicts (1801 + 2 = 1803 — 0x421 once displayed "1802/1803, 1 failure").
+    Frames are therefore deduplicated by ``(frame_id, channel, timestamp)`` —
+    a frame counts as passed only when every check of that frame passed; the
+    per-frame RC outcomes come from ``rc_series``.
     """
     frames: dict[tuple[int, int], dict] = {}
     outcomes: dict[tuple[int, int], dict[float, bool]] = {}
@@ -179,7 +182,8 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
             signals[verdict.signal_name] = entry
         return entry
 
-    # series 缺失时(理论上只有 run_stream)退回 verdict 计数,别把 RC 行清零
+    # Without the series (theoretically only run_stream) fall back to verdict
+    # counts rather than zeroing the RC rows.
     count_rc_verdicts = not report.rc_series
     for verdict in report.verdicts:
         frame = frame_entry(verdict.frame_id, verdict.timestamp, verdict.channel)
@@ -197,7 +201,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
             if not verdict.is_pass and verdict.detail:
                 entry["last_detail"] = verdict.detail
 
-    # RC 逐帧采样(折叠掉的失败帧只存在于 series 里)
+    # Per-frame RC samples (folded failing frames exist only in the series)
     for (frame_id, _channel, signal_name), points in report.rc_series.items():
         for timestamp, _value, is_pass, _category in points:
             frame = frame_entry(frame_id, timestamp, _channel)
@@ -243,9 +247,9 @@ def report_to_dict(report: VerifyReport) -> dict:
             break
         failures.append(_verdict_row(verdict, report))
 
-    crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
-    crc_pass = sum(1 for v in report.verdicts if v.algorithm == "crc" and v.is_pass)
-    # RC 用采样口径(折叠掉的失败帧只存在于 series 里),否则卡片会和趋势图对不上
+    crc_pass, crc_total = crc_sample_stats(report)
+    # RC is counted by sample (folded failing frames exist only in the
+    # series); otherwise the card would disagree with the trend charts.
     rc_pass, rc_total = rc_sample_stats(report)
 
     return {
@@ -254,7 +258,8 @@ def report_to_dict(report: VerifyReport) -> dict:
         "total_verdicts": report.total_verdicts,
         "trace_truncated": report.frames_truncated,
         "trace_frame_limit": report.frame_limit,
-        # 校验项口径:CRC 逐帧 verdict + RC 逐帧采样(不是折叠后的 verdict 数)
+        # Check accounting: CRC per-frame verdicts + RC per-frame samples
+        # (not the folded verdict counts).
         "check_total": crc_total + rc_total,
         "check_pass": crc_pass + rc_pass,
         "check_fail": (crc_total - crc_pass) + (rc_total - rc_pass),
@@ -285,7 +290,7 @@ def report_to_dict(report: VerifyReport) -> dict:
 # ---------------------------------------------------------------------------
 
 def resolve_max_frames(requested: int | None, config_value: int | None) -> int | None:
-    """Resolve the frame cap: ``None`` = config/默认上限(6000), ``0`` = no limit."""
+    """Resolve the frame cap: ``None`` = config default (6000), ``0`` = no limit."""
     if requested is None:
         if config_value is not None:
             return config_value
@@ -360,8 +365,9 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
     html_path = None
     report_note = ""
     if report_dir is not None and reports:
-        # 每个 run 一个子目录:报告主文件与分片只落在自己的目录里,路由不会
-        # 命中其它 run 的文件(清理时整个目录一起删)。
+        # One subdirectory per run: the report main file and its split parts
+        # only ever land in their own directory, so the route cannot reach
+        # another run's files (cleanup removes the whole directory).
         run_dir = Path(report_dir) / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         html_path = run_dir / f"{run_id}.html"
@@ -403,10 +409,11 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
 # ---------------------------------------------------------------------------
 
 def _report_files(html_path: Path) -> list[Path]:
-    """报告主文件 + 分片文件(``<stem>_p2.html``…),删除时要一起删。
+    """Report main file + split parts (``<stem>_p2.html``…), for deletion.
 
-    分片只按约定命名(见 `crc_checker.report.html._split_part_path`),用正则
-    精确匹配,别误伤名字里带 ``_p`` 的其它 run。
+    Split parts follow a naming convention (see
+    ``crc_checker.report.html._split_part_path``); the regex matches it
+    exactly so a run whose name happens to contain ``_p`` is not hit.
     """
     pattern = re.compile(rf"{re.escape(html_path.stem)}_p\d+\.html$")
     return [html_path] + [p for p in html_path.parent.glob(f"{html_path.stem}_p*.html")
@@ -420,17 +427,23 @@ class RunStore:
     Eviction is LRU: ``get()`` touches ``last_access`` and ``sweep()`` evicts
     the least recently *used* run (a report that keeps being downloaded is
     not dropped just because it is old).
+
+    All dict access is locked: runs execute in the threadpool
+    (``run_in_threadpool``), so ``add``/``get``/``sweep`` can run concurrently.
     """
 
     runs_dir: Path
     max_runs: int = MAX_RUNS
     _runs: dict[str, RunOutcome] = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def __post_init__(self) -> None:
-        """清空报告目录:run 索引只在内存里,重启后旧报告本来就下不到。
+        """Purge the report directory (run index is memory-only).
 
-        不清会越攒越多 —— 不限帧的大 trace 单次运行就有十几个 30MB 分片
-        (2026-10-20 实测 data/web/runs 攒到 11GB / 834 个文件)。
+        After a restart the old reports are unreachable anyway. Without the
+        purge they accumulate forever — a frame-unlimited big trace alone can
+        produce a dozen 30MB split parts (measured 2026-10-20: data/web/runs
+        had grown to 11GB / 834 files).
         """
         self.purge_disk()
 
@@ -450,18 +463,30 @@ class RunStore:
     def add(self, outcome: RunOutcome) -> None:
         """Record a finished run and evict the least recently used beyond max."""
         outcome.last_access = outcome.created_at
-        self._runs[outcome.run_id] = outcome
-        self.sweep()
+        with self._lock:
+            self._runs[outcome.run_id] = outcome
+            self._sweep_locked()
 
     def get(self, run_id: str) -> RunOutcome | None:
         """Look up a run id (``None`` when unknown); refreshes LRU order."""
-        outcome = self._runs.get(run_id)
-        if outcome is not None:
-            outcome.last_access = time.time()
-        return outcome
+        with self._lock:
+            outcome = self._runs.get(run_id)
+            if outcome is not None:
+                outcome.last_access = time.time()
+            return outcome
+
+    def __len__(self) -> int:
+        """Number of cached runs (diagnostics / tests)."""
+        with self._lock:
+            return len(self._runs)
 
     def sweep(self) -> None:
         """Drop reports of evicted runs (keeps the store and disk bounded)."""
+        with self._lock:
+            self._sweep_locked()
+
+    def _sweep_locked(self) -> None:
+        """Evict beyond ``max_runs``; caller must hold ``self._lock``."""
         if len(self._runs) <= self.max_runs:
             return
         ordered = sorted(self._runs.values(), key=lambda r: r.last_access)
@@ -477,18 +502,3 @@ class RunStore:
             parent = stale.html_path.parent
             if parent != self.runs_dir and parent.is_dir():
                 shutil.rmtree(parent, ignore_errors=True)
-
-
-def write_json(path: Path, payload: dict) -> None:
-    """Atomic JSON write (temp file + replace), used for run metadata."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, ensure_ascii=False)
-    tmp.replace(path)
-
-
-def clear_dir(path: Path) -> None:
-    """Remove a directory tree, ignoring failures (best-effort cleanup)."""
-    if path.exists():
-        shutil.rmtree(path, ignore_errors=True)

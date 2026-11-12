@@ -6,8 +6,9 @@ import logging
 from pathlib import Path
 
 import canmatrix
-import canmatrix.formats   # 子包不会随 `import canmatrix` 自动加载(canmatrix 1.2
-#                          在 py3.10 上就没有),缺了这行 canmatrix.formats 会 AttributeError
+import canmatrix.formats   # the subpackage is NOT loaded by `import canmatrix`
+#                          (absent in canmatrix 1.2 on py3.10); without this
+#                          line canmatrix.formats raises AttributeError
 from crc_checker.dbc.models import DBCProtectionMap
 from crc_checker.dbc.resolver import SignalResolver
 from crc_checker.patterns import NamingPatterns

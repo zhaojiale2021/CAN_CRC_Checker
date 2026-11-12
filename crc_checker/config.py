@@ -57,7 +57,7 @@ def _get_xlsx_sheet_names(xlsx_path: str) -> list[str]:
 # Config dataclass
 # ---------------------------------------------------------------------------
 
-DEFAULT_MAX_FRAMES = 6000   # 帧上限默认值(报告/内存有界;显式 0 = 不限)
+DEFAULT_MAX_FRAMES = 6000   # Default frame cap (bounds report/memory; 0 = unlimited)
 
 
 @dataclass
@@ -101,7 +101,7 @@ class RunConfig:
     output_format: str = "table"                # table | html
     output_file: str = ""                       # Output path
     only_failures: bool = False                 # Show failures only
-    max_report_sections: int | None = None      # 单份报告帧段上限(0 = 不限)
+    max_report_sections: int | None = None      # Per-report section cap (0 = unlimited)
     rc_max_valid: int | None = None             # Max valid RC value (None = auto from bit length)
 
     # Derived / resolved fields
@@ -537,8 +537,9 @@ CONFIG_SCHEMA_DOC = """
     "format": "html",                    // table | html
     "file": "report.html",
     "only_failures": false,
-    // 单份报告的帧段上限(逐帧十六进制转储约 1KB/段)。超过时先自动降级成
-    // 只保留失败帧、再超才截断,并在报告顶部写明。0 = 不限;省略 = 用内部默认值。
+    // Frame-section cap per report (a per-frame hex dump is ~1KB/section).
+    // Beyond it the report first downgrades to failures-only, then truncates,
+    // saying so at the top. 0 = unlimited; omit = built-in default.
     "max_report_sections": null
   },
 

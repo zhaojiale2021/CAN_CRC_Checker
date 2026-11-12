@@ -136,3 +136,21 @@ class TestVerifyErrors:
         result = CliRunner().invoke(cli, ["--version"])
         assert result.exit_code == 0
         assert "0.2.0" in result.output
+
+
+class TestInspect:
+    """inspect accepts what verify's --dbc accepts (file or directory)."""
+
+    def test_inspect_single_file(self):
+        """A single DBC prints its protection signals."""
+        result = CliRunner().invoke(
+            cli, ["inspect", str(EXAMPLE / "dbc" / "network.dbc")])
+        assert result.exit_code == 0, result.output
+        assert "Checksum:" in result.output
+
+    def test_inspect_directory(self):
+        """A directory is expanded to its *.dbc files (same rule as verify)."""
+        result = CliRunner().invoke(cli, ["inspect", str(EXAMPLE / "dbc")])
+        assert result.exit_code == 0, result.output
+        assert "network.dbc" in result.output
+        assert "Checksum:" in result.output

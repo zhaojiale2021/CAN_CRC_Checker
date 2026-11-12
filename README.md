@@ -192,7 +192,9 @@ tests/                  pytest suite
 ```bash
 pytest --cov=crc_checker --cov=cli --cov=webapp   # 80% gate in CI
 pylint $(git ls-files '*.py')                     # must stay 10.00/10
-cd frontend && npm test                           # node --test (29 tests)
+cd frontend && npm run lint                       # eslint + prettier check
+cd frontend && npm test                           # node --test (pure logic)
+cd frontend && npm run test:component             # vitest (@vue/test-utils)
 cd frontend && npm install && npm run build       # rebuild committed dist
 python examples/generate_example.py               # regenerate the example
 ```

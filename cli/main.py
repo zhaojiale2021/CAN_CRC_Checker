@@ -12,6 +12,7 @@ from crc_checker.crc.models import CRCParams
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
 from crc_checker.dbc.parser import parse_dbc
 from crc_checker.report.html import write_html
+from crc_checker.report.trends import check_sample_stats, format_rate
 from crc_checker import __version__
 
 
@@ -22,27 +23,41 @@ from crc_checker import __version__
 _TRACE_EXTENSIONS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
 
 
-def _parse_crc_params(algo: str | None, custom_crc: str | None) -> CRCParams | None:
-    """Resolve CRC parameters from --algo or --custom-crc."""
-    if custom_crc:
-        data = json.loads(custom_crc)
+def _parse_crc_params(algo: str | None, custom_data: dict | None) -> CRCParams | None:
+    """Resolve CRC parameters from ``--algo`` or parsed ``--custom-crc`` JSON."""
+    if custom_data:
         return CRCParams(
-            width=data["width"],
-            polynomial=int(data["poly"], 16) if isinstance(data["poly"], str) else data["poly"],
-            initial_value=(int(data.get("init", "0x00"), 16)
-                           if isinstance(data.get("init", "0x00"), str)
-                           else data.get("init", 0)),
-            final_xor=(int(data.get("xor", "0x00"), 16)
-                       if isinstance(data.get("xor", "0x00"), str)
-                       else data.get("xor", 0)),
-            reflect_in=data.get("reflect_in", False),
-            reflect_out=data.get("reflect_out", False),
-            name=data.get("name", "custom"),
-            checksum_type=data.get("type", "crc"),
+            width=custom_data["width"],
+            polynomial=(int(custom_data["poly"], 16)
+                        if isinstance(custom_data["poly"], str)
+                        else custom_data["poly"]),
+            initial_value=(int(custom_data.get("init", "0x00"), 16)
+                           if isinstance(custom_data.get("init", "0x00"), str)
+                           else custom_data.get("init", 0)),
+            final_xor=(int(custom_data.get("xor", "0x00"), 16)
+                       if isinstance(custom_data.get("xor", "0x00"), str)
+                       else custom_data.get("xor", 0)),
+            reflect_in=custom_data.get("reflect_in", False),
+            reflect_out=custom_data.get("reflect_out", False),
+            name=custom_data.get("name", "custom"),
+            checksum_type=custom_data.get("type", "crc"),
         )
     if algo:
         return get_preset(algo)
     return None
+
+
+def _load_custom_crc(custom_crc: str | None) -> dict | None:
+    """Parse ``--custom-crc`` JSON once (both the params and the config use it)."""
+    if not custom_crc:
+        return None
+    try:
+        data = json.loads(custom_crc)
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(f"Invalid --custom-crc JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise click.BadParameter("--custom-crc must be a JSON object.")
+    return data
 
 
 def _parse_frame_ids(raw: str | None) -> list[int] | None:
@@ -75,28 +90,9 @@ def _expand_trace_paths(trace_files: list[str]) -> list[str]:
     return result
 
 
-def _check_stats(report) -> tuple[int, int]:
-    """(passed, total) checks counted by sample, matching the web/report.
-
-    RC failures fold consecutive frames into one verdict for display, so
-    counting verdicts would understate both failures and the pass rate.
-    """
-    # pylint: disable=import-outside-toplevel
-    from crc_checker.report.trends import rc_sample_stats
-
-    crc_total = sum(1 for v in report.verdicts if v.algorithm == "crc")
-    crc_pass = sum(1 for v in report.verdicts
-                   if v.algorithm == "crc" and v.is_pass)
-    rc_pass, rc_total = rc_sample_stats(report)
-    return crc_pass + rc_pass, crc_total + rc_total
-
-
 def _print_summary(report):
     """Print the sample-based summary and any run caveats."""
-    # pylint: disable=import-outside-toplevel
-    from crc_checker.report.trends import format_rate
-
-    passed, total = _check_stats(report)
+    passed, total = check_sample_stats(report)
     click.echo()
     click.echo("=" * 60)
     click.echo(f"SUMMARY: {report.total_frames} frames, "
@@ -123,7 +119,7 @@ def _output_report(report, output_fmt: str, output_file: str,
         path = output_file or "crc_report.html"
         note = write_html(report, path, only_failures, max_sections=max_sections)
         if note:
-            click.echo(f"报告已受限: {note}")
+            click.echo(f"Report restricted: {note}")
         click.echo(f"HTML: {path}")
         _print_summary(report)
     else:
@@ -137,8 +133,8 @@ def _exit_after_reports(reports, fail_on_failure: bool,
     ``--fail-on-failure`` catches any failed check; ``--min-pass-rate``
     applies to the aggregate across all reports (0 = no checks).
     """
-    passed = sum(_check_stats(report)[0] for report in reports)
-    total = sum(_check_stats(report)[1] for report in reports)
+    passed = sum(check_sample_stats(report)[0] for report in reports)
+    total = sum(check_sample_stats(report)[1] for report in reports)
     failed = total - passed
     rate = (passed / total * 100.0) if total else 100.0
     if (fail_on_failure and failed) or (
@@ -299,9 +295,10 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
                    "--custom-crc.", err=True)
         click.echo("Only Rolling Counter verification will be performed.", err=True)
 
+    custom_data = _load_custom_crc(custom_crc)
     try:
-        crc_params = _parse_crc_params(algo, custom_crc)
-    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        crc_params = _parse_crc_params(algo, custom_data)
+    except (KeyError, TypeError, ValueError) as exc:
         raise click.BadParameter(f"Invalid CRC algorithm: {exc}") from exc
     if algo:
         status, _note = get_validation(algo)
@@ -320,8 +317,7 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     # must never be handed a directory.
     cfg.traces = _expand_trace_paths(list(trace_files))
     cfg.crc_preset = algo or ""
-    if custom_crc:
-        cfg.crc_custom = json.loads(custom_crc)
+    cfg.crc_custom = custom_data
     cfg.range_mode = range_mode
     cfg.range_start = range_start or 0
     cfg.range_end = range_end if range_end is not None else -1
@@ -346,7 +342,7 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         # expected list. Keep the CLI free of tracebacks unless -v asks for one.
         if verbose:
             raise
-        raise click.UsageError(f"校验执行失败: {exc}") from exc
+        raise click.UsageError(f"Verification failed: {exc}") from exc
 
     if verbose:
         for note in setup.notes:
@@ -405,7 +401,7 @@ def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate):  # pylint: di
     try:
         cfg = load_config(config_path)
     except (OSError, ValueError) as exc:
-        raise click.BadParameter(f"配置文件读取失败: {exc}") from exc
+        raise click.BadParameter(f"Failed to read config file: {exc}") from exc
 
     for warning in cfg.warnings:
         click.echo(f"Config warning: {warning}", err=True)
@@ -450,7 +446,7 @@ def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate):  # pylint: di
     except Exception as exc:  # pylint: disable=broad-exception-caught
         if verbose:
             raise
-        raise click.UsageError(f"校验执行失败: {exc}") from exc
+        raise click.UsageError(f"Verification failed: {exc}") from exc
 
     if verbose:
         for note in setup.notes:
@@ -532,26 +528,40 @@ def gen_config_cmd(output_path):
 @cli.command()
 @click.argument("dbc_path", type=click.Path(exists=True))
 def inspect(dbc_path):
-    """Inspect a DBC file and list all detected protection signals."""
-    protection_map = parse_dbc(dbc_path)
+    """Inspect a DBC file (or directory of DBCs) and list detected signals."""
+    # Same expansion rule as verify's --dbc: a directory means every *.dbc
+    # directly inside it.
+    path = Path(dbc_path)
+    if path.is_dir():
+        dbc_files = sorted(path.glob("*.dbc"))
+        if not dbc_files:
+            raise click.UsageError(f"No .dbc files found in: {dbc_path}")
+    else:
+        dbc_files = [path]
 
-    if not protection_map.all_frame_ids():
-        click.echo("No protection signals (Checksum/RollingCounter) found in DBC.")
-        return
+    for dbc_file in dbc_files:
+        protection_map = parse_dbc(str(dbc_file))
+        if not protection_map.all_frame_ids():
+            click.echo(f"{dbc_file.name}: no protection signals "
+                       "(Checksum/RollingCounter) found.")
+            continue
+        click.echo(f"DBC: {dbc_file.name}")
+        click.echo(f"Found protection signals in "
+                   f"{len(protection_map.all_frame_ids())} CAN IDs:\n")
 
-    click.echo(f"DBC: {dbc_path}")
-    click.echo(f"Found protection signals in {len(protection_map.all_frame_ids())} CAN IDs:\n")
-
-    for frame_id in sorted(protection_map.all_frame_ids()):
-        for prot in protection_map.get_protections(frame_id):
-            click.echo(f"  ID=0x{frame_id:03X} ({prot.frame_name}) [{prot.pair_suffix}]")
-            if prot.checksum_signal:
-                cs = prot.checksum_signal
-                click.echo(f"    Checksum:  {cs.name}  start_bit={cs.start_bit} length={cs.length}")
-            if prot.rolling_counter_signal:
-                rc = prot.rolling_counter_signal
-                click.echo(f"    RC:        {rc.name}  start_bit={rc.start_bit} length={rc.length}")
-            click.echo()
+        for frame_id in sorted(protection_map.all_frame_ids()):
+            for prot in protection_map.get_protections(frame_id):
+                click.echo(f"  ID=0x{frame_id:03X} ({prot.frame_name}) "
+                           f"[{prot.pair_suffix}]")
+                if prot.checksum_signal:
+                    cs = prot.checksum_signal
+                    click.echo(f"    Checksum:  {cs.name}  "
+                               f"start_bit={cs.start_bit} length={cs.length}")
+                if prot.rolling_counter_signal:
+                    rc = prot.rolling_counter_signal
+                    click.echo(f"    RC:        {rc.name}  "
+                               f"start_bit={rc.start_bit} length={rc.length}")
+                click.echo()
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
-"""部署版本(commit 节点)读取。
+"""Deployment revision (commit) reporting.
 
-服务加载时固定"运行版本",部署目录的版本每次查询单独读取 —— 这样执行
-``git pull`` 但没重启服务时,页面能提示"目录版本 ≠ 运行版本"。
-Git 不可用(无 ``.git``、没装 git)时返回"版本未知",不影响校验功能。
+The service pins its *running* revision at import time; the deploy
+directory's revision is re-read on every query — so after a ``git pull``
+without a restart, the page can show "directory revision ≠ running
+revision". When git is unavailable (no ``.git``, git not installed) the
+fields come back unknown; verification itself is unaffected.
 """
 
 from __future__ import annotations
@@ -13,9 +15,10 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# 只有这些路径下的改动才算"版本有修改"。Web 运行产物(data/、report*.html、
-# __pycache__)被 .gitignore 忽略,本就不会出现在 status 里。
-# projects/ + examples/ 也算:换一版 DBC 会改变校验结论,属于"结果可复现"的一部分。
+# Only changes under these paths count as "the version changed". Web runtime
+# artifacts (data/, report*.html, __pycache__) are .gitignore'd and never
+# appear in status anyway. projects/ + examples/ count too: a different DBC
+# revision changes verification results and is part of reproducibility.
 RUNTIME_PATHS = (
     "crc_checker", "cli", "webapp",
     "frontend/src", "frontend/dist", "frontend/package.json",
@@ -23,7 +26,8 @@ RUNTIME_PATHS = (
     "projects", "examples", "requirements.txt", "run_web.sh", "run_web.bat",
 )
 
-# Git 调用必须短:它是同步 HTTP 请求的一部分,不能让页面卡住。
+# Git calls must stay short: they run inside a synchronous HTTP request and
+# must not stall the page.
 _GIT_TIMEOUT = 3
 
 
@@ -45,7 +49,7 @@ def read_revision(root: Path) -> dict:
     """Read ``{commit, branch, subject, committed_at, dirty}`` for a checkout.
 
     Any failure (no repository, git missing, timeout) yields all-None fields
-    instead of raising — "版本未知" must never break the page.
+    instead of raising — an unknown revision must never break the page.
     """
     unknown = {"commit": None, "branch": None, "subject": None,
                "committed_at": None, "dirty": None}
