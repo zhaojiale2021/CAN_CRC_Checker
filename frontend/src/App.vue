@@ -156,7 +156,7 @@
           action="#"
           accept=".dbc"
           :auto-upload="false"
-          :limit="limits.maxDbcFiles"
+          :limit="limits.maxDbcFiles || 0"
           :on-change="onDbcChange"
           :on-remove="onDbcRemove"
           :on-exceed="onDbcExceed"
@@ -167,8 +167,8 @@
           </div>
           <template #tip>
             <div class="muted">
-              上限 {{ limits.maxDbcFiles }} 个；多个 DBC 可用下方「合并所有
-              DBC」改成单一映射。
+              上限 {{ limits.maxDbcFiles ?? '…' }} 个；多个 DBC
+              可用下方「合并所有 DBC」改成单一映射。
             </div>
           </template>
         </el-upload>
@@ -185,7 +185,7 @@
             <span>上传 trace{{ mode === 'manual' ? ' / DataID' : '' }}</span>
             <span class="muted"
               >BLF / ASC / MF4 / TRC / CSV，上限
-              {{ limits.maxUploadMb }}MB</span
+              {{ limits.maxUploadMb ?? '…' }}MB</span
             >
           </div>
         </template>
@@ -365,103 +365,92 @@
 </template>
 
 <script setup>
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref,
-} from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import VersionPanel from './components/VersionPanel.vue'
 import ResultPanel from './components/ResultPanel.vue'
 import ManualOptionsForm from './components/ManualOptionsForm.vue'
 import {
-  cancelJob,
-  fetchJob,
   fetchLimits,
   fetchPresets,
-  fetchProjects,
   verifyManual,
   verifySample,
   verifyTrace,
 } from './api.js'
-import {
-  canRun,
-  findProject,
-  groupByOem,
-  summaryHighlights,
-} from './projects.js'
 import { manualCanRun, resultProjectLabel } from './manualConfig.js'
-
-// 限额的内置兜底值:/api/limits 拉取失败时页面仍可用。
-const DEFAULT_LIMITS = {
-  maxUploadMb: 200,
-  maxDbcFiles: 10,
-  manualDefaultFrames: 6000,
-}
+import { canRun } from './projects.js'
+import { useProjects } from './composables/useProjects.js'
+import { useUploads } from './composables/useUploads.js'
+import { useVerificationJob } from './composables/useVerificationJob.js'
 
 const mode = ref('project')
 
-const limits = reactive({ ...DEFAULT_LIMITS })
-
-const projects = ref([])
-const projectId = ref('')
-const fileList = ref([])
-const selectedFile = ref(null)
-const frameMode = ref('config')
-const customFrames = ref(DEFAULT_LIMITS.manualDefaultFrames)
-const onlyFailures = ref(false)
-const running = ref(false)
-const projectLoading = ref(false)
-const loadError = ref('')
-const runError = ref('')
-const result = ref(null)
-const resultPanel = ref(null)
-const jobStatus = ref('')
-const processedFrames = ref(null)
-const currentJobId = ref('')
-const cancelling = ref(false)
-const POLL_INTERVAL_MS = 1000
-const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'cancelled'])
-let pollTimer = null
-let resolvePollWait = null
-let activeRun = 0
-let isUnmounted = false
-
-const jobStatusText = computed(() => {
-  const labels = {
-    queued: '校验任务排队中',
-    running: '校验正在进行',
-    succeeded: '校验完成',
-    failed: '校验失败',
-    cancelled: '校验已取消',
-    error: '校验状态查询失败',
-  }
-  return labels[jobStatus.value] || ''
+// 限额由 /api/limits 单源下发;加载完成前为 null(页面显示省略号,不做客户端拦截,
+// 服务端仍然按真实上限拒绝)。
+const limits = reactive({
+  maxUploadMb: null,
+  maxDbcFiles: null,
+  manualDefaultFrames: null,
 })
-// 手动模式
+
 const presets = ref([])
 const presetError = ref('')
-const dbcList = ref([])
-const dbcFiles = ref([])
-const dataidList = ref([])
-const dataidFile = ref(null)
+const frameMode = ref('config')
+const customFrames = ref(null)
+const onlyFailures = ref(false)
 const manualConfig = ref({})
+const resultPanel = ref(null)
 
-const uploadLimitBytes = computed(() => limits.maxUploadMb * 1024 * 1024)
-const projectGroups = computed(() => groupByOem(projects.value))
-const project = computed(() => findProject(projects.value, projectId.value))
-const highlights = computed(() => summaryHighlights(project.value))
-const configMaxFrames = computed(
-  () => project.value?.summary?.default_max_frames ?? null,
-)
+const {
+  running,
+  jobStatus,
+  jobStatusText,
+  processedFrames,
+  currentJobId,
+  cancelling,
+  runError,
+  result,
+  executeVerification,
+  cancelVerification,
+} = useVerificationJob({ onResult: showResult })
+
+const {
+  projects,
+  projectId,
+  projectLoading,
+  loadError,
+  projectGroups,
+  project,
+  highlights,
+  configMaxFrames,
+  loadProjects,
+} = useProjects({ isRunning: () => running.value })
+
+const {
+  fileList,
+  selectedFile,
+  dbcList,
+  dbcFiles,
+  dataidList,
+  dataidFile,
+  onFileChange,
+  onFileRemove,
+  onFileExceed,
+  onDbcChange,
+  onDbcRemove,
+  onDbcExceed,
+  onDataidChange,
+  onDataidRemove,
+  onDataidExceed,
+} = useUploads({ limits })
+
 const frameDefaultLabel = computed(() => {
   if (mode.value === 'project') {
     return configMaxFrames.value ? `（${configMaxFrames.value}）` : '（不限）'
   }
-  return `（${limits.manualDefaultFrames}）`
+  return limits.manualDefaultFrames
+    ? `（${limits.manualDefaultFrames}）`
+    : '（加载中…）'
 })
 
 const runnable = computed(() =>
@@ -494,56 +483,6 @@ function projectLabel(item) {
   return `${item.oem.toUpperCase()} / ${item.model}`
 }
 
-function onFileChange(uploadFile) {
-  if (uploadFile.raw && uploadFile.raw.size > uploadLimitBytes.value) {
-    ElMessage.error(
-      `trace 文件超过 ${limits.maxUploadMb}MB 上限，请截取日志后重试。`,
-    )
-    selectedFile.value = null
-    fileList.value = []
-    return
-  }
-  selectedFile.value = uploadFile.raw || null
-  fileList.value = uploadFile.raw ? [uploadFile] : []
-}
-
-function onFileRemove() {
-  selectedFile.value = null
-  fileList.value = []
-}
-
-function onFileExceed() {
-  ElMessage.warning('一次只能上传一个 trace 文件，请先移除已选文件。')
-}
-
-function onDbcChange(_uploadFile, uploadFiles) {
-  dbcList.value = [...uploadFiles]
-  dbcFiles.value = uploadFiles.map((item) => item.raw).filter(Boolean)
-}
-
-function onDbcRemove(_uploadFile, uploadFiles) {
-  dbcList.value = [...uploadFiles]
-  dbcFiles.value = uploadFiles.map((item) => item.raw).filter(Boolean)
-}
-
-function onDbcExceed() {
-  ElMessage.warning(`最多一次上传 ${limits.maxDbcFiles} 个 DBC 文件。`)
-}
-
-function onDataidChange(uploadFile) {
-  dataidFile.value = uploadFile.raw || null
-  dataidList.value = uploadFile.raw ? [uploadFile] : []
-}
-
-function onDataidRemove() {
-  dataidFile.value = null
-  dataidList.value = []
-}
-
-function onDataidExceed() {
-  ElMessage.warning('一次只能上传一个 DataID 文件，请先移除已选文件。')
-}
-
 function maxFramesPayload() {
   if (frameMode.value === 'unlimited') return 0
   if (frameMode.value === 'custom') return customFrames.value || null
@@ -564,132 +503,15 @@ function reportMessage(payload) {
   }
 }
 
-async function showResult(payload) {
-  result.value = payload
+function showResult(payload) {
   reportMessage(payload)
-  await nextTick()
-  resultPanel.value?.$el?.focus?.()
-  resultPanel.value?.$el?.scrollIntoView?.({
-    behavior: 'smooth',
-    block: 'start',
+  nextTick(() => {
+    resultPanel.value?.$el?.focus?.()
+    resultPanel.value?.$el?.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'start',
+    })
   })
-}
-
-function clearPollTimer() {
-  if (pollTimer !== null) {
-    clearTimeout(pollTimer)
-    pollTimer = null
-  }
-  if (resolvePollWait) {
-    resolvePollWait()
-    resolvePollWait = null
-  }
-}
-
-function updateJobState(job) {
-  jobStatus.value = job.status || ''
-  processedFrames.value = Number.isFinite(job.processed_frames)
-    ? job.processed_frames
-    : null
-}
-
-function waitForNextPoll() {
-  return new Promise((resolve) => {
-    resolvePollWait = resolve
-    pollTimer = setTimeout(() => {
-      pollTimer = null
-      resolvePollWait = null
-      resolve()
-    }, POLL_INTERVAL_MS)
-  })
-}
-
-async function pollJob(jobId, runId) {
-  while (!isUnmounted && runId === activeRun) {
-    try {
-      const job = await fetchJob(jobId)
-      if (isUnmounted || runId !== activeRun) return null
-      runError.value = ''
-      updateJobState(job)
-      if (TERMINAL_JOB_STATES.has(job.status)) return job
-    } catch (err) {
-      if (isUnmounted || runId !== activeRun) return null
-      if (err.status === 404) {
-        return {
-          status: 'failed',
-          error:
-            '校验任务状态已失效（可能是服务重启或任务已过期），请重新提交。',
-        }
-      }
-      // Keep the job handle and retry transient status failures; users can still
-      // cancel the server-side job while status polling is recovering.
-      runError.value = `读取校验进度失败，将自动重试：${err.message}`
-    }
-    await waitForNextPoll()
-  }
-  return null
-}
-
-async function executeVerification(submit) {
-  const runId = ++activeRun
-  clearPollTimer()
-  running.value = true
-  cancelling.value = false
-  currentJobId.value = ''
-  processedFrames.value = null
-  jobStatus.value = ''
-  runError.value = ''
-  try {
-    const submission = await submit()
-    if (isUnmounted || runId !== activeRun) return
-    if (!submission?.job_id) {
-      throw new Error('服务未返回校验任务 ID。')
-    }
-    currentJobId.value = submission.job_id
-    updateJobState(submission)
-    const job = await pollJob(submission.job_id, runId)
-    if (!job || isUnmounted || runId !== activeRun) return
-    updateJobState(job)
-    if (job.status === 'succeeded' && job.result) {
-      await showResult(job.result)
-    } else if (job.status === 'failed') {
-      runError.value = job.error || '校验任务失败。'
-      result.value = null
-    } else if (job.status === 'cancelled') {
-      result.value = null
-    }
-  } catch (err) {
-    if (!isUnmounted && runId === activeRun) {
-      jobStatus.value = 'error'
-      runError.value = err.message
-      result.value = null
-    }
-  } finally {
-    if (!isUnmounted && runId === activeRun) {
-      running.value = false
-      cancelling.value = false
-      currentJobId.value = ''
-      clearPollTimer()
-    }
-  }
-}
-
-async function cancelVerification() {
-  const jobId = currentJobId.value
-  if (!jobId || !running.value || cancelling.value) return
-  cancelling.value = true
-  try {
-    const state = await cancelJob(jobId)
-    if (!isUnmounted && currentJobId.value === jobId) updateJobState(state)
-  } catch (err) {
-    if (!isUnmounted && currentJobId.value === jobId) {
-      // 409 means the job became terminal before cancellation was accepted;
-      // the poll loop remains authoritative and will retrieve its final state.
-      if (err.status !== 409) runError.value = err.message
-    }
-  } finally {
-    if (!isUnmounted && currentJobId.value === jobId) cancelling.value = false
-  }
 }
 
 function run() {
@@ -726,25 +548,6 @@ function runSample(traceName) {
   )
 }
 
-async function loadProjects() {
-  if (projectLoading.value || running.value) return
-  projectLoading.value = true
-  try {
-    const data = await fetchProjects()
-    projects.value = data.projects || []
-    // A single project is the common local case; preselect it so the page is
-    // one upload away from a result instead of asking for a pointless choice.
-    if (!projects.value.some((item) => item.id === projectId.value)) {
-      projectId.value = projects.value.length === 1 ? projects.value[0].id : ''
-    }
-    loadError.value = ''
-  } catch (err) {
-    loadError.value = err.message
-  } finally {
-    projectLoading.value = false
-  }
-}
-
 async function loadPresets() {
   try {
     const data = await fetchPresets()
@@ -764,27 +567,20 @@ async function loadLimits() {
       limits.maxDbcFiles = data.max_dbc_files
     if (Number.isFinite(data.manual_default_frames)) {
       limits.manualDefaultFrames = data.manual_default_frames
-      // 自定义帧数输入框还停在兜底默认值时,跟随服务端默认帧数
-      if (customFrames.value === DEFAULT_LIMITS.manualDefaultFrames) {
+      // 自定义帧数输入框还没被用户改过时,跟随服务端默认帧数。
+      if (customFrames.value === null) {
         customFrames.value = data.manual_default_frames
       }
     }
   } catch {
-    // 拉取失败保持兜底值,不打扰用户
+    // 拉取失败保持 null(页面显示省略号),不打扰用户。
   }
 }
 
 onMounted(() => {
-  isUnmounted = false
   loadProjects()
   loadPresets()
   loadLimits()
-})
-
-onBeforeUnmount(() => {
-  isUnmounted = true
-  activeRun += 1
-  clearPollTimer()
 })
 </script>
 
@@ -870,6 +666,7 @@ onBeforeUnmount(() => {
   gap: 18px;
   font-size: 12px;
   align-items: baseline;
+  overflow-wrap: anywhere;
 }
 .detail-item {
   display: inline-flex;
@@ -889,17 +686,48 @@ onBeforeUnmount(() => {
 .upload-text {
   color: var(--el-text-color-regular);
 }
+/* App-level option rows (frame cap, HTML report). ManualOptionsForm has its
+   own scoped copy; without this the label, radio group and number input were
+   laid out inline and collided. */
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-height: 32px;
+}
+.option-label {
+  flex: 0 0 100px;
+  width: 100px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 32px;
+}
+.dataid-upload {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+}
 .run-bar {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 20px;
+  /* Bleed to the card edges: a sticky footer with the page background showed
+     as a white strip against the dark card and hid the rounded corners. */
+  margin: 20px -20px -20px;
+  padding: 12px 20px;
   position: sticky;
   bottom: 0;
   z-index: 5;
-  padding: 12px 0;
-  background: var(--el-bg-color);
+  background: var(--el-card-bg-color, var(--el-bg-color-overlay));
+  color: var(--el-text-color-primary);
   border-top: 1px solid var(--el-border-color-lighter);
+  border-radius: 0 0 4px 4px;
 }
 @media (max-width: 720px) {
   .topbar {

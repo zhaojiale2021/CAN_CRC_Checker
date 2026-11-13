@@ -111,7 +111,7 @@
 <script setup>
 // 一张 RC 趋势折线图:几何在 rcChart.js(纯函数);悬停走 rAF 节流,
 // 最近点在按时间有序的 points 上二分查找(无逐次 DOM 扫描)。
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { PLOT, rcChartGeometry, rcNearest, rcReadout } from '../rcChart.js'
 
 const props = defineProps({
@@ -122,6 +122,14 @@ const collapsed = ref(props.trend.errors === 0) // 有错误的默认展开
 const readout = ref('')
 const crossX = ref(null)
 let raf = 0
+
+// 同一 key 的组件会被下一次校验复用:错误状态变化时恢复默认展开/折叠。
+watch(
+  () => props.trend.errors,
+  (errors) => {
+    collapsed.value = errors === 0
+  },
+)
 
 const geo = computed(() => rcChartGeometry(props.trend))
 const singlePoint = computed(() => (props.trend.points || [])[0])

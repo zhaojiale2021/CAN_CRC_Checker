@@ -1,0 +1,8 @@
+include LICENSE
+include README.md
+include CONTRIBUTING.md
+include Dockerfile
+include config.schema.json
+
+recursive-include crc_checker/data *.yaml
+recursive-include docs *.md *.png

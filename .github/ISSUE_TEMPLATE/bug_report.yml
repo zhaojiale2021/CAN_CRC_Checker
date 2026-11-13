@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a wrong verdict, crash, or report/layout problem.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove customer names, CAN IDs and trace data that you are not
+        allowed to share. Reproduce with the synthetic `examples/` project if
+        possible.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: The actual verdict/output, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Config (remove paths), command, and the smallest trace that shows the problem.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Output of `crc-check --version` or `/api/version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - CLI
+        - Web UI
+        - HTML report
+        - Library / API
+    validations:
+      required: true

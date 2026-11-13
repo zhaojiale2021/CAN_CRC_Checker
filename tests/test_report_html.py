@@ -106,8 +106,8 @@ class TestReportSummary:
         path = tmp_path / "report.html"
         write_html(report, str(path))
         text = path.read_text(encoding="utf-8")
-        assert "NO CHECKS EXECUTED" in text
-        assert "ALL CHECKS PASSED" not in text
+        assert "未执行校验" in text
+        assert "全部校验通过" not in text
         assert '<div class="value">-</div>' in text
 
     def test_failures_show_red_banner(self, tmp_path):
@@ -117,7 +117,7 @@ class TestReportSummary:
         path = tmp_path / "report.html"
         write_html(report, str(path))
         text = path.read_text(encoding="utf-8")
-        assert "FAILURES DETECTED" in text
+        assert "检测到失败" in text
         assert 'class="card fail"' in text
 
     def test_frame_cap_is_written_into_the_report(self, tmp_path):

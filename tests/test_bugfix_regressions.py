@@ -395,8 +395,8 @@ def test_rc_charts_report_stats_per_channel():
         stats = re.search(r'stats">(.*?)</span>', card, re.S).group(1)
         by_channel[channel] = ("collapsed" in card.split(">")[0],
                                " ".join(stats.split()))
-    assert by_channel["0"] == (False, 'errors: <span class="err">1')
-    assert by_channel["1"] == (True, '<span class="ok">errors: 0')
+    assert by_channel["0"] == (False, '错误: <span class="err">1')
+    assert by_channel["1"] == (True, '<span class="ok">错误: 0')
 
 
 # ---------------------------------------------------------------------------

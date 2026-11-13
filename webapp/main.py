@@ -18,10 +18,11 @@ import re
 import secrets
 import shutil
 from concurrent.futures import ThreadPoolExecutor  # pylint: disable=no-name-in-module
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
@@ -31,15 +32,19 @@ from crc_checker.verify.cancellation import VerificationCancelled
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
 from webapp.paths import FRONTEND_DIST, data_dir
 from webapp.catalog import Project, get_project, scan_projects
+from webapp.schemas import (
+    CancelResponse,
+    JobAccepted,
+    JobState,
+    LimitsResponse,
+    PresetsResponse,
+    ProjectsResponse,
+    VersionResponse,
+)
 from webapp.service import (JobRegistry, RunStore, RunError, run_project)
 from webapp.version import deployment_version
 
 logger = logging.getLogger("crc_checker.web")
-
-# Static resources and runtime paths come from webapp.paths.
-DATA_DIR = data_dir()
-UPLOADS_DIR = DATA_DIR / "uploads"  # compatibility alias for existing callers
-RUNS_DIR = DATA_DIR / "runs"       # compatibility alias for existing callers
 
 DEFAULT_MAX_UPLOAD_MB = 200
 MAX_DBC_UPLOADS = 10
@@ -125,6 +130,15 @@ def _parse_bool(raw: str) -> bool:
     return raw.strip().lower() == "true"
 
 
+def _validate_preset(name: str) -> None:
+    """Reject unknown preset names as a 400 instead of a worker-side 500."""
+    try:
+        get_preset(name)
+    except KeyError as exc:
+        raise HTTPException(400, f"未知的 CRC 算法: {name}") from exc
+
+
+# pylint: disable=too-many-locals,too-many-branches
 def _manual_config(raw: str, dbc_paths: list[Path], trace_path: Path,
                    dataid_path: Path | None) -> dict:
     """Build the run config for a manual upload.
@@ -152,6 +166,20 @@ def _manual_config(raw: str, dbc_paths: list[Path], trace_path: Path,
     for section, key in MANUAL_FORBIDDEN:
         if key in (data.get(section) or {}):
             raise HTTPException(400, f"网页版不接受 {section}.{key},请使用上传文件")
+
+    crc = data.get("crc") or {}
+    if crc.get("preset"):
+        _validate_preset(str(crc["preset"]))
+    overrides = crc.get("overrides")
+    if isinstance(overrides, dict):
+        for preset_name in overrides.values():
+            if preset_name:
+                _validate_preset(str(preset_name))
+    profiles = crc.get("profiles")
+    if isinstance(profiles, dict):
+        for profile in profiles.values():
+            if isinstance(profile, dict) and profile.get("preset"):
+                _validate_preset(str(profile["preset"]))
 
     if dataid_path is not None:
         dataid = data.setdefault("dataid", {})
@@ -187,30 +215,32 @@ def _manual_project(upload_dir: Path, config_path: Path,
 
 def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too-many-statements,too-many-locals
     """Build the ASGI app (``store`` is injectable for tests)."""
-    api = FastAPI(title="CAN CRC Checker (Web)")
     data_root = data_dir()
     uploads_dir = data_root / "uploads"
     runs_dir = store.runs_dir if store is not None else data_root / "runs"
     run_store = store if store is not None else RunStore(runs_dir)
     job_registry = JobRegistry()
     worker_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crc-job")
-    api.state.job_registry = job_registry
-    api.state.worker_pool = worker_pool
-    api.state.run_store = run_store
-    api.state.uploads_dir = uploads_dir
     # Uploads are deleted in each job's terminal cleanup. A crash or killed
     # process leaves them behind forever, so clear staging on startup.
     shutil.rmtree(uploads_dir, ignore_errors=True)
 
-    @api.on_event("shutdown")
-    def shutdown_workers() -> None:
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
         """Cancel queued jobs, signal active runs, and clean staged uploads."""
+        yield
         job_ids = job_registry.cancel_all()
         worker_pool.shutdown(wait=False, cancel_futures=True)
         for job_id in job_ids:
             state = job_registry.get(job_id)
             if state is not None and state["status"] == "cancelled":
                 shutil.rmtree(uploads_dir / job_id, ignore_errors=True)
+
+    api = FastAPI(title="CAN CRC Checker (Web)", lifespan=lifespan)
+    api.state.job_registry = job_registry
+    api.state.worker_pool = worker_pool
+    api.state.run_store = run_store
+    api.state.uploads_dir = uploads_dir
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def enqueue(project: Project, trace_path: Path, trace_name: str,
@@ -278,7 +308,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         return JSONResponse(status_code=500,
                             content={"message": "服务器内部错误,请重试或查看服务端日志"})
 
-    @api.get("/api/limits")
+    @api.get("/api/limits", response_model=LimitsResponse)
     def limits() -> dict:
         """Upload caps and defaults the page would otherwise hardcode.
 
@@ -291,7 +321,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             "manual_default_frames": DEFAULT_MAX_FRAMES,
         }
 
-    @api.get("/api/projects")
+    @api.get("/api/projects", response_model=ProjectsResponse)
     def list_projects() -> dict:
         """Projects discovered under the projects directory."""
         projects = scan_projects()
@@ -300,13 +330,13 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             "count": len(projects),
         }
 
-    @api.get("/api/version")
-    def version() -> JSONResponse:
+    @api.get("/api/version", response_model=VersionResponse)
+    def version(response: Response) -> dict:
         """Running commit vs. deploy-directory commit (never cached)."""
-        return JSONResponse(deployment_version.info(),
-                            headers={"Cache-Control": "no-store"})
+        response.headers["Cache-Control"] = "no-store"
+        return deployment_version.info()
 
-    @api.get("/api/presets")
+    @api.get("/api/presets", response_model=PresetsResponse)
     def crc_presets() -> dict:
         """Built-in CRC / checksum algorithms, with validation status."""
         presets = []
@@ -349,7 +379,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             raise HTTPException(400, f"上传的 {label} 文件为空")
         return target
 
-    @api.post("/api/verify")
+    @api.post("/api/verify", response_model=JobAccepted, status_code=202)
     async def verify(  # pylint: disable=too-many-locals
         project_id: str = Form(...),
         file: UploadFile = File(...),
@@ -371,9 +401,9 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         except BaseException:
             shutil.rmtree(upload_dir, ignore_errors=True)
             raise
-        return JSONResponse(status_code=202, content=result)
+        return result
 
-    @api.post("/api/verify-manual")
+    @api.post("/api/verify-manual", response_model=JobAccepted, status_code=202)
     async def verify_manual(  # pylint: disable=too-many-locals,too-many-arguments,too-many-positional-arguments
         dbcs: list[UploadFile] = File(...),
         trace: UploadFile = File(...),
@@ -414,9 +444,9 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             if not job_registry.get(run_id):
                 shutil.rmtree(upload_dir, ignore_errors=True)
             raise
-        return JSONResponse(status_code=202, content=result)
+        return result
 
-    @api.post("/api/verify-sample")
+    @api.post("/api/verify-sample", response_model=JobAccepted, status_code=202)
     async def verify_sample(
         project_id: str = Form(...),
         trace_name: str = Form(...),
@@ -441,9 +471,9 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         run_id = secrets.token_urlsafe(9)
         result = enqueue(project, trace_path, trace_name, frame_limit,
                          _parse_bool(only_failures), run_id, None)
-        return JSONResponse(status_code=202, content=result)
+        return result
 
-    @api.get("/api/jobs/{job_id}")
+    @api.get("/api/jobs/{job_id}", response_model=JobState)
     def get_job(job_id: str) -> dict:
         """Return asynchronous job status and its result when complete."""
         state = job_registry.get(job_id)
@@ -451,7 +481,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             raise HTTPException(404, "校验任务不存在或已过期")
         return state
 
-    @api.post("/api/jobs/{job_id}/cancel")
+    @api.post("/api/jobs/{job_id}/cancel", response_model=CancelResponse)
     def cancel_job(job_id: str) -> dict:
         """Request cooperative cancellation for an active verification."""
         status = job_registry.cancel(job_id)

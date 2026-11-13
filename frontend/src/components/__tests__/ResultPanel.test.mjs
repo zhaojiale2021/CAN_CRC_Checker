@@ -94,8 +94,8 @@ function defaultFrames() {
   ]
 }
 
-/** 组装挂载用的 result prop;report 支持按字段覆盖。 */
-function makeResult({ report = {} } = {}) {
+/** 组装挂载用的 result prop;report / setup 支持按字段覆盖。 */
+function makeResult({ report = {}, setup = {} } = {}) {
   return {
     trace_name: 'demo.blf',
     project_id: 'demo/basic',
@@ -105,6 +105,7 @@ function makeResult({ report = {} } = {}) {
       dbc_names: ['demo.dbc'],
       channels: { 1: 'demo.dbc' },
       notes: [],
+      ...setup,
     },
     reports: [
       {
@@ -221,17 +222,24 @@ describe('ResultPanel', () => {
       }),
     )
 
-    expect(wrapper.find('.trend-charts').exists()).toBe(true)
+    // 趋势图默认收起,按钮提供查看入口;展开后再次点击收起。
+    expect(wrapper.find('.trend-charts').exists()).toBe(false)
+    expect(wrapper.find('.trend-section-head button').text()).toContain(
+      '查看趋势图',
+    )
     expect(wrapper.find('.trend-alt').text()).toContain('首值 0，末值 1。')
+
+    await wrapper.find('.trend-section-head button').trigger('click')
+    expect(wrapper.find('.trend-charts').exists()).toBe(true)
+    expect(
+      wrapper.find('.trend-section-head button').attributes('aria-pressed'),
+    ).toBe('true')
 
     await wrapper.find('.trend-section-head button').trigger('click')
     expect(wrapper.find('.trend-charts').exists()).toBe(false)
     expect(
       wrapper.find('.trend-section-head button').attributes('aria-pressed'),
     ).toBe('false')
-
-    await wrapper.find('.trend-section-head button').trigger('click')
-    expect(wrapper.find('.trend-charts').exists()).toBe(true)
     wrapper.unmount()
   })
 
@@ -283,6 +291,42 @@ describe('ResultPanel', () => {
     expect(wrapper.text()).toContain(
       '只校验了前 50 帧（帧上限），其余帧未校验；以下通过率只代表这部分帧。',
     )
+    wrapper.unmount()
+  })
+
+  it('帧数上限为 0 时显示「不限帧数」而不是 0 帧上限', () => {
+    const wrapper = mountPanel(makeResult({ setup: { max_frames: 0 } }))
+    expect(wrapper.text()).toContain('不限帧数')
+    expect(wrapper.text()).not.toContain('0 帧上限')
+    wrapper.unmount()
+  })
+
+  it('趋势信号被截断时明确提示只显示前 N 个', () => {
+    const wrapper = mountPanel(
+      makeResult({
+        report: {
+          rc_trends_truncated: true,
+          rc_trends: [
+            {
+              frame_id_hex: '0x421',
+              frame_id: 0x421,
+              frame_name: 'FrameB',
+              channel: 1,
+              signal: 'RC_B',
+              points: [[1, 0, 0, '']],
+              t0: 1,
+              tspan: 0,
+              bit_max: 3,
+              max_valid: 2,
+              samples: 1,
+              errors: 0,
+              episodes: 0,
+            },
+          ],
+        },
+      }),
+    )
+    expect(wrapper.text()).toContain('仅显示错误最多的前 1 个信号')
     wrapper.unmount()
   })
 })

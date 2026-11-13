@@ -148,10 +148,6 @@ class RollingCounterVerifier(ProtectionAlgorithm):
             is_pass = False
             detail = (f"STALE: counter stuck at {actual_value} "
                       f"(expected {expected_value}, previous {prev_value})")
-        elif prev_value == max_valid and actual_value == 0:
-            # Normal wrap: max_valid -> 0
-            is_pass = True
-            detail = ""
         elif actual_value == 0 and prev_value != max_valid:
             is_pass = False
             detail = (f"RESET: counter wrapped to 0 unexpectedly "

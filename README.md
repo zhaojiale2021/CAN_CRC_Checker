@@ -168,7 +168,9 @@ main sections:
 | `output` | `format` / `file` / `only_failures` | `table` or `html`, path, failures-only view |
 | | `max_report_sections` | Frame-section cap (default 30 000, 0 = unlimited) |
 
-Full schema: `crc_checker/config.py` (`CONFIG_SCHEMA_DOC`).
+Full schema: `crc_checker/config.py` (`CONFIG_SCHEMA_DOC`). Editors can use
+[`config.schema.json`](config.schema.json) for completion and validation
+(`"$schema": "./config.schema.json"` in your config file).
 
 ## 📁 Repository layout
 

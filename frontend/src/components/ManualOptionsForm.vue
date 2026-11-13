@@ -213,11 +213,14 @@ watch(form, (state) => emit('update:config', buildManualConfig(state)), {
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
+  min-height: 32px;
 }
 .option-label {
+  flex: 0 0 100px;
   width: 100px;
   color: var(--el-text-color-secondary);
   font-size: 13px;
+  line-height: 32px;
 }
 .algo-select {
   width: 280px;
