@@ -34,7 +34,8 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from crc_checker.crc.models import CRCParams, CRCRange, VALID_RANGE_MODES
+from crc_checker.core.models import CRCParams, CRCRange, VALID_RANGE_MODES
+from crc_checker.file_types import TRACE_EXTENSIONS
 from crc_checker.crc.presets import get_preset
 from crc_checker.dataid.parser import (
     DataIDMap,
@@ -148,7 +149,7 @@ class RunConfig:
         # pylint: disable=protected-access
         return DBCParser._collect_dbc_files(paths) if paths else []
 
-    _TRACE_EXTENSIONS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
+    _TRACE_EXTENSIONS = TRACE_EXTENSIONS
 
     def get_trace_paths(self) -> list[str]:
         """Get the flat list of trace file paths (after directory expansion)."""
@@ -168,6 +169,14 @@ class RunConfig:
             else:
                 raise FileNotFoundError(f"Trace path not found: {p}")
         return result
+
+    def _resolve_dataid_mapping(self, mapping):
+        """Expand a named mapping using ``dataid.mapping_file`` when set."""
+        if mapping and self.dataid_mapping_file:
+            custom = load_dataid_mappings(self.dataid_mapping_file)
+            if isinstance(mapping, str) and mapping in custom:
+                return custom[mapping]
+        return mapping
 
     def load_dataid(self, dbc_name: str = "", allow_json: bool = True):  # pylint: disable=too-many-branches
         """Load DataID map using smart auto-generate logic.
@@ -208,11 +217,7 @@ class RunConfig:
                     "Auto-matched sheet '%s' for DBC '%s'", matched, dbc_name
                 )
 
-        mapping = self.dataid_mapping or None
-        if mapping and self.dataid_mapping_file:
-            custom = load_dataid_mappings(self.dataid_mapping_file)
-            if isinstance(mapping, str) and mapping in custom:
-                mapping = custom[mapping]
+        mapping = self._resolve_dataid_mapping(self.dataid_mapping or None)
 
         # Auto-generate: JSON specified but missing, xlsx available
         if allow_json and self.dataid_json and self.dataid_xlsx:
@@ -287,11 +292,7 @@ class RunConfig:
             if matched and matched not in sheets:
                 sheets.append(matched)
 
-        mapping = self.dataid_mapping or None
-        if mapping and self.dataid_mapping_file:
-            custom = load_dataid_mappings(self.dataid_mapping_file)
-            if isinstance(mapping, str) and mapping in custom:
-                mapping = custom[mapping]
+        mapping = self._resolve_dataid_mapping(self.dataid_mapping or None)
         return parse_dataid_xlsx_multi(
             self.dataid_xlsx, sheets or None, mapping=mapping)
 
@@ -299,21 +300,9 @@ class RunConfig:
         """Build CRCParams from config."""
 
         if self.crc_custom:
-            d = self.crc_custom
-            def _h(v):
-                if isinstance(v, str):
-                    return int(v, 16)
-                return v
-            return CRCParams(
-                width=d["width"],
-                polynomial=_h(d["poly"]),
-                initial_value=_h(d.get("init", "0x00")),
-                final_xor=_h(d.get("xor", "0x00")),
-                reflect_in=d.get("reflect_in", False),
-                reflect_out=d.get("reflect_out", False),
-                name=d.get("name", "custom"),
-                checksum_type=d.get("type", "crc"),  # "crc" | "sum" | "sum_xor" | "xor_seed"
-            )
+            # pylint: disable=import-outside-toplevel
+            from crc_checker.crc.custom import parse_custom_crc
+            return parse_custom_crc(self.crc_custom)
         if self.crc_preset:
             return get_preset(self.crc_preset)
         return None

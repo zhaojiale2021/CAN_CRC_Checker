@@ -134,12 +134,22 @@ class TestCatalog:
 class TestVersion:
     """Running commit vs. deploy-directory commit."""
 
-    def test_read_revision_without_git(self, tmp_path):
+    def test_read_revision_without_git(self, tmp_path, monkeypatch):
         """No .git means all fields unknown, not an exception."""
+        monkeypatch.delenv("CRC_GIT_COMMIT", raising=False)
         assert read_revision(tmp_path) == {
             "commit": None, "branch": None, "subject": None,
             "committed_at": None, "dirty": None,
         }
+
+    def test_read_revision_uses_container_build_commit(self, tmp_path, monkeypatch):
+        """Container images carry the commit as an env var instead of .git."""
+        monkeypatch.setenv("CRC_GIT_COMMIT", "a" * 40)
+        monkeypatch.setenv("CRC_GIT_BRANCH", "master")
+        revision = read_revision(tmp_path)
+        assert revision["commit"] == "a" * 40
+        assert revision["branch"] == "master"
+        assert revision["dirty"] is False
 
     def test_read_revision_of_this_repo(self):
         """The repository itself yields a full SHA and branch."""
@@ -247,9 +257,11 @@ class TestRunner:
         """A config with auto_classify but no preset gets a fallback algorithm."""
         cfg = load_config(str(EXAMPLE_DIR / "config.json"))
         cfg.crc_preset = ""
-        setup, _ = run_config(cfg, [str(EXAMPLE_TRACE)])
-        assert cfg.crc_preset == "CRC8/SAE-J1850"
+        setup, reports = run_config(cfg, [str(EXAMPLE_TRACE)])
+        # run_config works on a copy: the caller's config is not mutated.
+        assert cfg.crc_preset == ""
         assert setup.counts["auto_classify"] >= 0
+        assert any(v.algorithm == "crc" for v in reports[0].verdicts)
 
     def test_max_frames_is_exact(self):
         """max_frames caps the run exactly, even when frames carry no protection."""
@@ -1104,3 +1116,68 @@ class TestRunStoreConcurrency:
         for thread in threads:
             thread.join()
         assert len(store) <= 2
+
+
+# ---------------------------------------------------------------------------
+# Upload / deployment hardening
+# ---------------------------------------------------------------------------
+
+class TestWebHardening:
+    """Caps and gates added so the unauthenticated server is harder to abuse."""
+
+    def test_limits_exposes_the_request_cap(self, client):
+        """The page renders the aggregate request cap from /api/limits."""
+        payload = client.get("/api/limits").json()
+        assert payload["max_request_mb"] >= payload["max_upload_mb"]
+        assert payload["max_dbc_files"] == MAX_DBC_UPLOADS
+
+    def test_api_token_gates_every_api_call(self, client, monkeypatch):
+        """CRC_WEB_API_TOKEN protects /api/* and accepts both header forms."""
+        monkeypatch.setenv("CRC_WEB_API_TOKEN", "s3cret")
+        assert client.get("/api/limits").status_code == 401
+        assert client.get(
+            "/api/limits", headers={"X-API-Token": "wrong"}).status_code == 401
+        assert client.get(
+            "/api/limits", headers={"X-API-Token": "s3cret"}).status_code == 200
+        assert client.get(
+            "/api/limits",
+            headers={"Authorization": "Bearer s3cret"}).status_code == 200
+
+    def test_aggregate_upload_budget_rejects_many_large_files(
+            self, client, monkeypatch):
+        """Several individually-legal uploads can still exceed the request cap."""
+        monkeypatch.setenv("CRC_WEB_MAX_REQUEST_MB", "1")
+        blob = b"x" * (600 * 1024)
+        response = client.post(
+            "/api/verify-manual",
+            files=[
+                ("dbcs", ("a.dbc", blob, "application/octet-stream")),
+                ("dbcs", ("b.dbc", blob, "application/octet-stream")),
+                ("trace", ("t.blf", b"trace", "application/octet-stream")),
+            ],
+            data={"config": "{}"},
+        )
+        assert response.status_code == 413
+        assert "总大小" in response.json()["detail"]
+
+    def test_oversized_job_result_is_truncated(self):
+        """A huge result keeps only the bounded view in memory."""
+        # pylint: disable=import-outside-toplevel,protected-access
+        from webapp.service import _bounded_result
+
+        result = {
+            "run_id": "r",
+            "reports": [{
+                "summary": {"check_total": 1},
+                "failures": [{"detail": "x" * 10_000} for _ in range(500)],
+                "frames": [{"detail": "y" * 10_000} for _ in range(500)],
+                "rc_trends": [{"signal": str(i)} for i in range(100)],
+            }],
+        }
+        bounded = _bounded_result(result)
+        assert bounded["result_truncated"] is True
+        report = bounded["reports"][0]
+        assert len(report["failures"]) <= 200
+        assert len(report["frames"]) <= 100
+        assert len(report["rc_trends"]) <= 10
+        assert report["failures_truncated"] is True

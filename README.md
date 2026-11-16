@@ -5,7 +5,7 @@
 DBC-aware CAN bus CRC / rolling-counter verification for BLF, ASC, MF4 and TRC traces.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml)
 
 [English](./README.md) | [🌍 中文](./docs/zh-CN/README.md)
@@ -14,9 +14,9 @@ DBC-aware CAN bus CRC / rolling-counter verification for BLF, ASC, MF4 and TRC t
 
 ---
 
-| Web UI | Self-contained HTML report |
-| --- | --- |
-| ![Web UI](docs/screenshots/web-ui.png) | ![HTML report](docs/screenshots/report.png) |
+| Web UI | Verification result | Self-contained HTML report |
+| --- | --- | --- |
+| ![Web UI](docs/screenshots/web-ui.png) | ![Verification result](docs/screenshots/web-ui-result.png) | ![HTML report](docs/screenshots/report.png) |
 
 ---
 
@@ -51,7 +51,8 @@ Expected output: 160 frames, 320 checks, 100 % pass.
 python -m cli.main run -c examples/example/config_bad.json -v
 ```
 
-Use it as a gate: `--fail-on-failure` exits 1 on any failed check, and
+Table output lists failures only by default; add `--show-all` to print every
+verdict. Use it as a gate: `--fail-on-failure` exits 1 on any failed check, and
 `--min-pass-rate 99.5` exits 1 below the threshold (both also work on
 `crc-check verify`).
 
@@ -62,6 +63,19 @@ crc-check run -c examples/example/config.json --fail-on-failure
 MF4/MDF traces need python-can's optional reader; `requirements.txt` already
 installs it. For a bare `pip install -e .`, add it with
 `pip install "python-can[mf4]"` (or `pip install -e ".[mf4]"`).
+
+### Docker
+
+```bash
+docker build -t crc-checker .
+docker run --rm -p 8000:8000 crc-checker
+```
+
+The image bundles the synthetic example project and serves the web UI on port
+8000. Pushing a `v*` tag runs `release.yml`, which verifies the tag against
+`crc_checker.__version__`, runs the test suite, and publishes the wheel to PyPI
+and the image to GHCR (the PyPI trusted publisher must be configured once in
+the repository settings).
 
 ## 🌐 Web version
 
@@ -75,6 +89,10 @@ DBC file(s) + a trace (plus an optional DataID file), then fill in the config
 options (algorithm, range, DataID layout, filters) on the page. A project's
 bundled sample traces are one click away — no download-then-upload detour.
 The browser only sends project ids or uploaded files; paths stay server-side.
+Set `CRC_WEB_API_TOKEN` to require `X-API-Token` (or `Authorization: Bearer`)
+on every `/api/*` call; the value is entered in the UI's version dialog and kept
+in the browser's localStorage. Upload caps: 200 MB per file and 400 MB per
+request by default (`CRC_WEB_MAX_UPLOAD_MB` / `CRC_WEB_MAX_REQUEST_MB`).
 Projects are scanned from `projects/` (or `examples/` when `projects/` does not
 exist; override with `CRC_CHECKER_PROJECTS_DIR`). The Vue frontend is committed
 as `frontend/dist`, so a deployment machine needs no Node. The launcher binds to
@@ -197,14 +215,15 @@ tests/                  pytest suite
 pytest --tb=short --cov=crc_checker --cov=cli --cov=webapp \
   --cov-report=term --cov-fail-under=80          # CI backend test command
 pylint $(git ls-files '*.py')                     # must stay 10.00/10
-cd frontend && npm run lint                       # eslint + prettier check
+cd frontend && npm run lint                       # eslint
+cd frontend && npm run format:check               # prettier
 cd frontend && npm test                           # node --test (pure logic)
 cd frontend && npm run test:component             # vitest (@vue/test-utils)
-cd frontend && npm install && npm run build       # rebuild committed dist
+cd frontend && npm ci && npm run build            # rebuild committed dist
 python examples/generate_example.py               # regenerate the example
 ```
 
-CI runs pylint and coverage-gated pytest on Python 3.9, 3.11 and 3.13, plus a
+CI runs pylint and coverage-gated pytest on Python 3.11, 3.12 and 3.13, plus a
 Windows pytest job and frontend lint/tests/build freshness checks. The pre-push
 hook runs pylint and the same 80%-coverage backend pytest command using Python
 3.11 when `uv` is installed; otherwise it uses the active Python environment.

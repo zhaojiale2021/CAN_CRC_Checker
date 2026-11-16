@@ -4,8 +4,7 @@ Supports CRC8/16/32 with both reflected (right-shifting) and non-reflected
 (left-shifting) algorithms, plus XOR checksums.
 """
 
-from crc_checker.crc.models import CRCParams, CRCRange
-from crc_checker.trace.models import CanFrame
+from crc_checker.core.models import CRCParams, CRCRange, CanFrame
 
 
 class CRCEngine:

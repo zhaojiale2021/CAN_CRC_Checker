@@ -1,15 +1,5 @@
-"""Data models for CAN trace frames."""
+"""Data models for CAN trace frames (re-exported from the neutral core)."""
 
-from dataclasses import dataclass
+from crc_checker.core.models import CanFrame
 
-
-@dataclass
-class CanFrame:
-    """A single CAN data frame extracted from a trace file."""
-    timestamp: float
-    arbitration_id: int
-    dlc: int
-    data: bytes
-    is_fd: bool = False
-    is_extended: bool = False
-    channel: int = 0
+__all__ = ["CanFrame"]

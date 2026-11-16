@@ -34,7 +34,7 @@ npm run build                          # also mirrors dist into webapp/static/di
 ```
 
 `pylint` is pinned in `requirements.txt` (3.3.9) so the pre-push hook and CI
-agree. CI additionally runs Python 3.9/3.11/3.13, Windows, the wheel smoke
+agree. CI additionally runs Python 3.11/3.12/3.13, Windows, the wheel smoke
 test and the committed-`dist` freshness check.
 
 ## Conventions

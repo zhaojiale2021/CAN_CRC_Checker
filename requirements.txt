@@ -10,14 +10,14 @@ xlrd>=2.0
 fastapi>=0.110
 uvicorn>=0.29
 python-multipart>=0.0.9
-httpx>=0.27
 PyYAML>=6.0
 
-# Development
+# Development / tests (httpx powers FastAPI's TestClient)
 pytest>=8
 pytest-cov
+httpx>=0.27
+jsonschema>=4
 
-# Lint — CI 的 py3.9 作业最高只能装 pylint 3.3.9(py3.9 末版),其
-# R0913/R0917 参数上限(5)比 pylint 4.x 严;固定同一版本保证本地预推送
-# 钩子与 CI 拦同样的东西。CI 换掉 py3.9 前不要升。
+# Lint — CI 的 py3.11 作业与本地预推送钩子统一使用 3.3.9。
+# 升级 pylint 属于一次有意的 lint gate 变更:先跑全量 p lint 再改版本。
 pylint==3.3.9

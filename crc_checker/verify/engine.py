@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from crc_checker.trace.reader import TraceReader
 from crc_checker.dbc.models import DBCProtectionMap
-from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.core.models import CRCParams, CRCRange
 from crc_checker.verify.cancellation import CancellationToken
 from crc_checker.verify.models import VerifyReport
 from crc_checker.protect.rolling_counter import RollingCounterVerifier

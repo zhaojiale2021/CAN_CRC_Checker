@@ -62,6 +62,22 @@
           <code>git pull</code> 后未重启服务时两者会不一致。缺少
           <code>.git</code> 或 Git 不可用时显示“版本未知”,不影响校验功能。
         </p>
+        <el-divider />
+        <div class="token-row">
+          <el-input
+            v-model="token"
+            size="small"
+            show-password
+            clearable
+            aria-label="API token"
+            placeholder="服务端设置了 CRC_WEB_API_TOKEN 时填写"
+          />
+          <el-button size="small" @click="saveToken">保存 token</el-button>
+        </div>
+        <p class="hint">
+          token 仅保存在本机浏览器的 localStorage;服务端未设置 token
+          时留空即可。
+        </p>
       </template>
       <template #footer>
         <el-button @click="load">刷新版本</el-button>
@@ -80,13 +96,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { fetchVersion } from '../api.js'
+import { fetchVersion, getApiToken, setApiToken } from '../api.js'
 import { checkoutChanged, versionLabel } from '../format.js'
 
 const info = ref(null)
 const loading = ref(false)
 const error = ref('')
 const visible = ref(false)
+const token = ref(getApiToken())
 
 const running = computed(() => info.value?.running || {})
 const checkout = computed(() => info.value?.checkout || {})
@@ -123,6 +140,13 @@ async function load() {
 
 function open() {
   visible.value = true
+  token.value = getApiToken()
+  load()
+}
+
+function saveToken() {
+  setApiToken(token.value.trim())
+  ElMessage.success('API token 已保存')
   load()
 }
 
@@ -148,19 +172,18 @@ onMounted(load)
 .version-alert {
   margin-bottom: 12px;
 }
-.mono {
-  font-family: 'SF Mono', Consolas, monospace;
-}
 .tag-gap {
   margin-left: 8px;
-}
-.muted {
-  color: var(--el-text-color-secondary);
 }
 .hint {
   margin-top: 12px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
   line-height: 1.7;
+}
+.token-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 </style>

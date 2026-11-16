@@ -20,11 +20,14 @@ export function useVerificationJob({ onResult } = {}) {
   const cancelling = ref(false)
   const runError = ref('')
   const result = ref(null)
+  // null = 还没开始上传;0..100 = 上传进度(拿到 job_id 后清空)。
+  const uploadProgress = ref(null)
 
   let pollTimer = null
   let resolvePollWait = null
   let activeRun = 0
   let isUnmounted = false
+  let abortController = null
 
   const jobStatusText = computed(() => {
     const labels = {
@@ -102,9 +105,24 @@ export function useVerificationJob({ onResult } = {}) {
     processedFrames.value = null
     jobStatus.value = ''
     runError.value = ''
+    uploadProgress.value = null
+    // 上一次结果不能在新任务运行期间继续显示。
+    result.value = null
+    abortController = new AbortController()
+    const { signal } = abortController
     try {
-      const submission = await submit()
+      const submission = await submit({
+        signal,
+        onProgress(loaded, total) {
+          if (isUnmounted || runId !== activeRun || !total) return
+          uploadProgress.value = Math.min(
+            100,
+            Math.round((loaded / total) * 100),
+          )
+        },
+      })
       if (isUnmounted || runId !== activeRun) return
+      uploadProgress.value = null
       if (!submission?.job_id) {
         throw new Error('服务未返回校验任务 ID。')
       }
@@ -124,8 +142,13 @@ export function useVerificationJob({ onResult } = {}) {
       }
     } catch (err) {
       if (!isUnmounted && runId === activeRun) {
-        jobStatus.value = 'error'
-        runError.value = err.message
+        if (err.name === 'AbortError') {
+          jobStatus.value = 'cancelled'
+          runError.value = ''
+        } else {
+          jobStatus.value = 'error'
+          runError.value = err.message
+        }
         result.value = null
       }
     } finally {
@@ -133,15 +156,23 @@ export function useVerificationJob({ onResult } = {}) {
         running.value = false
         cancelling.value = false
         currentJobId.value = ''
+        uploadProgress.value = null
+        abortController = null
         clearPollTimer()
       }
     }
   }
 
   async function cancelVerification() {
-    const jobId = currentJobId.value
-    if (!jobId || !running.value || cancelling.value) return
+    if (!running.value || cancelling.value) return
     cancelling.value = true
+    const jobId = currentJobId.value
+    if (!jobId) {
+      // 还在上传阶段:直接中止请求,服务端不会留下任务。
+      abortController?.abort()
+      cancelling.value = false
+      return
+    }
     try {
       const state = await cancelJob(jobId)
       if (!isUnmounted && currentJobId.value === jobId) updateJobState(state)
@@ -159,6 +190,7 @@ export function useVerificationJob({ onResult } = {}) {
   onBeforeUnmount(() => {
     isUnmounted = true
     activeRun += 1
+    abortController?.abort()
     clearPollTimer()
   })
 
@@ -167,6 +199,7 @@ export function useVerificationJob({ onResult } = {}) {
     jobStatus,
     jobStatusText,
     processedFrames,
+    uploadProgress,
     currentJobId,
     cancelling,
     runError,

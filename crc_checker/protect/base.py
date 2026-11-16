@@ -3,7 +3,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
-from crc_checker.trace.models import CanFrame
+from crc_checker.core.models import CanFrame
 from crc_checker.dbc.models import MessageProtection
 
 if TYPE_CHECKING:

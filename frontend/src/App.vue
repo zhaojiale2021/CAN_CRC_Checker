@@ -28,6 +28,14 @@
         </el-button>
       </el-alert>
 
+      <el-alert
+        v-if="limitsError"
+        type="warning"
+        :closable="false"
+        class="block preline"
+        :title="limitsError"
+      />
+
       <el-card
         class="block"
         shadow="never"
@@ -52,93 +60,20 @@
       </el-card>
 
       <!-- 1. 项目 / DBC -->
-      <el-card
+      <ProjectSelector
         v-if="mode === 'project'"
+        v-model:project-id="projectId"
         class="block"
-        shadow="never"
-        :aria-busy="projectLoading"
-      >
-        <template #header>
-          <div class="card-head">
-            <span class="step">1</span>
-            <span>选择项目</span>
-            <span class="muted"
-              >项目配置来自服务端扫描的 projects/ 目录，与 CLI
-              共用同一校验口径</span
-            >
-          </div>
-        </template>
-
-        <el-select
-          v-model="projectId"
-          filterable
-          clearable
-          :disabled="projectLoading || running"
-          :loading="projectLoading"
-          placeholder="按分组 / 项目选择"
-          class="project-select"
-        >
-          <el-option-group
-            v-for="group in projectGroups"
-            :key="group.label"
-            :label="group.label"
-          >
-            <el-option
-              v-for="projectItem in group.items"
-              :key="projectItem.id"
-              :label="projectLabel(projectItem)"
-              :value="projectItem.id"
-            />
-          </el-option-group>
-        </el-select>
-        <div
-          v-if="projectLoading"
-          class="empty-projects"
-          role="status"
-          aria-live="polite"
-        >
-          <span class="muted">正在加载项目列表…</span>
-        </div>
-        <div v-else-if="!projects.length && !loadError" class="empty-projects">
-          <span class="muted"
-            >服务端没有扫描到项目。可以直接上传 DBC 和 trace 手动校验。</span
-          >
-          <el-button size="small" type="primary" plain @click="mode = 'manual'">
-            切到手动上传
-          </el-button>
-        </div>
-
-        <div v-if="project" class="project-detail">
-          <div class="detail-row">
-            <span
-              v-for="item in highlights"
-              :key="item.label"
-              class="detail-item"
-            >
-              <span class="muted">{{ item.label }}</span>
-              <span class="mono">{{ item.value }}</span>
-            </span>
-          </div>
-          <div class="detail-row muted">
-            DBC：{{ project.dbc_files.join('、') || '无' }}
-          </div>
-          <div v-if="project.sample_traces.length" class="detail-row">
-            <span class="muted">仓库内示例 trace：</span>
-            <el-button
-              v-for="traceName in project.sample_traces"
-              :key="traceName"
-              size="small"
-              link
-              type="primary"
-              :disabled="running"
-              @click="runSample(traceName)"
-            >
-              {{ traceName }}
-            </el-button>
-            <span class="muted">点击直接校验，无需上传</span>
-          </div>
-        </div>
-      </el-card>
+        :projects="projects"
+        :project-groups="projectGroups"
+        :project="project"
+        :project-loading="projectLoading"
+        :highlights="highlights"
+        :load-error="loadError"
+        :running="running"
+        @manual="mode = 'manual'"
+        @sample="runSample"
+      />
 
       <el-card v-else class="block" shadow="never">
         <template #header>
@@ -156,7 +91,8 @@
           action="#"
           accept=".dbc"
           :auto-upload="false"
-          :limit="limits.maxDbcFiles || 0"
+          :disabled="running"
+          :limit="limits.maxDbcFiles || undefined"
           :on-change="onDbcChange"
           :on-remove="onDbcRemove"
           :on-exceed="onDbcExceed"
@@ -172,9 +108,6 @@
             </div>
           </template>
         </el-upload>
-        <div v-if="dbcFiles.length" class="detail-row muted selected-files">
-          已选：{{ dbcFiles.map((f) => f.name).join('、') }}
-        </div>
       </el-card>
 
       <!-- 2. trace (+ 手动模式的 DataID) -->
@@ -194,6 +127,7 @@
           action="#"
           accept=".blf,.asc,.mf4,.trc,.csv,.log,.txt"
           :auto-upload="false"
+          :disabled="running"
           :limit="1"
           :on-change="onFileChange"
           :on-remove="onFileRemove"
@@ -206,6 +140,9 @@
           <template #tip>
             <div class="muted">
               文件只用于本次校验：服务端跑完即删除，仅保留生成的报告。
+              <template v-if="limits.maxRequestMb"
+                >单次请求总大小上限 {{ limits.maxRequestMb }}MB。</template
+              >
             </div>
           </template>
         </el-upload>
@@ -216,22 +153,22 @@
             action="#"
             accept=".json,.xlsx,.xls"
             :auto-upload="false"
+            :disabled="running"
             :limit="1"
             :on-change="onDataidChange"
             :on-remove="onDataidRemove"
             :on-exceed="onDataidExceed"
             :file-list="dataidList"
           >
-            <el-button size="small">选择 DataID 文件（可选）</el-button>
+            <el-button size="small" :disabled="running"
+              >选择 DataID 文件（可选）</el-button
+            >
             <template #tip>
               <div class="muted">
                 预处理后的 .json 或 .xlsx/.xls；不传则不使用 DataID。
               </div>
             </template>
           </el-upload>
-          <span v-if="dataidFile" class="muted mono">{{
-            dataidFile.name
-          }}</span>
         </div>
       </el-card>
 
@@ -253,12 +190,17 @@
           :mode="mode"
           :presets="presets"
           :preset-error="presetError"
+          :disabled="running"
         />
 
         <div class="options">
           <div class="option">
             <span class="option-label">帧数上限</span>
-            <el-radio-group v-model="frameMode" size="small">
+            <el-radio-group
+              v-model="frameMode"
+              size="small"
+              :disabled="running"
+            >
               <el-radio-button value="config"
                 >配置默认{{ frameDefaultLabel }}</el-radio-button
               >
@@ -272,6 +214,7 @@
               :max="100000000"
               :step="1000"
               size="small"
+              :disabled="running"
               controls-position="right"
             />
             <span
@@ -286,6 +229,7 @@
             <el-switch
               v-model="onlyFailures"
               size="small"
+              :disabled="running"
               active-text="只写失败项"
             />
           </div>
@@ -299,20 +243,20 @@
             :disabled="!runnable"
             @click="run"
           >
-            {{ running ? '校验中…' : '开始校验' }}
+            {{ runButtonText }}
           </el-button>
           <span v-if="!runnable && !running" class="muted">{{
             prerequisite
           }}</span>
-          <span v-else-if="running" class="muted">后台任务运行中。</span>
+          <span v-else-if="running" class="muted">{{ runningHint }}</span>
           <el-button
-            v-if="running && currentJobId"
+            v-if="running"
             size="large"
             :loading="cancelling"
             :disabled="cancelling"
             @click="cancelVerification"
           >
-            {{ cancelling ? '正在请求取消…' : '取消校验' }}
+            {{ cancelling ? '正在取消…' : '取消校验' }}
           </el-button>
         </div>
       </el-card>
@@ -325,7 +269,10 @@
         aria-atomic="true"
       >
         <span>{{ jobStatusText }}</span>
-        <span v-if="processedFrames !== null" class="mono">
+        <span v-if="uploadProgress !== null" class="mono">
+          上传 {{ uploadProgress }}%
+        </span>
+        <span v-else-if="processedFrames !== null" class="mono">
           已处理 {{ processedFrames }} 帧
         </span>
       </div>
@@ -334,7 +281,7 @@
         v-if="runError"
         type="error"
         :closable="true"
-        class="block"
+        class="block preline"
         :title="runError"
         @close="runError = ''"
       />
@@ -365,11 +312,12 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import VersionPanel from './components/VersionPanel.vue'
 import ResultPanel from './components/ResultPanel.vue'
 import ManualOptionsForm from './components/ManualOptionsForm.vue'
+import ProjectSelector from './components/ProjectSelector.vue'
 import {
   fetchLimits,
   fetchPresets,
@@ -389,9 +337,11 @@ const mode = ref('project')
 // 服务端仍然按真实上限拒绝)。
 const limits = reactive({
   maxUploadMb: null,
+  maxRequestMb: null,
   maxDbcFiles: null,
   manualDefaultFrames: null,
 })
+const limitsError = ref('')
 
 const presets = ref([])
 const presetError = ref('')
@@ -406,6 +356,7 @@ const {
   jobStatus,
   jobStatusText,
   processedFrames,
+  uploadProgress,
   currentJobId,
   cancelling,
   runError,
@@ -479,9 +430,17 @@ const prerequisite = computed(() => {
   return ''
 })
 
-function projectLabel(item) {
-  return `${item.oem.toUpperCase()} / ${item.model}`
-}
+const runButtonText = computed(() => {
+  if (!running.value) return '开始校验'
+  if (uploadProgress.value !== null) return `上传中 ${uploadProgress.value}%`
+  return '校验中…'
+})
+
+const runningHint = computed(() =>
+  uploadProgress.value !== null
+    ? '正在上传文件，可随时取消。'
+    : '后台任务运行中，可随时取消。',
+)
 
 function maxFramesPayload() {
   if (frameMode.value === 'unlimited') return 0
@@ -516,7 +475,7 @@ function showResult(payload) {
 
 function run() {
   if (mode.value === 'manual') {
-    return executeVerification(() =>
+    return executeVerification(({ onProgress, signal }) =>
       verifyManual({
         dbcs: dbcFiles.value,
         trace: selectedFile.value,
@@ -524,26 +483,32 @@ function run() {
         config: manualConfig.value,
         maxFrames: maxFramesPayload(),
         onlyFailures: onlyFailures.value,
+        onProgress,
+        signal,
       }),
     )
   }
-  return executeVerification(() =>
+  return executeVerification(({ onProgress, signal }) =>
     verifyTrace({
       projectId: projectId.value,
       file: selectedFile.value,
       maxFrames: maxFramesPayload(),
       onlyFailures: onlyFailures.value,
+      onProgress,
+      signal,
     }),
   )
 }
 
 function runSample(traceName) {
-  return executeVerification(() =>
+  return executeVerification(({ onProgress, signal }) =>
     verifySample({
       projectId: projectId.value,
       traceName,
       maxFrames: maxFramesPayload(),
       onlyFailures: onlyFailures.value,
+      onProgress,
+      signal,
     }),
   )
 }
@@ -563,19 +528,32 @@ async function loadLimits() {
     const data = await fetchLimits()
     if (Number.isFinite(data.max_upload_mb))
       limits.maxUploadMb = data.max_upload_mb
+    if (Number.isFinite(data.max_request_mb))
+      limits.maxRequestMb = data.max_request_mb
     if (Number.isFinite(data.max_dbc_files))
       limits.maxDbcFiles = data.max_dbc_files
     if (Number.isFinite(data.manual_default_frames)) {
       limits.manualDefaultFrames = data.manual_default_frames
-      // 自定义帧数输入框还没被用户改过时,跟随服务端默认帧数。
-      if (customFrames.value === null) {
+      // 只有手动模式才用服务端默认帧数;项目模式必须尊重项目 config。
+      if (mode.value === 'manual' && customFrames.value === null) {
         customFrames.value = data.manual_default_frames
       }
     }
-  } catch {
-    // 拉取失败保持 null(页面显示省略号),不打扰用户。
+    limitsError.value = ''
+  } catch (err) {
+    // 上限拿不到时不做客户端拦截,服务端仍会兜底;页面如实提示。
+    limitsError.value = `无法读取服务端上限（服务端仍会校验）：${err.message}`
   }
 }
+
+watch(mode, (value) => {
+  if (value === 'manual' && customFrames.value === null) {
+    customFrames.value = limits.manualDefaultFrames
+  }
+})
+
+// Exposed for the component test that asserts a lost job is cleared.
+defineExpose({ currentJobId })
 
 onMounted(() => {
   loadProjects()
@@ -617,6 +595,10 @@ onMounted(() => {
 .block {
   margin-bottom: 16px;
 }
+.preline :deep(.el-alert__title),
+.preline :deep(.el-alert__description) {
+  white-space: pre-line;
+}
 .card-head {
   display: flex;
   align-items: center;
@@ -642,71 +624,11 @@ onMounted(() => {
   gap: 16px;
   flex-wrap: wrap;
 }
-.project-select {
-  width: 420px;
-  max-width: 100%;
-  margin-top: 8px;
-}
-.empty-projects {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-.project-detail {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.detail-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  font-size: 12px;
-  align-items: baseline;
-  overflow-wrap: anywhere;
-}
-.detail-item {
-  display: inline-flex;
-  gap: 6px;
-  align-items: baseline;
-}
 .selected-files {
   margin-top: 10px;
 }
-.mono {
-  font-family: 'SF Mono', Consolas, monospace;
-}
-.muted {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
 .upload-text {
   color: var(--el-text-color-regular);
-}
-/* App-level option rows (frame cap, HTML report). ManualOptionsForm has its
-   own scoped copy; without this the label, radio group and number input were
-   laid out inline and collided. */
-.options {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.option {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  min-height: 32px;
-}
-.option-label {
-  flex: 0 0 100px;
-  width: 100px;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-  line-height: 32px;
 }
 .dataid-upload {
   margin-top: 12px;
@@ -757,13 +679,6 @@ onMounted(() => {
   }
   .mode-bar > .muted {
     width: 100%;
-  }
-  .project-select {
-    width: 100%;
-  }
-  .empty-projects {
-    align-items: flex-start;
-    flex-direction: column;
   }
   .run-bar {
     align-items: stretch;

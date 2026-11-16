@@ -1,5 +1,5 @@
 {
-  "_comment": "Synthetic example. crc-check run -c examples/example/config.json -v",
+  "_comment": "Synthetic example with deliberately broken frames. crc-check run -c examples/example/config_bad.json -v",
   "dbc": "dbc",
   "traces": [
     "trace/example_bad.blf"

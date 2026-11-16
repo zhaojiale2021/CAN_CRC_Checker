@@ -241,21 +241,3 @@ def sample_trace_channels(trace_path: str, max_frames: int = 500) -> dict[int, s
     finally:
         reader.stop()
     return dict(ch_ids)
-
-
-def sample_trace_ids(trace_path: str, max_frames: int = 500) -> set[int]:
-    """Sample the first N frames of a trace to collect unique CAN IDs."""
-    from crc_checker.trace.reader import open_log_reader  # pylint: disable=import-outside-toplevel
-    ids: set[int] = set()
-    reader = open_log_reader(trace_path)
-    count = 0
-    try:
-        for msg in reader:
-            if not msg.is_error_frame and not msg.is_remote_frame:
-                ids.add(msg.arbitration_id)
-            count += 1
-            if count >= max_frames:
-                break
-    finally:
-        reader.stop()
-    return ids

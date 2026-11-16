@@ -59,7 +59,7 @@
           "properties": {
             "width": {
               "type": "integer",
-              "minimum": 1,
+              "minimum": 8,
               "maximum": 32
             },
             "poly": {
@@ -152,7 +152,8 @@
                 "enum": [
                   "exclude_crc",
                   "full_payload",
-                  "custom_range"
+                  "custom_range",
+                  "segment"
                 ]
               },
               "start_byte": {
@@ -192,7 +193,8 @@
           "enum": [
             "exclude_crc",
             "full_payload",
-            "custom_range"
+            "custom_range",
+            "segment"
           ],
           "default": "exclude_crc"
         },
@@ -240,8 +242,16 @@
           "description": "Sheet name(s); blank = auto-match to the DBC name."
         },
         "mapping": {
-          "type": "string",
-          "description": "Named mapping from dataid_mappings.yaml, or a JSON object."
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": true
+            }
+          ],
+          "description": "Named mapping from dataid_mappings.yaml, or an inline mapping object."
         },
         "mapping_file": {
           "type": [

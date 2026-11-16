@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from crc_checker.crc.models import CRCParams, CRCRange, VALID_RANGE_MODES
+from crc_checker.core.models import CRCParams, CRCRange, VALID_RANGE_MODES
 
 
 @dataclass
@@ -223,11 +223,10 @@ class DBCProtectionMap:
         # pylint: disable=too-many-locals,too-many-branches
         # Pre-build a reverse index: frame_id → list of (signal_name, dataid, profile)
         rev_index: dict[int, list[tuple[str, int, str]]] = {}
-        # pylint: disable=protected-access
-        for (fid, sig), did in dataid_map._map.items():
+        for (fid, sig), did in dataid_map.items():
             if fid not in rev_index:
                 rev_index[fid] = []
-            profile = dataid_map._profiles.get((fid, sig), "")
+            profile = dataid_map.get_profile(fid, sig) or ""
             rev_index[fid].append((sig, did, profile))
 
         def _try_lookup(fid, key):
