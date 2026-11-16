@@ -40,12 +40,84 @@ class MessageProtection:  # pylint: disable=too-many-instance-attributes
     dbc_source: str = ""                                       # Source DBC file name
 
 
+class ProtectionMapOps:  # pylint: disable=protected-access
+    """Shared ``apply_*`` API for single- and per-channel protection maps.
+
+    The mutation itself lives on :class:`DBCProtectionMap`; this mixin fans the
+    call out over every underlying map and sums the per-map counts. Subclasses
+    provide :meth:`_maps`.
+    """
+
+    def _maps(self) -> list["DBCProtectionMap"]:
+        """Underlying single-DBC maps this view applies operations to."""
+        raise NotImplementedError
+
+    def apply_crc_params(self, params):
+        """Apply the same CRC params to every protection group."""
+        for pm in self._maps():
+            pm._apply_crc_params(params)
+
+    def apply_comment_classification(self, default_params=None,
+                                     fallback_range=None) -> int:
+        """Auto-classify checksum algorithms from DBC comments."""
+        return sum(pm._apply_comment_classification(default_params, fallback_range)
+                   for pm in self._maps())
+
+    def apply_crc_overrides(self, overrides: dict) -> int:
+        """Apply per-message CRC preset overrides."""
+        return sum(pm._apply_crc_overrides(overrides) for pm in self._maps())
+
+    def apply_crc_range(self, crc_range):
+        """Apply one CRC range to every protection group."""
+        for pm in self._maps():
+            pm._apply_crc_range(crc_range)
+
+    def apply_dataid_map(self, dataid_map) -> int:
+        """Apply DataID entries to every protection group."""
+        return sum(pm._apply_dataid_map(dataid_map) for pm in self._maps())
+
+    def apply_dataid_map_fallback(self, dataid_map) -> int:
+        """Apply DataID entries only where no DataID is set yet."""
+        return sum(pm._apply_dataid_map_fallback(dataid_map) for pm in self._maps())
+
+    def apply_dataid_default(self, default: int) -> int:
+        """Apply a fallback DataID to groups without one."""
+        return sum(pm._apply_dataid_default(default) for pm in self._maps())
+
+    def apply_profile_crc_params(self, default_params, profile_overrides=None):
+        """Apply legacy profile-based CRC params."""
+        for pm in self._maps():
+            pm._apply_profile_crc_params(default_params, profile_overrides)
+
+    def apply_profiles(self, profiles: dict, select_by_width: bool = False,
+                       default_key: str | None = None) -> int:
+        """Apply E2E profiles to every protection group."""
+        return sum(pm._apply_profiles(profiles, select_by_width, default_key)
+                   for pm in self._maps())
+
+    def apply_range_overrides(self, overrides: dict) -> int:
+        """Apply per-message/signal CRC range overrides."""
+        return sum(pm._apply_range_overrides(overrides) for pm in self._maps())
+
+    def apply_skip(self, entries) -> int:
+        """Drop protection groups listed in the skip config."""
+        return sum(pm._apply_skip(entries) for pm in self._maps())
+
+    def apply_rc_config(self, max_valid=None):
+        """Apply the rolling-counter validity limit."""
+        for pm in self._maps():
+            pm._apply_rc_config(max_valid)
+
+
 @dataclass
-class DBCProtectionMap:
+class DBCProtectionMap(ProtectionMapOps):
     """Complete map of all protection signals across all messages."""
     dbc_paths: list[str] = field(default_factory=list)
     messages: dict[int, list[MessageProtection]] = field(default_factory=dict)
     # key = frame_id, value = list of protection groups within that message
+
+    def _maps(self) -> list["DBCProtectionMap"]:
+        return [self]
 
     @property
     def dbc_path(self) -> str:
@@ -69,13 +141,13 @@ class DBCProtectionMap:
         """Get all CAN IDs that have protection signals."""
         return list(self.messages.keys())
 
-    def apply_crc_params(self, params: CRCParams):
+    def _apply_crc_params(self, params: CRCParams):
         """Apply the same CRC params to all protection groups."""
         for prot_list in self.messages.values():
             for prot in prot_list:
                 prot.crc_params = params
 
-    def apply_comment_classification(self, default_params=None,
+    def _apply_comment_classification(self, default_params=None,
                                      fallback_range: CRCRange | None = None) -> int:
         """Auto-classify checksum algorithms from DBC comments.
 
@@ -165,7 +237,7 @@ class DBCProtectionMap:
                     applied += 1
         return applied
 
-    def apply_crc_overrides(self, overrides: dict) -> int:
+    def _apply_crc_overrides(self, overrides: dict) -> int:
         """Apply config-driven per-message CRC algorithm overrides.
 
         Keys may be frame IDs (``"0x287"``, ``287``) or frame names
@@ -201,13 +273,13 @@ class DBCProtectionMap:
                     applied += 1
         return applied
 
-    def apply_crc_range(self, crc_range: CRCRange):
+    def _apply_crc_range(self, crc_range: CRCRange):
         """Apply the same CRC range to all protection groups."""
         for prot_list in self.messages.values():
             for prot in prot_list:
                 prot.crc_range = crc_range
 
-    def apply_dataid_map(self, dataid_map):
+    def _apply_dataid_map(self, dataid_map):
         """Apply DataID values from a DataIDMap to matching protection groups.
 
         Match strategy (tried in order):
@@ -293,7 +365,7 @@ class DBCProtectionMap:
                     applied += 1
         return applied
 
-    def apply_dataid_default(self, default: int) -> int:
+    def _apply_dataid_default(self, default: int) -> int:
         """Fill protection groups without DataID with a default value.
 
         Used when DataID is not configured for some messages (e.g.
@@ -310,7 +382,7 @@ class DBCProtectionMap:
                     applied += 1
         return applied
 
-    def apply_dataid_map_fallback(self, dataid_map) -> int:
+    def _apply_dataid_map_fallback(self, dataid_map) -> int:
         """Apply DataID only to protection groups that currently have dataid=None.
 
         Used for multi-channel fallback: CH1/CH2 borrow DataID from CH0
@@ -332,7 +404,7 @@ class DBCProtectionMap:
                         applied += 1
         return applied
 
-    def apply_profile_crc_params(self, default_params, profile_overrides=None):
+    def _apply_profile_crc_params(self, default_params, profile_overrides=None):
         """Apply CRC params per protection group based on crc_profile.
 
         Protection groups with crc_profile containing "Profile 1" get
@@ -364,7 +436,7 @@ class DBCProtectionMap:
                     # Default → Profile 5 (CRC8/SAE-J1850)
                     prot.crc_params = default_params
 
-    def apply_profiles(self, profiles: dict, select_by_width: bool = False,
+    def _apply_profiles(self, profiles: dict, select_by_width: bool = False,
                        default_key: str | None = None) -> int:
         """Apply per-group E2E profile settings (algorithm + range + DataID layout).
 
@@ -423,7 +495,7 @@ class DBCProtectionMap:
                 applied += 1
         return applied
 
-    def apply_range_overrides(self, overrides: dict) -> int:
+    def _apply_range_overrides(self, overrides: dict) -> int:
         """Apply per-group CRC range overrides (e.g. a second E2E segment).
 
         ``CCU_1`` (0x1AE) carries two E2E instances whose CRC covers
@@ -479,7 +551,7 @@ class DBCProtectionMap:
                 applied += 1
         return applied
 
-    def apply_skip(self, entries) -> int:
+    def _apply_skip(self, entries) -> int:
         """Drop protection groups from verification.
 
         For signals that look like E2E protection but are not — e.g. a
@@ -521,7 +593,7 @@ class DBCProtectionMap:
                 del self.messages[frame_id]
         return removed
 
-    def apply_rc_config(self, max_valid: int | None = None):
+    def _apply_rc_config(self, max_valid: int | None = None):
         """Apply RC range config to all protection groups."""
         if max_valid is not None:
             for prot_list in self.messages.values():
@@ -555,27 +627,39 @@ class DBCProtectionMap:
         return added
 
 
-class ChannelProtectionMap:
+class ChannelProtectionMap(ProtectionMapOps):
     """Wraps per-channel DBC protection maps for multi-channel trace verification.
 
     Each channel has its own DBC; frames are looked up by (channel, frame_id).
+    The shared ``apply_*`` API from :class:`ProtectionMapOps` fans every config
+    operation out to the underlying maps.
     """
 
     def __init__(self):
-        self._maps: dict[int, DBCProtectionMap] = {}
+        self._channel_maps: dict[int, DBCProtectionMap] = {}
         self._fallback: DBCProtectionMap | None = None
 
     def set_channel(self, channel: int, pm: DBCProtectionMap):
         """Assign a DBC protection map to a specific channel."""
-        self._maps[channel] = pm
+        self._channel_maps[channel] = pm
 
     def set_fallback(self, pm: DBCProtectionMap):
         """Set fallback DBC for channels without an explicit mapping."""
         self._fallback = pm
 
+    def _maps(self) -> list[DBCProtectionMap]:
+        """Every distinct underlying map (fallback included once)."""
+        result = []
+        seen = set()
+        for pm in [*self._channel_maps.values(), self._fallback]:
+            if pm is not None and id(pm) not in seen:
+                seen.add(id(pm))
+                result.append(pm)
+        return result
+
     def get_protections(self, frame_id: int, channel: int = 0) -> list[MessageProtection]:
         """Get protection groups for a frame, using channel-specific DBC."""
-        pm = self._maps.get(channel, self._fallback)
+        pm = self._channel_maps.get(channel, self._fallback)
         if pm is None:
             return []
         return pm.get_protections(frame_id)
@@ -585,16 +669,11 @@ class ChannelProtectionMap:
         """All DBC paths across all channels."""
         seen = set()
         paths = []
-        for pm in self._maps.values():
-            for p in pm.dbc_paths:
-                if p not in seen:
-                    paths.append(p)
-                    seen.add(p)
-        if self._fallback:
-            for p in self._fallback.dbc_paths:
-                if p not in seen:
-                    paths.append(p)
-                    seen.add(p)
+        for pm in self._maps():
+            for path in pm.dbc_paths:
+                if path not in seen:
+                    paths.append(path)
+                    seen.add(path)
         return paths
 
     @property
@@ -606,113 +685,8 @@ class ChannelProtectionMap:
     def messages(self) -> dict[int, list[MessageProtection]]:
         """Flattened view for backward compat (engine pre-population)."""
         result: dict[int, list[MessageProtection]] = {}
-        for pm in self._maps.values():
+        for pm in self._maps():
             for fid, prots in pm.messages.items():
                 if fid not in result:
                     result[fid] = prots
-        if self._fallback:
-            for fid, prots in self._fallback.messages.items():
-                if fid not in result:
-                    result[fid] = prots
         return result
-
-    def apply_crc_params(self, params):
-        """Apply CRC parameters to all channel maps."""
-        for pm in self._maps.values():
-            pm.apply_crc_params(params)
-        if self._fallback:
-            self._fallback.apply_crc_params(params)
-
-    def apply_comment_classification(self, default_params=None,
-                                     fallback_range=None) -> int:
-        """Auto-classify checksum algorithms from DBC comments on all maps."""
-        applied = 0
-        for pm in self._maps.values():
-            applied += pm.apply_comment_classification(default_params, fallback_range)
-        if self._fallback:
-            applied += self._fallback.apply_comment_classification(
-                default_params, fallback_range)
-        return applied
-
-    def apply_crc_overrides(self, overrides: dict) -> int:
-        """Apply per-message CRC overrides to all channel maps."""
-        applied = 0
-        for pm in self._maps.values():
-            applied += pm.apply_crc_overrides(overrides)
-        if self._fallback:
-            applied += self._fallback.apply_crc_overrides(overrides)
-        return applied
-
-    def apply_crc_range(self, crc_range):
-        """Apply CRC range to all channel maps."""
-        for pm in self._maps.values():
-            pm.apply_crc_range(crc_range)
-        if self._fallback:
-            self._fallback.apply_crc_range(crc_range)
-
-    def apply_dataid_map(self, dataid_map):
-        """Apply DataID map to all channel maps."""
-        for pm in self._maps.values():
-            pm.apply_dataid_map(dataid_map)
-        if self._fallback:
-            self._fallback.apply_dataid_map(dataid_map)
-
-    def apply_dataid_map_fallback(self, dataid_map) -> int:
-        """Apply DataID as fallback to all channel maps (only where dataid=None)."""
-        applied = 0
-        for pm in self._maps.values():
-            applied += pm.apply_dataid_map_fallback(dataid_map)
-        if self._fallback:
-            applied += self._fallback.apply_dataid_map_fallback(dataid_map)
-        return applied
-
-    def apply_dataid_default(self, default: int) -> int:
-        """Apply default DataID to all channel maps."""
-        applied = 0
-        for pm in self._maps.values():
-            applied += pm.apply_dataid_default(default)
-        if self._fallback:
-            applied += self._fallback.apply_dataid_default(default)
-        return applied
-
-    def apply_profile_crc_params(self, default_params, profile_overrides=None):
-        """Apply profile-based CRC params to all channel maps."""
-        for pm in self._maps.values():
-            pm.apply_profile_crc_params(default_params, profile_overrides)
-        if self._fallback:
-            self._fallback.apply_profile_crc_params(default_params, profile_overrides)
-
-    def apply_profiles(self, profiles: dict, select_by_width: bool = False,
-                       default_key: str | None = None) -> int:
-        """Apply per-group E2E profiles to all channel maps."""
-        applied = 0
-        for pm in self._maps.values():
-            applied += pm.apply_profiles(profiles, select_by_width, default_key)
-        if self._fallback:
-            applied += self._fallback.apply_profiles(profiles, select_by_width, default_key)
-        return applied
-
-    def apply_range_overrides(self, overrides: dict) -> int:
-        """Apply per-group CRC range overrides to all channel maps."""
-        applied = 0
-        for pm in self._maps.values():
-            applied += pm.apply_range_overrides(overrides)
-        if self._fallback:
-            applied += self._fallback.apply_range_overrides(overrides)
-        return applied
-
-    def apply_skip(self, entries) -> int:
-        """Drop protection groups from all channel maps."""
-        removed = 0
-        for pm in self._maps.values():
-            removed += pm.apply_skip(entries)
-        if self._fallback:
-            removed += self._fallback.apply_skip(entries)
-        return removed
-
-    def apply_rc_config(self, max_valid=None):
-        """Apply RC config to all channel maps."""
-        for pm in self._maps.values():
-            pm.apply_rc_config(max_valid)
-        if self._fallback:
-            self._fallback.apply_rc_config(max_valid)

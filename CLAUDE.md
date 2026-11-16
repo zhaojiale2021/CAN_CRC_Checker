@@ -63,7 +63,8 @@ consumes `verify/` models only.
   pairs checksums with counters (indexed instances stay separate groups; bus
   markers are stripped; block counters never count as rolling counters).
   `models.py` holds `DBCProtectionMap`, `ChannelProtectionMap`,
-  `MessageProtection` and the `apply_*` mutators.
+  `MessageProtection` and the shared `ProtectionMapOps.apply_*` API (the
+  single-map implementation lives on `DBCProtectionMap._apply_*`).
 - **`crc_checker/dataid/`** — Excel (`.xlsx` / legacy `.xls`) and JSON DataID
   parsing. Named column layouts come from
   `crc_checker/data/dataid_mappings.yaml`; `dataid.mapping_file` loads a custom
