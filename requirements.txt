@@ -20,4 +20,4 @@ jsonschema>=4
 
 # Lint — CI 的 py3.11 作业与本地预推送钩子统一使用 3.3.9。
 # 升级 pylint 属于一次有意的 lint gate 变更:先跑全量 p lint 再改版本。
-pylint==3.3.9
+pylint==4.1.3
