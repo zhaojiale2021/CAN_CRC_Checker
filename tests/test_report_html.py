@@ -110,6 +110,22 @@ class TestReportSummary:
         assert "全部校验通过" not in text
         assert '<div class="value">-</div>' in text
 
+    def test_failure_banner_counts_failures_not_passes(self, tmp_path):
+        """The red banner must count failures — showing 2/3 passed under
+        "检测到失败" reads as "66.7% failed" when only one check failed."""
+        report = VerifyReport(trace_path="t.blf", total_frames=3)
+        report.verdicts.extend([
+            _crc_verdict(timestamp=1.0),
+            _crc_verdict(timestamp=2.0),
+            _crc_verdict(timestamp=3.0, is_pass=False),
+        ])
+        path = tmp_path / "report.html"
+        write_html(report, str(path))
+        text = path.read_text(encoding="utf-8")
+        assert "1 项失败 / 共 3 项" in text
+        assert "通过率 66.7%" in text
+        assert "2/3 项 · 66.7%" not in text
+
     def test_failures_show_red_banner(self, tmp_path):
         """Any failed check flips the banner and the overall card."""
         report = VerifyReport(trace_path="t.blf", total_frames=1)
@@ -128,3 +144,46 @@ class TestReportSummary:
         write_html(report, str(path))
         text = path.read_text(encoding="utf-8")
         assert "只校验了前 10 帧" in text
+
+
+class TestOnlyFailuresKeepsFrameContext:
+    """Only-fail reports filter frames, never the verdicts of a kept frame.
+
+    A failing CRC next to a healthy counter must stay distinguishable from a
+    frame whose RC data never made it into the report.
+    """
+
+    @staticmethod
+    def _report() -> VerifyReport:
+        report = VerifyReport(trace_path="t.blf", total_frames=2)
+        report.add_frame_data(1.0, 0x160, bytes(8))
+        report.add_frame_data(2.0, 0x160, bytes(8))
+        report.verdicts.extend([
+            _crc_verdict(timestamp=1.0, is_pass=False),
+            _crc_verdict(timestamp=1.0, algorithm="rolling_counter",
+                         signal_name="BCS_2_Counter", expected_value=3,
+                         actual_value=3, start_bit=16, length=8),
+            _crc_verdict(timestamp=2.0),
+        ])
+        return report
+
+    def test_passing_rc_verdict_stays_visible(self, tmp_path):
+        """The failing frame keeps its passing RC row and highlight."""
+        path = tmp_path / "report.html"
+        write_html(self._report(), str(path), only_failures=True)
+        text = path.read_text(encoding="utf-8")
+        assert text.count('class="frame-section') == 1
+        assert "BCS_2_Counter" in text
+        assert '<td>通过</td>' in text
+        assert 'class="hex-byte crc-fail"' in text
+        assert 'class="hex-byte rc-pass"' in text
+        assert "@2.000000s" not in text        # the clean frame is still dropped
+
+    def test_size_downgrade_keeps_frame_context(self, tmp_path):
+        """The auto failures-only downgrade keeps the frame's other verdicts too."""
+        path = tmp_path / "report.html"
+        write_html(self._report(), str(path), max_sections=1)
+        text = path.read_text(encoding="utf-8")
+        assert "已自动改为只保留失败帧" in text
+        assert text.count('class="frame-section') == 1
+        assert "BCS_2_Counter" in text

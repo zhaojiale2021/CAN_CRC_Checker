@@ -221,7 +221,7 @@
               v-if="frameMode === 'unlimited' && !onlyFailures"
               class="muted"
             >
-              大 trace 逐帧报告很大，超上限会自动降级成只写失败项。
+              大 trace 逐帧报告很大，超上限会自动降级成只写失败帧。
             </span>
           </div>
           <div class="option">
@@ -230,7 +230,7 @@
               v-model="onlyFailures"
               size="small"
               :disabled="running"
-              active-text="只写失败项"
+              active-text="只写失败帧"
             />
           </div>
         </div>

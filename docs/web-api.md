@@ -137,7 +137,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | `project_id` | 是 | `/api/projects` 里的 `id` |
 | `file` | 是 | trace 文件（BLF/ASC/MF4/TRC/CSV/LOG） |
 | `max_frames` | 否 | 帧数上限：`""`=用项目配置默认，`0`=不限，`N`=前 N 帧 |
-| `only_failures` | 否 | `"true"` 时 HTML 报告只写失败项 |
+| `only_failures` | 否 | `"true"` 时 HTML 报告只保留含失败校验的帧(帧内通过的校验仍显示) |
 
 上限 `CANVOUCH_MAX_UPLOAD_MB`（默认 200MB）。上传文件写到
 `<CANVOUCH_DATA_DIR>/uploads/<job_id>/`（默认 `data/web/uploads/`），提交成功后保留到后台任务结束，
