@@ -53,7 +53,7 @@ async function request(path, options = {}) {
     })
   } catch (err) {
     if (err.name === 'AbortError') throw err
-    throw new Error(`无法连接服务:${err.message}`)
+    throw new Error(`无法连接服务:${err.message}`, { cause: err })
   }
   const type = response.headers.get('content-type') || ''
   const body = type.includes(JSON_TYPE)
@@ -104,7 +104,7 @@ function uploadRequest(path, form, { onProgress, signal } = {}) {
     }
     xhr.onload = () => {
       cleanup()
-      let body = null
+      let body
       try {
         body = xhr.responseText ? JSON.parse(xhr.responseText) : null
       } catch {
