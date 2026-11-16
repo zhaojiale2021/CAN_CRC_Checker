@@ -1,6 +1,6 @@
 @echo off
-REM CAN CRC Checker web launcher. Usage: run_web.bat [port] [host]
-REM Defaults to localhost only. Set CRC_WEB_HOST=0.0.0.0 or pass a host to expose it.
+REM CanVouch web launcher. Usage: run_web.bat [port] [host]
+REM Defaults to localhost only. Set CANVOUCH_WEB_HOST=0.0.0.0 or pass a host to expose it.
 REM
 REM frontend/dist is committed to git, so deploy machines do not need Node:
 REM   after changing the frontend run: cd frontend && npm run build
@@ -21,6 +21,7 @@ cd /d "%~dp0"
 set PORT=%~1
 if "%PORT%"=="" set PORT=8000
 set HOST=%~2
+if "%HOST%"=="" set HOST=%CANVOUCH_WEB_HOST%
 if "%HOST%"=="" set HOST=%CRC_WEB_HOST%
 if "%HOST%"=="" set HOST=127.0.0.1
 
@@ -43,7 +44,7 @@ if not defined PY (
     exit /b 1
 )
 
-echo CAN CRC Checker Web
+echo CanVouch Web
 echo   Local:  http://127.0.0.1:%PORT%
 echo   Host:   %HOST%:%PORT%
 echo   Python: %PY%

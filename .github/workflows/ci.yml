@@ -77,7 +77,7 @@ jobs:
     - name: Build and install wheel
       run: |
         python -m pip wheel . --no-deps --wheel-dir wheelhouse
-        python -m pip install --force-reinstall --no-deps wheelhouse/crc_checker-*.whl
+        python -m pip install --force-reinstall --no-deps wheelhouse/canvouch-*.whl
     - name: Probe installed wheel outside checkout
       run: |
         python -m cli.main --version

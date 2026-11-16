@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CAN CRC Checker 网页版启动脚本。用法: ./run_web.sh [端口] [host]
+# CanVouch 网页版启动脚本。用法: ./run_web.sh [端口] [host]
 #
 # 前端产物在 frontend/dist(已提交进 git,部署机无需 Node):
 #   改完前端记得 cd frontend && npm run build
@@ -11,7 +11,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 PORT="${1:-${PORT:-8000}}"
-HOST="${2:-${CRC_WEB_HOST:-127.0.0.1}}"
+HOST="${2:-${CANVOUCH_WEB_HOST:-${CRC_WEB_HOST:-127.0.0.1}}}"
 
 PY=""
 for candidate in "./.venv/bin/python" "python3" "python"; do
@@ -30,7 +30,7 @@ if [ -z "$PY" ]; then
     exit 1
 fi
 
-echo "CAN CRC Checker Web"
+echo "CanVouch Web"
 echo "  Local:  http://127.0.0.1:${PORT}"
 echo "  Host:   ${HOST}:${PORT}"
 echo "  Python: ${PY}"

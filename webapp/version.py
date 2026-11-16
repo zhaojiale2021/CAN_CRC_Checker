@@ -9,10 +9,11 @@ fields come back unknown; verification itself is unaffected.
 
 from __future__ import annotations
 
-import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+from crc_checker.env import getenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -57,12 +58,12 @@ def read_revision(root: Path) -> dict:
     if not (Path(root) / ".git").exists():
         # Container images ship without .git; build-arg metadata keeps the
         # version panel useful instead of showing "unknown".
-        commit = os.environ.get("CRC_GIT_COMMIT", "").strip()
+        commit = getenv("CANVOUCH_GIT_COMMIT", "CRC_GIT_COMMIT").strip()
         if commit:
             return {
                 "commit": commit,
-                "branch": os.environ.get("CRC_GIT_BRANCH") or None,
-                "subject": os.environ.get("CRC_GIT_SUBJECT") or None,
+                "branch": getenv("CANVOUCH_GIT_BRANCH", "CRC_GIT_BRANCH") or None,
+                "subject": getenv("CANVOUCH_GIT_SUBJECT", "CRC_GIT_SUBJECT") or None,
                 "committed_at": None,
                 "dirty": False,
             }

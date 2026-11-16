@@ -2,7 +2,7 @@
 
 Design notes:
 - Projects come from a server-side scan of ``projects/`` (or the directory in
-  ``CRC_CHECKER_PROJECTS_DIR``); the browser only ever sends a project id,
+  ``CANVOUCH_PROJECTS_DIR``); the browser only ever sends a project id,
   never a path.
 - Uploaded traces land in ``data/web/uploads/<run_id>/`` and are deleted right
   after the run; the rendered HTML report is kept (bounded, LRU) so it can be
@@ -14,7 +14,6 @@ from __future__ import annotations
 import hmac
 import json
 import logging
-import os
 import re
 import secrets
 import shutil
@@ -31,6 +30,7 @@ from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
 from crc_checker.config import DEFAULT_MAX_FRAMES
+from crc_checker.env import getenv
 from crc_checker.file_types import (
     DATAID_EXTENSIONS,
     DBC_EXTENSIONS,
@@ -93,8 +93,8 @@ def _drop_bind_any_banner(record: logging.LogRecord) -> bool:
 
 
 def max_upload_bytes() -> int:
-    """Upload cap in bytes (``CRC_WEB_MAX_UPLOAD_MB`` overrides the default)."""
-    raw = os.environ.get("CRC_WEB_MAX_UPLOAD_MB", "")
+    """Upload cap in bytes (``CANVOUCH_MAX_UPLOAD_MB`` overrides the default)."""
+    raw = getenv("CANVOUCH_MAX_UPLOAD_MB", "CRC_WEB_MAX_UPLOAD_MB")
     try:
         megabytes = int(raw) if raw else DEFAULT_MAX_UPLOAD_MB
     except ValueError:
@@ -103,12 +103,12 @@ def max_upload_bytes() -> int:
 
 
 def max_request_bytes() -> int:
-    """Aggregate cap for one upload request (``CRC_WEB_MAX_REQUEST_MB``).
+    """Aggregate cap for one upload request (``CANVOUCH_MAX_REQUEST_MB``).
 
     The per-file cap alone lets a manual request carry 10 DBCs + a trace +
     a DataID workbook, so the combined request also needs a ceiling.
     """
-    raw = os.environ.get("CRC_WEB_MAX_REQUEST_MB", "")
+    raw = getenv("CANVOUCH_MAX_REQUEST_MB", "CRC_WEB_MAX_REQUEST_MB")
     try:
         megabytes = int(raw) if raw else DEFAULT_MAX_REQUEST_MB
     except ValueError:
@@ -118,7 +118,7 @@ def max_request_bytes() -> int:
 
 def api_token() -> str:
     """Optional shared token; when set, every ``/api/*`` call must present it."""
-    return os.environ.get("CRC_WEB_API_TOKEN", "").strip()
+    return getenv("CANVOUCH_API_TOKEN", "CRC_WEB_API_TOKEN").strip()
 
 
 class UploadBudget:  # pylint: disable=too-few-public-methods
@@ -281,12 +281,12 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             if state is not None and state["status"] == "cancelled":
                 shutil.rmtree(uploads_dir / job_id, ignore_errors=True)
 
-    api = FastAPI(title="CAN CRC Checker (Web)", lifespan=lifespan)
+    api = FastAPI(title="CanVouch (Web)", lifespan=lifespan)
     api.add_middleware(GZipMiddleware, minimum_size=1024)
 
     @api.middleware("http")
     async def _require_api_token(request, call_next):
-        """Gate ``/api/*`` when ``CRC_WEB_API_TOKEN`` is configured."""
+        """Gate ``/api/*`` when ``CANVOUCH_API_TOKEN`` is configured."""
         token = api_token()
         if token and request.url.path.startswith("/api/"):
             supplied = request.headers.get("x-api-token", "")
@@ -375,7 +375,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         """Upload caps and defaults the page would otherwise hardcode.
 
         Single source of truth: when the server's cap changes (e.g. via
-        ``CRC_WEB_MAX_UPLOAD_MB``), the page follows instead of lying.
+        ``CANVOUCH_MAX_UPLOAD_MB``), the page follows instead of lying.
         """
         return {
             "max_upload_mb": max_upload_bytes() // (1024 * 1024),
@@ -587,7 +587,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
     else:
         @api.get("/", response_class=HTMLResponse)
         def frontend_missing() -> str:
-            return ("<h1>CAN CRC Checker (Web)</h1>"
+            return ("<h1>CanVouch (Web)</h1>"
                     "<p>前端尚未构建:在 <code>frontend/</code> 执行 "
                     "<code>npm install &amp;&amp; npm run build</code>,"
                     "或直接使用 <code>/docs</code> 里的 API。</p>")

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/zhaojiale2021/CAN_CRC_Checker/config.schema.json",
-  "title": "CAN CRC Checker run configuration",
-  "description": "Schema for crc-check run -c config.json. Unknown keys are warned about (not rejected) by the loader; editors can use this file for completion and validation.",
+  "$id": "https://github.com/zhaojiale2021/canvouch/config.schema.json",
+  "title": "CanVouch run configuration",
+  "description": "Schema for canvouch run -c config.json. Unknown keys are warned about (not rejected) by the loader; editors can use this file for completion and validation.",
   "type": "object",
   "additionalProperties": false,
   "patternProperties": {
@@ -47,7 +47,7 @@
       "properties": {
         "preset": {
           "type": "string",
-          "description": "Built-in preset name, e.g. CRC8/AUTOSAR. See `crc-check presets`."
+          "description": "Built-in preset name, e.g. CRC8/AUTOSAR. See `canvouch presets`."
         },
         "custom": {
           "type": "object",

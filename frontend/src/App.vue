@@ -2,9 +2,9 @@
   <div class="page">
     <header class="topbar">
       <div class="brand">
-        <h1>CAN CRC Checker</h1>
+        <h1>CanVouch</h1>
         <span class="subtitle"
-          >DBC 感知的 CRC / Rolling Counter 校验（网页版）</span
+          >DBC 感知的 CRC / Rolling Counter / E2E 保护校验（网页版）</span
         >
       </div>
       <VersionPanel />

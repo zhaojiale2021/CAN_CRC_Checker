@@ -48,13 +48,13 @@ def isolate_projects_root(monkeypatch):
     this override, adding one locally makes the catalog tests (and every test
     that looks up ``examples/example``) depend on the developer's machine.
     """
-    monkeypatch.setenv("CRC_CHECKER_PROJECTS_DIR", str(REPO_ROOT / "examples"))
+    monkeypatch.setenv("CANVOUCH_PROJECTS_DIR", str(REPO_ROOT / "examples"))
 
 
 @pytest.fixture(name="client")
 def client_fixture(tmp_path, monkeypatch):
     """API client backed by a throwaway run and upload store."""
-    monkeypatch.setenv("CRC_CHECKER_DATA_DIR", str(tmp_path / "web-data"))
+    monkeypatch.setenv("CANVOUCH_DATA_DIR", str(tmp_path / "web-data"))
     store = RunStore(tmp_path / "runs", max_runs=3)
     client = TestClient(create_app(store=store))
     client.app.state.run_store = store
@@ -136,7 +136,7 @@ class TestVersion:
 
     def test_read_revision_without_git(self, tmp_path, monkeypatch):
         """No .git means all fields unknown, not an exception."""
-        monkeypatch.delenv("CRC_GIT_COMMIT", raising=False)
+        monkeypatch.delenv("CANVOUCH_GIT_COMMIT", raising=False)
         assert read_revision(tmp_path) == {
             "commit": None, "branch": None, "subject": None,
             "committed_at": None, "dirty": None,
@@ -144,8 +144,8 @@ class TestVersion:
 
     def test_read_revision_uses_container_build_commit(self, tmp_path, monkeypatch):
         """Container images carry the commit as an env var instead of .git."""
-        monkeypatch.setenv("CRC_GIT_COMMIT", "a" * 40)
-        monkeypatch.setenv("CRC_GIT_BRANCH", "master")
+        monkeypatch.setenv("CANVOUCH_GIT_COMMIT", "a" * 40)
+        monkeypatch.setenv("CANVOUCH_GIT_BRANCH", "master")
         revision = read_revision(tmp_path)
         assert revision["commit"] == "a" * 40
         assert revision["branch"] == "master"
@@ -358,7 +358,7 @@ class TestServiceHelpers:
         """
         (tmp_path / "old.html").write_text("x", encoding="utf-8")
         (tmp_path / "old_p2.html").write_text("x", encoding="utf-8")
-        (tmp_path / ".crc-checker-run-store").write_text("", encoding="utf-8")
+        (tmp_path / ".canvouch-run-store").write_text("", encoding="utf-8")
         RunStore(tmp_path)
         assert not list(tmp_path.glob("*.html"))
 
@@ -444,7 +444,7 @@ class TestApi:
         body = wait_for_result(client, response)
         report = client.get(body["report_url"])
         assert report.status_code == 200
-        assert "CAN CRC 校验报告" in report.text
+        assert "CanVouch 校验报告" in report.text
         # The web report must not leak server filesystem paths (DBC is a basename).
         assert str(EXAMPLE_TRACE.parent) not in report.text
         assert client.get("/api/runs/does-not-exist/report.html").status_code == 404
@@ -501,7 +501,7 @@ class TestApi:
 
     def test_verify_rejects_oversized_upload(self, client, monkeypatch):
         """The upload cap is enforced while streaming."""
-        monkeypatch.setenv("CRC_WEB_MAX_UPLOAD_MB", "1")
+        monkeypatch.setenv("CANVOUCH_MAX_UPLOAD_MB", "1")
         payload = b"\0" * (2 * 1024 * 1024)
         response = client.post("/api/verify", data={"project_id": EXAMPLE_PROJECT},
                                files={"file": ("big.blf", payload)})
@@ -753,12 +753,12 @@ class TestLimitsEndpoint:
 
     def test_upload_cap_override_is_visible(self, client, monkeypatch):
         """Changing the cap via the env var changes what the API reports."""
-        monkeypatch.setenv("CRC_WEB_MAX_UPLOAD_MB", "7")
+        monkeypatch.setenv("CANVOUCH_MAX_UPLOAD_MB", "7")
         assert client.get("/api/limits").json()["max_upload_mb"] == 7
 
     def test_upload_cap_falls_back_on_garbage(self, client, monkeypatch):
         """A non-numeric env override falls back to the default, not an error."""
-        monkeypatch.setenv("CRC_WEB_MAX_UPLOAD_MB", "not-a-number")
+        monkeypatch.setenv("CANVOUCH_MAX_UPLOAD_MB", "not-a-number")
         body = client.get("/api/limits").json()
         assert body["max_upload_mb"] == max_upload_bytes() // (1024 * 1024)
 
@@ -1125,6 +1125,13 @@ class TestRunStoreConcurrency:
 class TestWebHardening:
     """Caps and gates added so the unauthenticated server is harder to abuse."""
 
+    def test_new_env_name_wins_over_legacy(self, monkeypatch):
+        """CANVOUCH_* is canonical; the old CRC_* name still works as fallback."""
+        monkeypatch.setenv("CRC_WEB_MAX_UPLOAD_MB", "7")
+        assert max_upload_bytes() == 7 * 1024 * 1024
+        monkeypatch.setenv("CANVOUCH_MAX_UPLOAD_MB", "5")
+        assert max_upload_bytes() == 5 * 1024 * 1024
+
     def test_limits_exposes_the_request_cap(self, client):
         """The page renders the aggregate request cap from /api/limits."""
         payload = client.get("/api/limits").json()
@@ -1132,8 +1139,8 @@ class TestWebHardening:
         assert payload["max_dbc_files"] == MAX_DBC_UPLOADS
 
     def test_api_token_gates_every_api_call(self, client, monkeypatch):
-        """CRC_WEB_API_TOKEN protects /api/* and accepts both header forms."""
-        monkeypatch.setenv("CRC_WEB_API_TOKEN", "s3cret")
+        """CANVOUCH_API_TOKEN protects /api/* and accepts both header forms."""
+        monkeypatch.setenv("CANVOUCH_API_TOKEN", "s3cret")
         assert client.get("/api/limits").status_code == 401
         assert client.get(
             "/api/limits", headers={"X-API-Token": "wrong"}).status_code == 401
@@ -1146,7 +1153,7 @@ class TestWebHardening:
     def test_aggregate_upload_budget_rejects_many_large_files(
             self, client, monkeypatch):
         """Several individually-legal uploads can still exceed the request cap."""
-        monkeypatch.setenv("CRC_WEB_MAX_REQUEST_MB", "1")
+        monkeypatch.setenv("CANVOUCH_MAX_REQUEST_MB", "1")
         blob = b"x" * (600 * 1024)
         response = client.post(
             "/api/verify-manual",

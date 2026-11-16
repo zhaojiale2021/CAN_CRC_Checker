@@ -499,14 +499,14 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CAN CRC 校验报告</title>
+<title>CanVouch 校验报告</title>
 <style>
 {CSS}
 </style>
 </head>
 <body>
 <div class="container">
-<h1>CAN CRC 校验报告</h1>
+<h1>CanVouch 校验报告</h1>
 <div class="info-bar">
   DBC: {escape(dbc_display)}<br>
   Trace: {escape(report.trace_path or '')}<br>

@@ -361,9 +361,9 @@ def _print_table(report, only_failures: bool = False):
 
 
 @click.group()
-@click.version_option(__version__, prog_name="crc-check")
+@click.version_option(__version__, prog_name="canvouch")
 def cli():
-    """CAN CRC Checker - DBC-aware CAN bus CRC/Rolling Counter verification tool."""
+    """CanVouch - DBC-aware CAN bus CRC/Rolling Counter verification tool."""
 
 
 @cli.command(cls=GroupedCommand)
@@ -463,7 +463,7 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     """Verify CRC and Rolling Counter in CAN trace files.
 
     This builds a RunConfig and calls the same ``run_config`` pipeline as
-    ``crc-check run`` and the web API, so all three cannot drift apart.
+    ``canvouch run`` and the web API, so all three cannot drift apart.
     """
     from crc_checker.verify.runner import RunnerError, run_config
 
@@ -629,8 +629,8 @@ def run_cmd(config_path, verbose, show_all, fail_on_failure, min_pass_rate,
             allow_empty, allow_truncated):
     """Run verification from a JSON config file.
 
-    Generate an example config:  crc-check gen-config example.json
-    Then edit and run:           crc-check run -c example.json
+    Generate an example config:  canvouch gen-config example.json
+    Then edit and run:           canvouch run -c example.json
     """
     # pylint: disable=import-outside-toplevel
     from crc_checker.config import load_config
@@ -712,12 +712,12 @@ def preprocess_dataid(xlsx, sheets, mapping, output, verbose):
     """Preprocess DataID Excel into standardized JSON for fast reload.
 
     Parse one or more sheets from a DataID Excel file and export a
-    unified JSON that subsequent 'crc-check run' can load directly,
+    unified JSON that subsequent 'canvouch run' can load directly,
     skipping the slow openpyxl step.
 
     \b
     Example:
-      crc-check preprocess-dataid --xlsx dataid.xlsx \
+      canvouch preprocess-dataid --xlsx dataid.xlsx \
           --sheet "Sheet1" --sheet "Sheet2" -o dataid.json
     """
     from crc_checker.dataid import parse_dataid_xlsx_multi
@@ -756,7 +756,7 @@ def gen_config_cmd(output_path):
     from crc_checker.config import generate_example_config
     generate_example_config(output_path)
     click.echo(f"Example config written to {output_path}")
-    click.echo(f"Edit it, then: crc-check run -c {output_path}")
+    click.echo(f"Edit it, then: canvouch run -c {output_path}")
 
 
 @cli.command()

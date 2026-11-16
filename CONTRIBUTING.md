@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking the time to improve CAN CRC Checker.
+Thanks for taking the time to improve CanVouch.
 
 ## Setup
 

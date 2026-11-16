@@ -714,9 +714,9 @@ class RunStore:
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     # Written into runs_dir on first use. Purging is only safe when this
-    # directory is known to be ours — CRC_CHECKER_DATA_DIR may point at a
+    # directory is known to be ours — CANVOUCH_DATA_DIR may point at a
     # shared location, and deleting every HTML file there would be surprising.
-    _MARKER = ".crc-checker-run-store"
+    _MARKER = ".canvouch-run-store"
 
     def __post_init__(self) -> None:
         """Purge the report directory (run index is memory-only).
@@ -731,7 +731,7 @@ class RunStore:
         if marker.exists():
             self.purge_disk()
         else:
-            marker.write_text("CAN CRC Checker run store\n", encoding="utf-8")
+            marker.write_text("CanVouch run store\n", encoding="utf-8")
 
     def purge_disk(self) -> None:
         """Delete report files under ``runs_dir`` (startup + tests)."""

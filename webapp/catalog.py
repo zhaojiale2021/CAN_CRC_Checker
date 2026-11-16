@@ -8,7 +8,7 @@ Layouts supported under the scan root:
 * ``<group>/<name>/config.json`` — grouped (``group/name`` ids)
 * ``<name>/config.json``         — flat (``<root-name>/<name>`` ids)
 
-The scan root is ``projects/`` by default. Set ``CRC_CHECKER_PROJECTS_DIR`` to
+The scan root is ``projects/`` by default. Set ``CANVOUCH_PROJECTS_DIR`` to
 scan another directory; when neither exists, the shipped ``examples/`` demo is
 used.
 """
@@ -16,12 +16,12 @@ used.
 from __future__ import annotations
 
 import json
-import os
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from crc_checker.config import DEFAULT_MAX_FRAMES
+from crc_checker.env import getenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PROJECTS_DIR = PROJECT_ROOT / "projects"
@@ -35,7 +35,7 @@ _SCAN_LOCK = threading.Lock()
 
 def projects_root() -> Path:
     """Directory scanned by the web project list."""
-    override = os.environ.get("CRC_CHECKER_PROJECTS_DIR", "")
+    override = getenv("CANVOUCH_PROJECTS_DIR", "CRC_CHECKER_PROJECTS_DIR")
     if override:
         return Path(override).resolve()
     return PROJECTS_DIR if PROJECTS_DIR.is_dir() else EXAMPLES_DIR
