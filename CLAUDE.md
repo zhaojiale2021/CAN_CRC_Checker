@@ -26,13 +26,13 @@ cd frontend && npm test                           # node --test
 cd frontend && npm run test:component             # vitest component smoke tests
 cd frontend && npm run build                      # rebuild committed frontend/dist
 
-crc-check presets
-crc-check inspect path/to/file.dbc
-crc-check run -c examples/example/config.json -v
-crc-check run -c examples/example/config.json --show-all          # every verdict
-crc-check run -c examples/example/config.json --fail-on-failure   # CI gate
-crc-check gen-config example.json
-crc-check preprocess-dataid --xlsx dataid.xlsx -o dataid.json
+canvouch presets
+canvouch inspect path/to/file.dbc
+canvouch run -c examples/example/config.json -v
+canvouch run -c examples/example/config.json --show-all          # every verdict
+canvouch run -c examples/example/config.json --fail-on-failure   # CI gate
+canvouch gen-config example.json
+canvouch preprocess-dataid --xlsx dataid.xlsx -o dataid.json
 ./run_web.sh 8000                       # Windows: run_web.bat 8000
 python examples/generate_example.py     # regenerate the synthetic example
 ```
@@ -88,16 +88,16 @@ consumes `verify/` models only.
 ### Web version
 
 `webapp/` (FastAPI) + `frontend/` (Vue 3 + Element Plus; `frontend/dist` is
-committed). `webapp/catalog.py` scans `projects/` (or `CRC_CHECKER_PROJECTS_DIR`,
+committed). `webapp/catalog.py` scans `projects/` (or `CANVOUCH_PROJECTS_DIR`,
 falling back to `examples/`) and exposes project **ids** only — the browser never
 sends paths. `webapp/service.py` bridges the shared runner to the web and caches
 finished runs (LRU 20) under `data/web/runs/<run_id>/`. `POST /api/verify-manual`
 adds a project-less mode: uploaded DBC/trace/DataID plus a page-filled config;
 `_manual_config()` overwrites every path and rejects path-bearing keys.
 `webapp/version.py` reports the running commit vs. the deploy directory commit.
-Optional `CRC_WEB_API_TOKEN` gates every `/api/*` call (`X-API-Token` or Bearer);
-uploads are capped per file (`CRC_WEB_MAX_UPLOAD_MB`, 200) and per request
-(`CRC_WEB_MAX_REQUEST_MB`, 400); job results are byte-bounded and expire after an
+Optional `CANVOUCH_API_TOKEN` gates every `/api/*` call (`X-API-Token` or Bearer);
+uploads are capped per file (`CANVOUCH_MAX_UPLOAD_MB`, 200) and per request
+(`CANVOUCH_MAX_REQUEST_MB`, 400); job results are byte-bounded and expire after an
 hour; responses are gzipped; blocking disk writes run in the thread pool.
 See [docs/web-api.md](docs/web-api.md).
 
@@ -118,6 +118,11 @@ text stays Chinese: HTML report copy, the web UI, and web API error messages
 string is functional — it matches Chinese DBC comments; never translate it.
 Server caps/defaults are single-sourced: `GET /api/limits` feeds the frontend;
 don't hardcode 200MB / 10 DBCs / 6000 frames in `frontend/src`.
+
+The project was renamed from CAN CRC Checker to CanVouch. The `crc-check`
+console script and the old `CRC_CHECKER_*` / `CRC_WEB_*` environment names are
+kept as compatibility aliases; new code and docs use `canvouch` and
+`CANVOUCH_*`. The Python import package remains `crc_checker`.
 
 ## Configuration reference
 

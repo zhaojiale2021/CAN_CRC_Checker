@@ -1,12 +1,14 @@
 <div align="center">
 
-# CAN CRC Checker
+# CanVouch
+
+*为每一帧作保。*
 
 基于 DBC 的 CAN 总线 CRC / 滚动计数器校验工具，支持 BLF、ASC、MF4、TRC trace。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml)
+[![CI](https://github.com/zhaojiale2021/canvouch/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/canvouch/actions/workflows/ci.yml)
 
 [English](../../README.md) | [🌍 中文](./README.md)
 
@@ -29,18 +31,18 @@
 ## 🚀 30 秒上手
 
 ```bash
-git clone https://github.com/zhaojiale2021/CAN_CRC_Checker.git
-cd CAN_CRC_Checker
+git clone https://github.com/zhaojiale2021/canvouch.git
+cd canvouch
 pip install -r requirements.txt
 
 # 跑自带示例（CLI；无需打包，也没有 .exe）
 python -m cli.main run -c examples/example/config.json -v
 
-# 可选：安装 crc-check 命令
+# 可选：安装 canvouch 命令
 pip install -e .
-crc-check run -c examples/example/config.json -v
-crc-check presets
-crc-check inspect examples/example/dbc/network.dbc
+canvouch run -c examples/example/config.json -v
+canvouch presets
+canvouch inspect examples/example/dbc/network.dbc
 ```
 
 预期结果：160 帧、320 项校验、100% 通过。
@@ -52,10 +54,10 @@ python -m cli.main run -c examples/example/config_bad.json -v
 
 表格输出默认只列失败项，加 `--show-all` 才打印全部 verdict。作为 CI 门禁：
 `--fail-on-failure` 有任何失败就退出 1，`--min-pass-rate 99.5`
-低于阈值退出 1（`crc-check verify` 同样支持）。
+低于阈值退出 1（`canvouch verify` 同样支持）。
 
 ```bash
-crc-check run -c examples/example/config.json --fail-on-failure
+canvouch run -c examples/example/config.json --fail-on-failure
 ```
 
 MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若只执行
@@ -65,8 +67,8 @@ MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若�
 ### Docker
 
 ```bash
-docker build -t crc-checker .
-docker run --rm -p 8000:8000 crc-checker
+docker build -t canvouch .
+docker run --rm -p 8000:8000 canvouch
 ```
 
 镜像内置合成的示例项目并在 8000 端口提供网页版。推送 `v*` tag 会触发
@@ -84,14 +86,16 @@ docker run --rm -p 8000:8000 crc-checker
 再在页面上填写算法、CRC 范围、DataID 布局、帧过滤等配置。项目详情里的示例 trace
 可以直接点选校验，不需要先下载再上传。浏览器只提交项目 id 或上传文件，路径始终在
 服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，可用
-`CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
-无需 Node。启动脚本默认仅监听 `127.0.0.1`；可传入 host 参数或设置 `CRC_WEB_HOST`
-显式开放局域网访问。网页版默认没有认证；设置 `CRC_WEB_API_TOKEN` 后所有
+`CANVOUCH_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
+无需 Node。启动脚本默认仅监听 `127.0.0.1`；可传入 host 参数或设置 `CANVOUCH_WEB_HOST`
+显式开放局域网访问。网页版默认没有认证；设置 `CANVOUCH_API_TOKEN` 后所有
 `/api/*` 请求都必须带 `X-API-Token`（或 `Authorization: Bearer`），页面在版本弹窗里
 填写并保存在 localStorage。网络暴露时仍应放在带认证的反向代理或等效访问控制后。
-上传默认单文件 200MB、单请求 400MB（`CRC_WEB_MAX_UPLOAD_MB` /
-`CRC_WEB_MAX_REQUEST_MB`）。
+上传默认单文件 200MB、单请求 400MB（`CANVOUCH_MAX_UPLOAD_MB` /
+`CANVOUCH_MAX_REQUEST_MB`）。
 详见 [docs/web-api.md](../web-api.md)。
+
+服务端环境变量统一使用 `CANVOUCH_` 前缀（`CANVOUCH_DATA_DIR`、`CANVOUCH_PROJECTS_DIR`、`CANVOUCH_API_TOKEN`、`CANVOUCH_MAX_UPLOAD_MB`、`CANVOUCH_MAX_REQUEST_MB`）；改名前的 `CRC_CHECKER_*` / `CRC_WEB_*` 仍作为兼容回退。
 
 ## 🌟 能力一览
 
@@ -110,7 +114,7 @@ docker run --rm -p 8000:8000 crc-checker
 
 “已用实际数据验证”指该算法在开发过程中用抓取的 CAN trace 复现出了期望值；
 其余算法只做了单元测试与公开测试向量，**未用实际数据验证** ——
-`crc-check presets` 会逐条显示同样的状态。
+`canvouch presets` 会逐条显示同样的状态。
 
 | 预设 | 用途 | 状态 |
 | --- | --- | --- |
@@ -153,7 +157,7 @@ rolling_counter:
 
 ## ⚙️ 配置
 
-每次校验由一个 JSON 配置文件描述（`crc-check gen-config` 会生成带注释的示例）。
+每次校验由一个 JSON 配置文件描述（`canvouch gen-config` 会生成带注释的示例）。
 主要字段：
 
 | 段 | 字段 | 说明 |
@@ -234,6 +238,6 @@ MIT。见 [LICENSE](../../LICENSE)。
 
 **DBC 进去，trace 进去，结论出来 —— 没有客户专用代码路径。**
 
-[⭐ Star](https://github.com/zhaojiale2021/CAN_CRC_Checker) · [🐛 反馈问题](https://github.com/zhaojiale2021/CAN_CRC_Checker/issues)
+[⭐ Star](https://github.com/zhaojiale2021/canvouch) · [🐛 反馈问题](https://github.com/zhaojiale2021/canvouch/issues)
 
 </div>

@@ -101,7 +101,7 @@ DATAID = {
 }
 
 CONFIG = {
-    "_comment": "Synthetic example. crc-check run -c examples/example/config.json -v",
+    "_comment": "Synthetic example. canvouch run -c examples/example/config.json -v",
     "dbc": "dbc",
     "traces": ["trace/example.blf"],
     "crc": {

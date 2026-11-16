@@ -3,7 +3,7 @@
 The tool ships several checksum presets. Only some of them have been checked
 against captured CAN data; the rest are implemented and unit-tested against
 published known-answer vectors, but have **not** been verified with real vehicle
-data. `crc-check presets` prints the same status.
+data. `canvouch presets` prints the same status.
 
 ## Verified with real data
 

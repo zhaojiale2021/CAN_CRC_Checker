@@ -68,7 +68,7 @@ def test_shipped_example_configs_validate(config_path):
 
 
 def test_generated_example_config_validates(tmp_path):
-    """``crc-check gen-config`` output validates against the schema."""
+    """``canvouch gen-config`` output validates against the schema."""
     path = tmp_path / "example.json"
     generate_example_config(str(path))
     Draft202012Validator(_schema()).validate(

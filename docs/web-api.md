@@ -1,11 +1,11 @@
-# CAN CRC Checker 网页版 — API 与部署
+# CanVouch 网页版 — API 与部署
 
 网页工具两种用法：选择项目 → 上传 trace；或手动上传 DBC（可多个）+ trace
 （+ 可选 DataID 文件），在页面上填写原 `config.json` 的算法/范围/DataID 等选项 → 服务端
 跑一次校验 → 页面查看汇总与失败明细，并可下载自包含的 HTML 报告。
 
 校验逻辑与 CLI **完全同源**：`crc_checker/verify/runner.py` 是唯一实现，
-`crc-check run` 与 `POST /api/verify` 都调用它，两边不会算出不同结论。
+`canvouch run` 与 `POST /api/verify` 都调用它，两边不会算出不同结论。
 
 ## 启动
 
@@ -15,7 +15,7 @@ pip install -r requirements.txt
 # 默认仅监听本机: http://127.0.0.1:8000
 ```
 
-> 网页版**没有认证**，启动脚本默认绑定 `127.0.0.1`。如需局域网访问，可传入 host 参数或设置 `CRC_WEB_HOST`；网络暴露时必须放在带认证的反向代理或等效访问控制之后。
+> 网页版**没有认证**，启动脚本默认绑定 `127.0.0.1`。如需局域网访问，可传入 host 参数或设置 `CANVOUCH_WEB_HOST`；网络暴露时必须放在带认证的反向代理或等效访问控制之后。
 
 前端产物 `frontend/dist` 已提交进 git，部署机无需 Node。改前端时：
 
@@ -31,7 +31,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 网页版只扫描服务端目录里的项目，**浏览器只提交项目 id，从不提交路径**：
 
 - 默认扫描 `projects/`；不存在时扫描自带的 `examples/`（演示项目）。
-- 环境变量 `CRC_CHECKER_PROJECTS_DIR` 可指向任意目录。
+- 环境变量 `CANVOUCH_PROJECTS_DIR` 可指向任意目录。
 - 支持 `<分组>/<项目>/config.json` 与 `<项目>/config.json` 两种布局。
 
 新增项目：把一个 `config.json`（以及它引用的 DBC/DataID/trace）放进扫描目录即可，
@@ -43,8 +43,8 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 
 - 上传 1..10 个 DBC、1 个 trace、可选 1 个 DataID 文件（`.json` / `.xlsx` / `.xls`）。
   服务端执行 10 个 DBC 的上限；单文件默认上限 200MB
-  （`CRC_WEB_MAX_UPLOAD_MB`），单次请求合计默认上限 400MB
-  （`CRC_WEB_MAX_REQUEST_MB`）。
+  （`CANVOUCH_MAX_UPLOAD_MB`），单次请求合计默认上限 400MB
+  （`CANVOUCH_MAX_REQUEST_MB`）。
 - 在页面上填写 CLI `config.json` 的常用段：`crc`（算法 preset、`byte_swap`、
   `auto_classify`、`profile_by_width`）、`range`、`dataid`（位置/字节序/sheet/映射/
   默认值）、`filter.frame_ids`、`signals` 正则、`rc.max_valid`、`dbc_merge`。
@@ -69,7 +69,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 
 ## 接口
 
-所有接口同源；默认无鉴权（内网工具）。设置 `CRC_WEB_API_TOKEN` 后，所有
+所有接口同源；默认无鉴权（内网工具）。环境变量使用 `CANVOUCH_*` 前缀，改名前的 `CRC_CHECKER_*` / `CRC_WEB_*` 仍作为兼容回退。设置 `CANVOUCH_API_TOKEN` 后，所有
 `/api/*` 请求必须带 `X-API-Token: <token>` 或 `Authorization: Bearer <token>`，
 否则返回 401。
 
@@ -116,7 +116,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 ### `GET /api/limits`
 
 服务端单源下发上传/默认值限制，前端页面据此渲染提示与默认值
-（改 `CRC_WEB_MAX_UPLOAD_MB` 环境变量后页面自动跟随，不会出现提示与
+（改 `CANVOUCH_MAX_UPLOAD_MB` 环境变量后页面自动跟随，不会出现提示与
 实际限制不一致）：
 
 ```json
@@ -139,8 +139,8 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | `max_frames` | 否 | 帧数上限：`""`=用项目配置默认，`0`=不限，`N`=前 N 帧 |
 | `only_failures` | 否 | `"true"` 时 HTML 报告只写失败项 |
 
-上限 `CRC_WEB_MAX_UPLOAD_MB`（默认 200MB）。上传文件写到
-`<CRC_CHECKER_DATA_DIR>/uploads/<job_id>/`（默认 `data/web/uploads/`），提交成功后保留到后台任务结束，
+上限 `CANVOUCH_MAX_UPLOAD_MB`（默认 200MB）。上传文件写到
+`<CANVOUCH_DATA_DIR>/uploads/<job_id>/`（默认 `data/web/uploads/`），提交成功后保留到后台任务结束，
 无论成功、失败或取消都会清理。提交接口只做验证与 staging，不同步等待校验。
 
 `POST /api/verify`、`POST /api/verify-sample` 和 `POST /api/verify-manual`
@@ -207,7 +207,7 @@ body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{j
 }
 ```
 
-`validated` 表示该算法已在仓库里的真实 trace 上复现过（与 `crc-check presets`
+`validated` 表示该算法已在仓库里的真实 trace 上复现过（与 `canvouch presets`
 的标注一致）。
 
 > 已完成运行的报告索引在进程内存里（LRU 20），因此 `run_web.sh` 只启动单个
@@ -251,14 +251,14 @@ body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{j
 |----|------|
 | 404 | 未知 `project_id`；`run_id` 不存在或报告已过期 |
 | 400 | 空文件、文件类型不支持、配置里出现路径字段、帧数上限不是整数、配置/trace 解析失败 |
-| 401 | 设置了 `CRC_WEB_API_TOKEN` 但请求缺少/带错 token |
-| 413 | 单文件超过 `CRC_WEB_MAX_UPLOAD_MB`，或单次请求合计超过 `CRC_WEB_MAX_REQUEST_MB` |
+| 401 | 设置了 `CANVOUCH_API_TOKEN` 但请求缺少/带错 token |
+| 413 | 单文件超过 `CANVOUCH_MAX_UPLOAD_MB`，或单次请求合计超过 `CANVOUCH_MAX_REQUEST_MB` |
 
 错误体沿用 FastAPI 的 `{"detail": "..."}`。
 
 ## 运行产物
 
-写入 `CRC_CHECKER_DATA_DIR`（默认 `data/web/`，已 gitignore）：
+写入 `CANVOUCH_DATA_DIR`（默认 `data/web/`，已 gitignore）：
 
 ```
 <数据目录>/uploads/<job_id>/             # 上传的 trace / DBC / DataID，终态后清理

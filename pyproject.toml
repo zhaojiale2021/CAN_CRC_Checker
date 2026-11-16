@@ -3,13 +3,13 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "crc-checker"
+name = "canvouch"
 dynamic = ["version"]
-description = "CAN bus CRC / rolling-counter verification from DBC files and trace logs"
+description = "DBC-aware CRC, rolling-counter and E2E protection verification for CAN traces"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
-authors = [{ name = "CAN CRC Checker contributors" }]
+authors = [{ name = "CanVouch contributors" }]
 keywords = ["can", "can-bus", "dbc", "crc", "e2e", "automotive", "trace"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -47,13 +47,14 @@ dev = [
 ]
 
 [project.scripts]
-crc-check = "cli.main:cli"
+canvouch = "cli.main:cli"
+crc-check = "cli.main:cli"   # compatibility alias for the pre-rename command
 
 [project.urls]
-Homepage = "https://github.com/zhaojiale2021/CAN_CRC_Checker"
-Repository = "https://github.com/zhaojiale2021/CAN_CRC_Checker"
-Issues = "https://github.com/zhaojiale2021/CAN_CRC_Checker/issues"
-Changelog = "https://github.com/zhaojiale2021/CAN_CRC_Checker/releases"
+Homepage = "https://github.com/zhaojiale2021/canvouch"
+Repository = "https://github.com/zhaojiale2021/canvouch"
+Issues = "https://github.com/zhaojiale2021/canvouch/issues"
+Changelog = "https://github.com/zhaojiale2021/canvouch/releases"
 
 [tool.setuptools.dynamic]
 version = { attr = "crc_checker.__version__" }

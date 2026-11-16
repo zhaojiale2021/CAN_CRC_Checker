@@ -1,6 +1,6 @@
 """Reusable verification runner — the single code path behind the CLI and the web app.
 
-``crc-check run`` and the web ``/api/verify`` endpoint must build the protection
+``canvouch run`` and the web ``/api/verify`` endpoint must build the protection
 map in exactly the same order (DBC selection → DataID → CRC profile config),
 otherwise the two front ends would disagree on the same input. This module owns
 that order; the CLI keeps only argument parsing and printing, and the web layer
@@ -215,7 +215,7 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
                          ) -> ProtectionSetup:
     """Parse DBCs and apply DataID + CRC configuration.
 
-    Mirrors the order used by ``crc-check run`` (see ``apply_crc_config``).
+    Mirrors the order used by ``canvouch run`` (see ``apply_crc_config``).
 
     Args:
         cfg: Run configuration (paths already resolved).

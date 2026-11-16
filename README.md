@@ -1,12 +1,14 @@
 <div align="center">
 
-# CAN CRC Checker
+# CanVouch
+
+*Every frame vouched for.*
 
 DBC-aware CAN bus CRC / rolling-counter verification for BLF, ASC, MF4 and TRC traces.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml)
+[![CI](https://github.com/zhaojiale2021/canvouch/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/canvouch/actions/workflows/ci.yml)
 
 [English](./README.md) | [🌍 中文](./docs/zh-CN/README.md)
 
@@ -30,18 +32,18 @@ The repository ships **only synthetic example data**.
 ## 🚀 30-second start
 
 ```bash
-git clone https://github.com/zhaojiale2021/CAN_CRC_Checker.git
-cd CAN_CRC_Checker
+git clone https://github.com/zhaojiale2021/canvouch.git
+cd canvouch
 pip install -r requirements.txt
 
 # Run the bundled example (CLI; no packaging step, no .exe)
 python -m cli.main run -c examples/example/config.json -v
 
-# Optional: install the `crc-check` command
+# Optional: install the `canvouch` command
 pip install -e .
-crc-check run -c examples/example/config.json -v
-crc-check presets
-crc-check inspect examples/example/dbc/network.dbc
+canvouch run -c examples/example/config.json -v
+canvouch presets
+canvouch inspect examples/example/dbc/network.dbc
 ```
 
 Expected output: 160 frames, 320 checks, 100 % pass.
@@ -54,10 +56,10 @@ python -m cli.main run -c examples/example/config_bad.json -v
 Table output lists failures only by default; add `--show-all` to print every
 verdict. Use it as a gate: `--fail-on-failure` exits 1 on any failed check, and
 `--min-pass-rate 99.5` exits 1 below the threshold (both also work on
-`crc-check verify`).
+`canvouch verify`; the pre-rename `crc-check` command still works as an alias).
 
 ```bash
-crc-check run -c examples/example/config.json --fail-on-failure
+canvouch run -c examples/example/config.json --fail-on-failure
 ```
 
 MF4/MDF traces need python-can's optional reader; `requirements.txt` already
@@ -67,8 +69,8 @@ installs it. For a bare `pip install -e .`, add it with
 ### Docker
 
 ```bash
-docker build -t crc-checker .
-docker run --rm -p 8000:8000 crc-checker
+docker build -t canvouch .
+docker run --rm -p 8000:8000 canvouch
 ```
 
 The image bundles the synthetic example project and serves the web UI on port
@@ -89,17 +91,19 @@ DBC file(s) + a trace (plus an optional DataID file), then fill in the config
 options (algorithm, range, DataID layout, filters) on the page. A project's
 bundled sample traces are one click away — no download-then-upload detour.
 The browser only sends project ids or uploaded files; paths stay server-side.
-Set `CRC_WEB_API_TOKEN` to require `X-API-Token` (or `Authorization: Bearer`)
+Set `CANVOUCH_API_TOKEN` to require `X-API-Token` (or `Authorization: Bearer`)
 on every `/api/*` call; the value is entered in the UI's version dialog and kept
 in the browser's localStorage. Upload caps: 200 MB per file and 400 MB per
-request by default (`CRC_WEB_MAX_UPLOAD_MB` / `CRC_WEB_MAX_REQUEST_MB`).
+request by default (`CANVOUCH_MAX_UPLOAD_MB` / `CANVOUCH_MAX_REQUEST_MB`).
 Projects are scanned from `projects/` (or `examples/` when `projects/` does not
-exist; override with `CRC_CHECKER_PROJECTS_DIR`). The Vue frontend is committed
+exist; override with `CANVOUCH_PROJECTS_DIR`). The Vue frontend is committed
 as `frontend/dist`, so a deployment machine needs no Node. The launcher binds to
-`127.0.0.1` by default; set `CRC_WEB_HOST` or pass a host argument to opt into
+`127.0.0.1` by default; set `CANVOUCH_WEB_HOST` or pass a host argument to opt into
 LAN binding. The web server has no authentication, so network exposure should be
 behind an authenticated reverse proxy or equivalent access controls. See
 [docs/web-api.md](docs/web-api.md).
+
+Server environment variables use the `CANVOUCH_` prefix (`CANVOUCH_DATA_DIR`, `CANVOUCH_PROJECTS_DIR`, `CANVOUCH_API_TOKEN`, `CANVOUCH_MAX_UPLOAD_MB`, `CANVOUCH_MAX_REQUEST_MB`); the pre-rename `CRC_CHECKER_*` / `CRC_WEB_*` names are still accepted as fallbacks.
 
 ## 🌟 What you get
 
@@ -119,7 +123,7 @@ behind an authenticated reverse proxy or equivalent access controls. See
 Verified with real data means the algorithm reproduced expected values on
 captured CAN traces during development. Everything else is implemented and
 unit-tested against known-answer vectors, but **not verified with real data** —
-`crc-check presets` prints the same status.
+`canvouch presets` prints the same status.
 
 | Preset | Use | Status |
 | --- | --- | --- |
@@ -161,7 +165,7 @@ file. Built-in names: `hi_lo_two_cols`, `single_16bit`, `generic_abc`,
 
 ## ⚙️ Configuration
 
-A run is a JSON file (`crc-check gen-config` writes an annotated example). The
+A run is a JSON file (`canvouch gen-config` writes an annotated example). The
 main sections:
 
 | Section | Field | Description |
@@ -245,6 +249,6 @@ MIT. See [LICENSE](./LICENSE).
 
 **DBC in, trace in, verdicts out — no customer-specific code paths.**
 
-[⭐ Star us on GitHub](https://github.com/zhaojiale2021/CAN_CRC_Checker) · [🐛 Report Issues](https://github.com/zhaojiale2021/CAN_CRC_Checker/issues)
+[⭐ Star us on GitHub](https://github.com/zhaojiale2021/canvouch) · [🐛 Report Issues](https://github.com/zhaojiale2021/canvouch/issues)
 
 </div>

@@ -22,24 +22,25 @@ def _get(url: str) -> Tuple[int, bytes, str]:
 
 
 def _check_entrypoint() -> None:
-    """The installed console script must exist and answer ``--version``."""
-    script = shutil.which("crc-check")
-    if not script:
-        raise RuntimeError("crc-check console script was not installed")
-    subprocess.run([script, "--version"], check=True, capture_output=True)
+    """Both the new console script and the legacy alias must answer --version."""
+    for name in ("canvouch", "crc-check"):
+        script = shutil.which(name)
+        if not script:
+            raise RuntimeError(f"{name} console script was not installed")
+        subprocess.run([script, "--version"], check=True, capture_output=True)
 
 
 def main() -> int:
     """Launch the installed web app from a temporary non-checkout directory."""
     _check_entrypoint()
-    with tempfile.TemporaryDirectory(prefix="crc-checker-wheel-smoke-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="canvouch-wheel-smoke-") as temp_dir:
         work_dir = Path(temp_dir)
         data_dir = work_dir / "data"
         data_dir.mkdir()
         env = os.environ.copy()
         env.pop("PYTHONPATH", None)
-        env["CRC_CHECKER_DATA_DIR"] = str(data_dir)
-        env["CRC_CHECKER_PROJECTS_DIR"] = str(work_dir / "no-projects")
+        env["CANVOUCH_DATA_DIR"] = str(data_dir)
+        env["CANVOUCH_PROJECTS_DIR"] = str(work_dir / "no-projects")
 
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))

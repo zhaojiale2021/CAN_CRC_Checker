@@ -70,7 +70,7 @@
             show-password
             clearable
             aria-label="API token"
-            placeholder="服务端设置了 CRC_WEB_API_TOKEN 时填写"
+            placeholder="服务端设置了 CANVOUCH_API_TOKEN 时填写"
           />
           <el-button size="small" @click="saveToken">保存 token</el-button>
         </div>

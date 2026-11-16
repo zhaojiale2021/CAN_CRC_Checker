@@ -15,7 +15,7 @@ export function formatApiDetail(detail, status) {
   return lines.join('\n') || JSON.stringify(detail)
 }
 
-/** 服务端可选的 API token(部署时设置 CRC_WEB_API_TOKEN 后需要)。 */
+/** 服务端可选的 API token(部署时设置 CANVOUCH_API_TOKEN 后需要)。 */
 export function getApiToken() {
   try {
     return localStorage.getItem(TOKEN_KEY) || ''

@@ -790,7 +790,7 @@ def load_config(config_path: str) -> RunConfig:
 def generate_example_config(output_path: str):
     """Write an annotated example config file."""
     example = {
-        "_comment": "CAN CRC Checker configuration file. Remove _comment fields before use.",
+        "_comment": "CanVouch configuration file. Remove _comment fields before use.",
         "dbc": "dbc/",
         "dbcs": [],
         "dbc_merge": False,
