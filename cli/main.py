@@ -428,7 +428,9 @@ def cli():
               type=click.Choice(["table", "html", "json"]),
               help="Output format")
 @click.option("--output-file", default=None, type=click.Path(), help="Output file path")
-@click.option("--only-failures", is_flag=True, help="Only show/write failed verdicts")
+@click.option("--only-failures", is_flag=True,
+              help="Only show/write frames with failed verdicts "
+                   "(each frame keeps all its verdicts)")
 @click.option("--show-all", is_flag=True,
               help="Table output: also print passing checks (default: failures only)")
 @click.option("--max-report-sections", type=int, default=None,

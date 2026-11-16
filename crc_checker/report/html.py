@@ -488,12 +488,16 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
     note_html = (f'<div class="report-note">{escape(note)}</div>' if note else "")
     if stats['check_fail']:
         banner_class, banner_label = "fail", "检测到失败"
-    elif stats['check_total'] == 0:
-        banner_class, banner_label = "empty", "未执行校验"
+        # Count the failures, not the passes: "检测到失败 221910/222782 项
+        # · 99.6%" read as "99.6% failed" on a run with 0.4% failures.
+        banner_detail = (f"{stats['check_fail']} 项失败 / 共 {stats['check_total']} 项 "
+                         f"· 通过率 {stats['check_rate']}")
     else:
-        banner_class, banner_label = "pass", "全部校验通过"
-    banner_detail = (f"{stats['check_pass']}/{stats['check_total']} 项 "
-                     f"· {stats['check_rate']}")
+        banner_class, banner_label = ("pass", "全部校验通过")
+        if stats['check_total'] == 0:
+            banner_class, banner_label = "empty", "未执行校验"
+        banner_detail = (f"{stats['check_pass']}/{stats['check_total']} 项 "
+                         f"· {stats['check_rate']}")
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -521,7 +525,7 @@ def _page_html(report: VerifyReport, sections: list[str], stats: dict,
 <div class="summary-cards">
   <div class="card"><div class="label">帧数</div>
     <div class="value">{report.total_frames}</div></div>
-  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">校验项</div>
+  <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">校验通过</div>
     <div class="value">{stats['check_pass']}/{stats['check_total']}</div></div>
   <div class="card{' fail' if stats['check_fail'] else ' pass'}"><div class="label">通过率</div>
     <div class="value">{stats['check_rate']}</div></div>
@@ -742,6 +746,10 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     that truncates to the first N sections — both are announced at the top of
     the report, never silently dropped.
 
+    ``only_failures`` / the failures-only downgrade keep the whole frame: its
+    passing CRC/RC verdicts and byte highlights stay visible, so a wrong CRC
+    next to a healthy counter is distinguishable from missing protection data.
+
     Returns:
         Notice for the caller (empty string = no report-section downgrade or
         truncation). The frame-cap notice is written into the HTML only:
@@ -750,7 +758,6 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
     """
 
     limit = REPORT_FULL_MAX_SECTIONS if max_sections is None else max_sections
-    verdicts = report.failed if only_failures else report.verdicts
     notes: list[str] = []
     caller_notes: list[str] = []
     if report.frames_truncated:
@@ -758,7 +765,18 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
             f"只校验了前 {report.frame_limit} 帧(帧上限),"
             "其余帧未校验 — 通过率仅代表这部分帧")
 
-    grouped = _group_verdicts(verdicts)
+    # "Only failures" filters FRAMES, not verdicts inside a frame: a failing
+    # frame keeps its passing CRC/RC verdicts too, otherwise the reader cannot
+    # tell a wrong CRC with a healthy counter from missing protection data.
+    all_grouped = _group_verdicts(report.verdicts)
+    failed_keys = {(v.timestamp, v.frame_id, getattr(v, "channel", 0))
+                   for v in report.failed}
+
+    def _failing_frames() -> dict[tuple[float, int, int], list]:
+        return {key: verdicts for key, verdicts in all_grouped.items()
+                if key in failed_keys}
+
+    grouped = _failing_frames() if only_failures else all_grouped
     if limit and not only_failures and len(grouped) > limit and report.failed:
         # A full per-frame report of a big trace would be hundreds of MB;
         # the failures-only view is what there is to see.
@@ -767,8 +785,7 @@ def write_html(report: VerifyReport, file_path: str, only_failures: bool = False
                    "output.max_report_sections)")
         notes.append(message)
         caller_notes.append(message)
-        verdicts = report.failed
-        grouped = _group_verdicts(verdicts)
+        grouped = _failing_frames()
 
     truncated = bool(limit) and len(grouped) > limit
     if truncated:

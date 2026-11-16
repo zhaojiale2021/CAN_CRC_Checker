@@ -382,7 +382,7 @@ const onlyFailingFrames = ref(false)
 const chartsVisible = ref(false)
 
 const report = computed(() => props.result?.reports?.[0] || null)
-// HTML 报告的降级/截断提示(超帧段上限时后端自动只写失败项,并在报告顶部写明)
+// HTML 报告的降级/截断提示(超帧段上限时后端自动只写失败帧,并在报告顶部写明)
 const reportNote = computed(() => props.result?.report_note || '')
 const setup = computed(() => props.result?.setup || { dbc_names: [] })
 

@@ -179,7 +179,7 @@ rolling_counter:
 | | `checksum_pattern(s)` / `rc_pattern(s)` | 正则覆盖 |
 | `filter` | `frame_ids` / `max_frames` | CAN ID 过滤；帧上限（`0` = 不限，默认 6000） |
 | `rc` | `max_valid` | 计数器最大值（默认 `2^位数 - 1`） |
-| `output` | `format` / `file` / `only_failures` | `table` 或 `html`、输出路径、只写失败项 |
+| `output` | `format` / `file` / `only_failures` | `table` 或 `html`、输出路径、只写失败帧 |
 | | `max_report_sections` | 报告帧段上限（默认 30000，0 = 不限） |
 
 完整 schema 见 `crc_checker/config.py`（`CONFIG_SCHEMA_DOC`）。
