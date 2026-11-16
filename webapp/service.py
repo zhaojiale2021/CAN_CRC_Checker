@@ -424,7 +424,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
             signals[verdict.signal_name] = entry
         return entry
 
-    # Without the series (theoretically only run_stream) fall back to verdict
+    # Without the series fall back to verdict
     # counts rather than zeroing the RC rows.
     count_rc_verdicts = not report.rc_series
     for verdict in report.verdicts:

@@ -15,6 +15,7 @@ import re
 import tempfile
 
 from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
+from crc_checker.protect.checksum import CRCVerifier
 from crc_checker.protect.rolling_counter import RollingCounterVerifier
 from crc_checker.report.html import write_html
 from crc_checker.report.trends import (RC_X0, RC_X1, _render_rc_chart,
@@ -69,12 +70,26 @@ def _run(verifier, values, prot=None):
     for i, value in enumerate(values):
         result = verifier.verify(_frame(float(i), value), prot or _prot())
         if result is not None:
-            rc_values.append(result)
+            rc_values.extend(result if isinstance(result, list) else [result])
+    rc_values.extend(verifier.flush())
     return rc_values
 
 
 class TestErrorFolding:
     """Consecutive failing frames fold into ONE verdict per episode."""
+
+    def test_episode_is_held_until_it_closes(self):
+        """Folded verdicts are not emitted (or mutated) until the episode ends."""
+        verifier = RollingCounterVerifier()
+        emitted = []
+        for i, value in enumerate([0, 1, 2, 2, 2, 3]):
+            result = verifier.verify(_frame(float(i), value), _prot())
+            emitted.extend(result if isinstance(result, list)
+                           else ([result] if result else []))
+        fails = [v for v in emitted if not v.is_pass]
+        assert len(fails) == 1
+        assert fails[0].repeat_count == 2
+        assert "×2" in fails[0].detail
 
     def test_stuck_at_max_14_recorded_once(self):
         """Counter frozen at max_valid=14 → one STALE record for the whole episode."""
@@ -165,7 +180,8 @@ class TestEngineSeries:
         """Engine with one 4-bit RC group (max_valid 14), no CRC."""
         pm = DBCProtectionMap()
         pm.messages[0x123] = [_prot()]
-        return VerifyEngine.create_default(pm, crc_params=None)
+        return VerifyEngine(pm, algorithms=[CRCVerifier(None, None),
+                                            RollingCounterVerifier()])
 
     def test_engine_populates_report_series(self):
         """engine.run fills report.rc_series/rc_series_meta; folding cuts fails."""
@@ -192,7 +208,8 @@ class TestHtmlTrendCharts:
     def _report(self, values):
         pm = DBCProtectionMap()
         pm.messages[0x123] = [_prot()]
-        engine = VerifyEngine.create_default(pm, crc_params=None)
+        engine = VerifyEngine(pm, algorithms=[CRCVerifier(None, None),
+                                              RollingCounterVerifier()])
         return engine.run(
             _Reader([_frame(float(i), v) for i, v in enumerate(values)]))
 
@@ -285,7 +302,8 @@ class TestReportSizeLimit:
     def _report(self, values):
         pm = DBCProtectionMap()
         pm.messages[0x123] = [_prot()]
-        engine = VerifyEngine.create_default(pm, crc_params=None)
+        engine = VerifyEngine(pm, algorithms=[CRCVerifier(None, None),
+                                              RollingCounterVerifier()])
         return engine.run(
             _Reader([_frame(float(i), v) for i, v in enumerate(values)]))
 
@@ -352,7 +370,8 @@ class TestRcErrorAccounting:
     def _report(self, values):
         pm = DBCProtectionMap()
         pm.messages[0x123] = [_prot()]
-        engine = VerifyEngine.create_default(pm, crc_params=None)
+        engine = VerifyEngine(pm, algorithms=[CRCVerifier(None, None),
+                                              RollingCounterVerifier()])
         return engine.run(
             _Reader([_frame(float(i), v) for i, v in enumerate(values)]))
 

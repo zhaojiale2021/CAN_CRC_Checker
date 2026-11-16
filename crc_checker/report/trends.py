@@ -119,7 +119,7 @@ def rc_sample_stats(report) -> tuple[int, int]:
     ``rc_series`` — otherwise 1800 failing frames shrink to "1 check" in the
     summary and the card shows 242788/242789 = 99.9996%, a number that cannot
     be reconciled with the trend chart. Falls back to verdict counts when the
-    series is missing (e.g. run_stream).
+    series is missing (e.g. a report built without RC samples).
     """
     if not report.rc_series:
         total = sum(1 for v in report.verdicts if v.algorithm != "crc")

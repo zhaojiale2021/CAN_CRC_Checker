@@ -87,13 +87,6 @@ class TestDlcGate:
         report = engine.run(reader)
         assert report.dlc_mismatch_skipped == 0
 
-    def test_run_stream_applies_gate(self):
-        """run_stream filters the same way (CLI/web share run(); TUI uses run_stream)."""
-        engine = VerifyEngine(_build_map(dlc=32), algorithms=[])
-        reader = _Reader([_frame(64), _frame(32)])
-        assert not list(engine.run_stream(reader))
-
-
 class TestFrameProgressAndCancellation:
     """Progress counts every eligible frame and cancellation stops iteration."""
 

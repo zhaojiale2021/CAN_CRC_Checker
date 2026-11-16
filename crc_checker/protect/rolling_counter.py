@@ -19,10 +19,11 @@ class RollingCounterVerifier(ProtectionAlgorithm):
 
     A broken counter repeats its failure on every frame (e.g. stuck at 14, or
     constant 15 while max_valid=14). Consecutive failing frames are folded into
-    ONE verdict — the first one, annotated with ``×N (until t=...)`` — so an
-    episode is reported once, not once per frame. Every frame's value is still
-    recorded in the per-signal series (see :meth:`get_series`) for the HTML
-    trend charts.
+    ONE verdict, annotated with ``×N (until t=...)``, emitted when the episode
+    closes (a passing frame) or when the run ends. Holding the episode until
+    then means an already-emitted verdict is never mutated afterwards. Every
+    frame's value is still recorded in the per-signal series (see
+    :meth:`get_series`) for the HTML trend charts.
     """
 
     algorithm_type = "rolling_counter"
@@ -196,8 +197,20 @@ class RollingCounterVerifier(ProtectionAlgorithm):
                 folded.detail = (f"{episode['base']} · ×{episode['count']} "
                                  f"(until {frame.timestamp:.6f}s)")
                 return None
+            # Hold the first failure until the episode closes: the verdict is
+            # only emitted once its repeat_count/detail are final.
             self._open_fail[key] = {"base": detail, "verdict": verdict, "count": 1}
-        else:
-            self._open_fail.pop(key, None)
+            return None
 
+        episode = self._open_fail.pop(key, None)
+        if episode is not None:
+            # The pass closes the episode; emit both the folded failure and
+            # the passing verdict for this frame.
+            return [episode["verdict"], verdict]
         return verdict
+
+    def flush(self) -> list[VerifyVerdict]:
+        """Emit episodes still open when the trace ends."""
+        pending = [episode["verdict"] for episode in self._open_fail.values()]
+        self._open_fail.clear()
+        return pending
