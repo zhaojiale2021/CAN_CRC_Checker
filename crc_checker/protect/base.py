@@ -3,7 +3,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
-from crc_checker.trace.models import CanFrame
+from crc_checker.core.models import CanFrame
 from crc_checker.dbc.models import MessageProtection
 
 if TYPE_CHECKING:
@@ -41,3 +41,12 @@ class ProtectionAlgorithm(ABC):
 
     def reset(self):
         """Reset any stateful tracking (e.g., rolling counter state). Called between runs."""
+
+    def flush(self) -> list[VerifyVerdict]:
+        """Return verdicts held back for folding when the run ends.
+
+        Algorithms that fold consecutive failures keep the episode open until
+        it closes naturally; this hook lets the engine emit it at the end of a
+        trace. Stateless algorithms return an empty list.
+        """
+        return []

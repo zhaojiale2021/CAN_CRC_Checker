@@ -3,10 +3,10 @@
 from __future__ import annotations
 from dataclasses import replace
 from crc_checker.protect.base import ProtectionAlgorithm
-from crc_checker.trace.models import CanFrame
+from crc_checker.core.models import CanFrame
 from crc_checker.dbc.models import MessageProtection
 from crc_checker.crc.engine import CRCEngine
-from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.core.models import CRCParams, CRCRange
 from crc_checker.bit_utils import extract_signal_bits
 from crc_checker.verify.models import VerifyVerdict
 

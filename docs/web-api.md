@@ -42,7 +42,9 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 不想把项目放进服务端目录时，页面切到「手动上传 DBC + trace」：
 
 - 上传 1..10 个 DBC、1 个 trace、可选 1 个 DataID 文件（`.json` / `.xlsx` / `.xls`）。
-  服务端也执行 10 个 DBC 的上限，单文件默认上限 200MB（`CRC_WEB_MAX_UPLOAD_MB`）。
+  服务端执行 10 个 DBC 的上限；单文件默认上限 200MB
+  （`CRC_WEB_MAX_UPLOAD_MB`），单次请求合计默认上限 400MB
+  （`CRC_WEB_MAX_REQUEST_MB`）。
 - 在页面上填写 CLI `config.json` 的常用段：`crc`（算法 preset、`byte_swap`、
   `auto_classify`、`profile_by_width`）、`range`、`dataid`（位置/字节序/sheet/映射/
   默认值）、`filter.frame_ids`、`signals` 正则、`rc.max_valid`、`dbc_merge`。
@@ -67,7 +69,9 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 
 ## 接口
 
-所有接口同源、无鉴权（内网工具），请求/响应均为 JSON（注明的除外）。
+所有接口同源；默认无鉴权（内网工具）。设置 `CRC_WEB_API_TOKEN` 后，所有
+`/api/*` 请求必须带 `X-API-Token: <token>` 或 `Authorization: Bearer <token>`，
+否则返回 401。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -118,6 +122,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 ```json
 {
   "max_upload_mb": 200,
+  "max_request_mb": 400,
   "max_dbc_files": 10,
   "manual_default_frames": 6000
 }
@@ -246,7 +251,8 @@ body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{j
 |----|------|
 | 404 | 未知 `project_id`；`run_id` 不存在或报告已过期 |
 | 400 | 空文件、文件类型不支持、配置里出现路径字段、帧数上限不是整数、配置/trace 解析失败 |
-| 413 | 上传超过 `CRC_WEB_MAX_UPLOAD_MB` |
+| 401 | 设置了 `CRC_WEB_API_TOKEN` 但请求缺少/带错 token |
+| 413 | 单文件超过 `CRC_WEB_MAX_UPLOAD_MB`，或单次请求合计超过 `CRC_WEB_MAX_REQUEST_MB` |
 
 错误体沿用 FastAPI 的 `{"detail": "..."}`。
 

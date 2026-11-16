@@ -5,7 +5,7 @@
 基于 DBC 的 CAN 总线 CRC / 滚动计数器校验工具，支持 BLF、ASC、MF4、TRC trace。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/CAN_CRC_Checker/actions/workflows/ci.yml)
 
 [English](../../README.md) | [🌍 中文](./README.md)
@@ -14,9 +14,9 @@
 
 ---
 
-| 网页版 | 自包含 HTML 报告 |
-| --- | --- |
-| ![网页版](../screenshots/web-ui.png) | ![HTML 报告](../screenshots/report.png) |
+| 网页版 | 校验结果 | 自包含 HTML 报告 |
+| --- | --- | --- |
+| ![网页版](../screenshots/web-ui.png) | ![校验结果](../screenshots/web-ui-result.png) | ![HTML 报告](../screenshots/report.png) |
 
 ---
 
@@ -50,7 +50,8 @@ crc-check inspect examples/example/dbc/network.dbc
 python -m cli.main run -c examples/example/config_bad.json -v
 ```
 
-作为 CI 门禁：`--fail-on-failure` 有任何失败就退出 1，`--min-pass-rate 99.5`
+表格输出默认只列失败项，加 `--show-all` 才打印全部 verdict。作为 CI 门禁：
+`--fail-on-failure` 有任何失败就退出 1，`--min-pass-rate 99.5`
 低于阈值退出 1（`crc-check verify` 同样支持）。
 
 ```bash
@@ -60,6 +61,17 @@ crc-check run -c examples/example/config.json --fail-on-failure
 MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若只执行
 `pip install -e .`，请补 `pip install "python-can[mf4]"`（或
 `pip install -e ".[mf4]"`）。
+
+### Docker
+
+```bash
+docker build -t crc-checker .
+docker run --rm -p 8000:8000 crc-checker
+```
+
+镜像内置合成的示例项目并在 8000 端口提供网页版。推送 `v*` tag 会触发
+`release.yml`：先校验 tag 与 `crc_checker.__version__` 一致并跑测试，再把 wheel
+发布到 PyPI、镜像发布到 GHCR（PyPI trusted publisher 需在仓库设置里配置一次）。
 
 ## 🌐 网页版
 
@@ -74,7 +86,11 @@ MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若�
 服务端解析。项目从 `projects/` 扫描（不存在时用 `examples/`，可用
 `CRC_CHECKER_PROJECTS_DIR` 覆盖）。Vue 前端产物 `frontend/dist` 已提交，部署机
 无需 Node。启动脚本默认仅监听 `127.0.0.1`；可传入 host 参数或设置 `CRC_WEB_HOST`
-显式开放局域网访问。网页版没有认证，网络暴露时必须放在带认证的反向代理或等效访问控制后。
+显式开放局域网访问。网页版默认没有认证；设置 `CRC_WEB_API_TOKEN` 后所有
+`/api/*` 请求都必须带 `X-API-Token`（或 `Authorization: Bearer`），页面在版本弹窗里
+填写并保存在 localStorage。网络暴露时仍应放在带认证的反向代理或等效访问控制后。
+上传默认单文件 200MB、单请求 400MB（`CRC_WEB_MAX_UPLOAD_MB` /
+`CRC_WEB_MAX_REQUEST_MB`）。
 详见 [docs/web-api.md](../web-api.md)。
 
 ## 🌟 能力一览
@@ -189,14 +205,15 @@ tests/                  pytest 测试
 pytest --tb=short --cov=crc_checker --cov=cli --cov=webapp \
   --cov-report=term --cov-fail-under=80          # CI 后端测试命令
 pylint $(git ls-files '*.py')                     # 必须 10.00/10
-cd frontend && npm run lint                       # eslint + prettier 检查
+cd frontend && npm run lint                       # eslint
+cd frontend && npm run format:check               # prettier 格式检查
 cd frontend && npm test                           # node --test(纯逻辑单测)
 cd frontend && npm run test:component             # vitest 组件冒烟测试
-cd frontend && npm install && npm run build       # 重新构建 dist
+cd frontend && npm ci && npm run build            # 重新构建 dist
 python examples/generate_example.py               # 重新生成示例
 ```
 
-CI 在 Python 3.9、3.11、3.13 上运行 pylint 与带覆盖率门槛的 pytest，另有一个
+CI 在 Python 3.11、3.12、3.13 上运行 pylint 与带覆盖率门槛的 pytest，另有一个
 Windows pytest 作业，以及前端 lint、单测、组件测试和 `frontend/dist`
 新鲜度检查。pre-push 钩子会运行 pylint 和同样要求 80% 覆盖率的后端 pytest；
 安装了 `uv` 时使用 Python 3.11，否则使用当前 Python 环境。钩子不替代完整 CI

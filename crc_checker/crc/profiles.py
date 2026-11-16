@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, fields, replace
 
-from crc_checker.crc.models import CRCParams, CRCRange
+from crc_checker.core.models import CRCParams, CRCRange
 from crc_checker.crc.presets import get_preset
 
 

@@ -65,7 +65,7 @@ def _tick_decimals(step: float) -> int:
     return 3
 
 
-def _minmax_decimate(points: list, max_points: int) -> list:
+def minmax_decimate(points: list, max_points: int) -> list:
     """Min/max decimation — keeps the sawtooth envelope when thinning."""
     if len(points) <= max_points:
         return list(points)
@@ -89,7 +89,7 @@ def _minmax_decimate(points: list, max_points: int) -> list:
     return out
 
 
-def _split_trend_points(points: list) -> tuple[list, list]:
+def split_trend_points(points: list) -> tuple[list, list]:
     """Pass/fail split of RC series points + thinning of enormous error sets.
 
     Pass points are min/max-decimated by the caller (keeps the sawtooth
@@ -119,7 +119,7 @@ def rc_sample_stats(report) -> tuple[int, int]:
     ``rc_series`` — otherwise 1800 failing frames shrink to "1 check" in the
     summary and the card shows 242788/242789 = 99.9996%, a number that cannot
     be reconciled with the trend chart. Falls back to verdict counts when the
-    series is missing (e.g. run_stream).
+    series is missing (e.g. a report built without RC samples).
     """
     if not report.rc_series:
         total = sum(1 for v in report.verdicts if v.algorithm != "crc")
@@ -213,8 +213,8 @@ def _render_rc_chart(points: list, max_valid: int | None, bit_max: int,
 
     # Pass points are min/max-decimated (keeps the sawtooth envelope); error
     # points are always drawn, uniformly thinned only when enormous.
-    pass_pts, fail_pts = _split_trend_points(points)
-    drawn = sorted(_minmax_decimate(pass_pts, RC_MAX_POINTS)
+    pass_pts, fail_pts = split_trend_points(points)
+    drawn = sorted(minmax_decimate(pass_pts, RC_MAX_POINTS)
                    + [(t, v) for t, v, _ in fail_pts], key=lambda p: p[0])
 
     # Axes: gridlines + tick labels (x = precise time relative to t0,

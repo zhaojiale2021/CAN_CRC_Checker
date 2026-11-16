@@ -14,14 +14,13 @@ concurrency:
 
 jobs:
   backend:
-    # 24.04 still provides Python 3.9 (the project floor). Once the 3.9 job is
-    # dropped this can move to ubuntu-latest.
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       matrix:
-        # 3.9 is the declared floor; 3.11/3.13 keep a supported interpreter in
+        # 3.11 is the declared floor; 3.12/3.13 keep newer interpreters in
         # the matrix (3.9 and 3.10 are past upstream EOL).
-        python-version: ["3.9", "3.11", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
@@ -34,6 +33,7 @@ jobs:
         pip install -r requirements.txt
         pip install -e .
     - name: Lint with pylint
+      if: matrix.python-version == '3.11'
       run: |
         # pylint is pinned in requirements.txt so local hooks and CI agree.
         pylint $(git ls-files '*.py')
@@ -46,11 +46,14 @@ jobs:
     # The project is used mostly on Windows; one job keeps path/console
     # behaviour honest without doubling the full matrix.
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: "3.11"
+        cache: pip
+        cache-dependency-path: requirements.txt
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -61,11 +64,14 @@ jobs:
 
   wheel-smoke:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: "3.11"
+        cache: pip
+        cache-dependency-path: requirements.txt
     - name: Install runtime dependencies
       run: python -m pip install '.[web]'
     - name: Build and install wheel
@@ -73,10 +79,13 @@ jobs:
         python -m pip wheel . --no-deps --wheel-dir wheelhouse
         python -m pip install --force-reinstall --no-deps wheelhouse/crc_checker-*.whl
     - name: Probe installed wheel outside checkout
-      run: python scripts/wheel_smoke.py
+      run: |
+        python -m cli.main --version
+        python scripts/wheel_smoke.py
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -103,12 +112,11 @@ jobs:
       run: npm run build
     - name: dist must match the committed build
       run: |
-        if ! git diff --exit-code -- frontend/dist; then
-          echo "::error::frontend/dist is stale — run 'cd frontend && npm run build' and commit it"
-          exit 1
-        fi
-        if ! diff -r frontend/dist webapp/static/dist; then
-          echo "::error::webapp/static/dist must match frontend/dist"
+        # npm run build rewrites both trees, so compare the *working tree*
+        # against the commit for both copies — diffing them against each other
+        # after the build is vacuously true.
+        if ! git diff --exit-code -- frontend/dist webapp/static/dist; then
+          echo "::error::committed dist is stale — run 'cd frontend && npm run build' and commit both trees"
           exit 1
         fi
 
@@ -117,6 +125,7 @@ jobs:
   gate:
     name: CI required
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [backend, backend-windows, frontend, wheel-smoke]
     if: always()
     steps:

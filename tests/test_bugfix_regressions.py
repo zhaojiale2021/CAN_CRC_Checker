@@ -682,17 +682,6 @@ def test_page_html_escapes_trace_and_dbc_paths(tmp_path):
     assert "<b>dbc</b>" not in html
 
 
-def test_create_default_honors_crc_range():
-    """The factory documents and must forward an explicit range."""
-    from crc_checker.verify.engine import VerifyEngine  # pylint: disable=import-outside-toplevel
-
-    crc_range = CRCRange(mode="custom_range", start_byte=1, end_byte=5)
-    engine = VerifyEngine.create_default(
-        DBCProtectionMap(), crc_params=get_preset("CRC8/AUTOSAR"),
-        crc_range=crc_range)
-    assert engine.algorithms[0]._explicit_range is crc_range  # pylint: disable=protected-access
-
-
 def test_frame_data_keyed_by_channel():
     """Same (timestamp, id) on two channels must not overwrite each other."""
     report = VerifyReport()

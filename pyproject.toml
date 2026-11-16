@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,20 @@ dynamic = ["version"]
 description = "CAN bus CRC / rolling-counter verification from DBC files and trace logs"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
+authors = [{ name = "CAN CRC Checker contributors" }]
+keywords = ["can", "can-bus", "dbc", "crc", "e2e", "automotive", "trace"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
     "python-can>=4.5",
     "canmatrix>=1.1",
@@ -23,17 +36,24 @@ web = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "python-multipart>=0.0.9",
-    "httpx>=0.27",
 ]
 mf4 = ["python-can[mf4]>=4.5"]
 dev = [
     "pytest>=8",
     "pytest-cov",
+    "httpx>=0.27",
+    "jsonschema>=4",
     "pylint==3.3.9",
 ]
 
 [project.scripts]
 crc-check = "cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/zhaojiale2021/CAN_CRC_Checker"
+Repository = "https://github.com/zhaojiale2021/CAN_CRC_Checker"
+Issues = "https://github.com/zhaojiale2021/CAN_CRC_Checker/issues"
+Changelog = "https://github.com/zhaojiale2021/CAN_CRC_Checker/releases"
 
 [tool.setuptools.dynamic]
 version = { attr = "crc_checker.__version__" }

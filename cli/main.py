@@ -8,7 +8,8 @@ from pathlib import Path
 import click
 
 from crc_checker.config import DEFAULT_MAX_FRAMES, RunConfig
-from crc_checker.crc.models import CRCParams
+from crc_checker.file_types import TRACE_EXTENSIONS
+from crc_checker.core.models import CRCParams
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
 from crc_checker.dbc.parser import parse_dbc
 from crc_checker.report.html import write_html
@@ -21,23 +22,31 @@ from crc_checker import __version__
 # Shared helpers used by both ``verify`` and ``run`` commands
 # ---------------------------------------------------------------------------
 
-_TRACE_EXTENSIONS = {".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"}
+_TRACE_EXTENSIONS = TRACE_EXTENSIONS
 
 
 class GroupedCommand(click.Command):
     """Display related command options under named headings."""
 
     _OPTION_GROUPS = (
-        ("Inputs", {"dbc_paths", "trace_files", "config_path"}),
+        ("Inputs", {"dbc_paths", "trace_files", "config_path", "dbc_merge"}),
         ("CRC and signal settings", {
             "algo", "custom_crc", "range_mode", "range_start", "range_end",
-            "checksum_pattern", "rc_pattern", "patterns_file",
+            "checksum_pattern", "rc_pattern", "patterns_file", "byte_swap",
+            "auto_classify", "profile_by_width", "overrides", "profiles",
+            "skip", "rc_max_valid",
         }),
-        ("DataID", {"dataid_xlsx", "dataid_sheet", "dataid_mapping"}),
+        ("DataID", {
+            "dataid_xlsx", "dataid_sheet", "dataid_mapping", "dataid_json",
+            "dataid_mapping_file", "dataid_position", "dataid_byte_order",
+            "dataid_default",
+        }),
         ("Filters", {"frame_ids", "max_frames"}),
-        ("Output", {"output_fmt", "output_file", "json_file", "only_failures"}),
+        ("Output", {
+            "output_fmt", "output_file", "json_file", "only_failures",
+            "show_all", "max_report_sections",
+        }),
         ("CI gates", {"fail_on_failure", "min_pass_rate", "allow_empty", "allow_truncated"}),
-        ("Other", {"verbose", "help"}),
     )
 
     def format_options(self, ctx, formatter):
@@ -66,23 +75,11 @@ class GroupedCommand(click.Command):
 
 def _parse_crc_params(algo: str | None, custom_data: dict | None) -> CRCParams | None:
     """Resolve CRC parameters from ``--algo`` or parsed ``--custom-crc`` JSON."""
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.crc.custom import parse_custom_crc
+
     if custom_data:
-        return CRCParams(
-            width=custom_data["width"],
-            polynomial=(int(custom_data["poly"], 16)
-                        if isinstance(custom_data["poly"], str)
-                        else custom_data["poly"]),
-            initial_value=(int(custom_data.get("init", "0x00"), 16)
-                           if isinstance(custom_data.get("init", "0x00"), str)
-                           else custom_data.get("init", 0)),
-            final_xor=(int(custom_data.get("xor", "0x00"), 16)
-                       if isinstance(custom_data.get("xor", "0x00"), str)
-                       else custom_data.get("xor", 0)),
-            reflect_in=custom_data.get("reflect_in", False),
-            reflect_out=custom_data.get("reflect_out", False),
-            name=custom_data.get("name", "custom"),
-            checksum_type=custom_data.get("type", "crc"),
-        )
+        return parse_custom_crc(custom_data)
     if algo:
         return get_preset(algo)
     return None
@@ -112,6 +109,36 @@ def _parse_frame_ids(raw: str | None) -> list[int] | None:
         ]
     except ValueError as exc:
         raise click.BadParameter(f"Invalid --frame-ids value: {raw}") from exc
+
+
+def _parse_json_object(raw: str | None, label: str) -> dict | None:
+    """Parse an optional JSON object option (``--overrides`` / ``--profiles``)."""
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise click.BadParameter(f"Invalid {label} JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise click.BadParameter(f"{label} must be a JSON object.")
+    return data
+
+
+def _parse_hex_int(raw: str | None, label: str) -> int | None:
+    """Parse a decimal/hex integer option."""
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw, 0)
+    except ValueError as exc:
+        raise click.BadParameter(f"Invalid {label} value: {raw}") from exc
+
+
+def _parse_names(raw: str | None) -> list[str]:
+    """Split a comma/space separated list of frame names/IDs for the skip list."""
+    if not raw:
+        return []
+    return [token for token in re.split(r"[\s,;]+", raw.strip()) if token]
 
 
 def _expand_trace_paths(trace_files: list[str]) -> list[str]:
@@ -191,8 +218,10 @@ def _print_summary(report):
             "signals).", fg="yellow", bold=True))
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def _output_report(report, output_fmt: str, output_file: str,
-                   only_failures: bool, max_sections: int | None = None):
+                   only_failures: bool, max_sections: int | None = None,
+                   *, table_only_failures: bool = True):
     """Render verification report as table or HTML, then print the summary."""
     if output_fmt == "html":
         path = output_file or "crc_report.html"
@@ -202,7 +231,7 @@ def _output_report(report, output_fmt: str, output_file: str,
         click.echo(f"HTML: {path}")
         _print_summary(report)
     else:
-        _print_table(report, only_failures)
+        _print_table(report, table_only_failures)
 
 
 def _exit_after_reports(reports, fail_on_failure: bool,
@@ -275,6 +304,15 @@ def _fit(text: str, width: int) -> str:
     return text if len(text) <= width else text[:width - 1] + "~"
 
 
+def _terminal_text(text: str) -> str:
+    """Make verifier prose safe for legacy Windows consoles (cp936/cp1252)."""
+    return (str(text)
+            .replace("·", "|")
+            .replace("×", "x")
+            .replace("—", "-")
+            .replace("–", "-"))
+
+
 def _print_table(report, only_failures: bool = False):
     """Print results as a formatted table to terminal."""
     verdicts = report.failed if only_failures else report.verdicts
@@ -302,8 +340,8 @@ def _print_table(report, only_failures: bool = False):
             if v.is_pass
             else click.style("FAIL", fg="red", bold=True)
         )
-        exp_str = f"0x{v.expected_value:0{(v.expected_value.bit_length() + 7) // 8 * 2}X}"
-        act_str = f"0x{v.actual_value:0{(v.actual_value.bit_length() + 7) // 8 * 2}X}"
+        exp_str = f"0x{v.expected_value:0{max(1, (v.expected_value.bit_length() + 7) // 8) * 2}X}"
+        act_str = f"0x{v.actual_value:0{max(1, (v.actual_value.bit_length() + 7) // 8) * 2}X}"
 
         line = (
             f"{v.timestamp:>{ts_w}.6f} "
@@ -317,7 +355,7 @@ def _print_table(report, only_failures: bool = False):
         click.echo(line)
 
         if not v.is_pass and v.detail:
-            click.echo(f"  {click.style(v.detail, fg='yellow')}")
+            click.echo(f"  {click.style(_terminal_text(v.detail), fg='yellow')}")
 
     _print_summary(report)
 
@@ -325,7 +363,7 @@ def _print_table(report, only_failures: bool = False):
 @click.group()
 @click.version_option(__version__, prog_name="crc-check")
 def cli():
-    """CAN CRC Checker — DBC-aware CAN bus CRC/Rolling Counter verification tool."""
+    """CAN CRC Checker - DBC-aware CAN bus CRC/Rolling Counter verification tool."""
 
 
 @cli.command(cls=GroupedCommand)
@@ -347,14 +385,43 @@ def cli():
               help="Override regex for rolling counter signal matching")
 @click.option("--patterns-file", default=None, type=click.Path(exists=True),
               help="YAML with signal-name patterns (see crc_checker/data/patterns.yaml)")
+@click.option("--byte-swap", is_flag=True,
+              help="Byte-swap computed CRC before comparison (Profile 5)")
+@click.option("--auto-classify", is_flag=True,
+              help="Pick the CRC algorithm per message from DBC comments")
+@click.option("--profile-by-width", is_flag=True,
+              help="Select the E2E profile from the CRC signal width")
+@click.option("--overrides", default=None,
+              help="JSON object mapping frame id/name to a preset, e.g. "
+                   '{"0x123":"CRC8/SAE-J1850"}')
+@click.option("--profiles", default=None,
+              help="JSON object with per-profile overrides (crc.profiles)")
+@click.option("--skip", default=None,
+              help="Comma-separated frame ids/names or signals to leave unverified")
+@click.option("--rc-max-valid", type=int, default=None,
+              help="Maximum valid rolling-counter value (default: 2^bits - 1)")
 @click.option("--dataid-xlsx", default=None, type=click.Path(exists=True),
               help="Excel file with DataID mappings for E2E CRC calculation")
+@click.option("--dataid-json", default=None, type=click.Path(),
+              help="Preprocessed DataID JSON (fast path; may be generated from --dataid-xlsx)")
 @click.option("--dataid-sheet", default=None,
               help="Sheet name in the DataID Excel (default: auto-detect)")
 @click.option("--dataid-mapping", default=None,
               help="Column mapping: name from dataid_mappings.yaml "
                    "(hi_lo_two_cols, single_16bit, generic_abc, simple_8bit, "
                    "description_regex) or a JSON object")
+@click.option("--dataid-mapping-file", default=None, type=click.Path(exists=True),
+              help="Custom DataID mapping YAML")
+@click.option("--dataid-position", default=None,
+              type=click.Choice(["prepend", "append"]),
+              help="Where the DataID enters the CRC")
+@click.option("--dataid-byte-order", default=None,
+              type=click.Choice(["lo_hi", "hi_lo"]),
+              help="DataID byte order")
+@click.option("--dataid-default", default=None,
+              help="Fallback DataID when a message has no table entry (e.g. 0x0000)")
+@click.option("--dbc-merge", is_flag=True,
+              help="Merge every DBC into one map instead of selecting per channel")
 @click.option("--frame-ids", default=None,
               help="Comma-separated CAN IDs to filter (e.g. 0x323,0x299)")
 @click.option("--output", "output_fmt", default="table",
@@ -362,6 +429,10 @@ def cli():
               help="Output format")
 @click.option("--output-file", default=None, type=click.Path(), help="Output file path")
 @click.option("--only-failures", is_flag=True, help="Only show/write failed verdicts")
+@click.option("--show-all", is_flag=True,
+              help="Table output: also print passing checks (default: failures only)")
+@click.option("--max-report-sections", type=int, default=None,
+              help="HTML report frame-section cap (0 = unlimited, default 30000)")
 @click.option("--max-frames", type=int, default=DEFAULT_MAX_FRAMES,
               help="Maximum frames to process (0 = unlimited, default 6000)")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
@@ -381,9 +452,12 @@ def cli():
 def verify(dbc_paths, trace_files, algo, custom_crc,
            range_mode, range_start, range_end,
            checksum_pattern, rc_pattern, patterns_file,
-           dataid_xlsx, dataid_sheet, dataid_mapping,
-           frame_ids, output_fmt, output_file,
-           only_failures, max_frames, verbose,
+           byte_swap, auto_classify, profile_by_width, overrides, profiles,
+           skip, rc_max_valid,
+           dataid_xlsx, dataid_json, dataid_sheet, dataid_mapping,
+           dataid_mapping_file, dataid_position, dataid_byte_order, dataid_default,
+           dbc_merge, frame_ids, output_fmt, output_file,
+           only_failures, show_all, max_report_sections, max_frames, verbose,
            fail_on_failure, min_pass_rate, allow_empty, allow_truncated,
            json_file):
     """Verify CRC and Rolling Counter in CAN trace files.
@@ -396,12 +470,19 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     if not dbc_paths:
         raise click.UsageError("At least one --dbc path is required.")
 
-    if not algo and not custom_crc:
-        click.echo("Warning: No CRC algorithm specified. Use --algo or "
-                   "--custom-crc.", err=True)
+    if not algo and not custom_crc and not auto_classify:
+        click.echo("Warning: No CRC algorithm specified. Use --algo, "
+                   "--custom-crc or --auto-classify.", err=True)
         click.echo("Only Rolling Counter verification will be performed.", err=True)
     if algo and custom_crc:
         raise click.UsageError("Use only one of --algo and --custom-crc.")
+    if rc_max_valid is not None and rc_max_valid < 0:
+        raise click.BadParameter("--rc-max-valid must be >= 0.")
+    if max_report_sections is not None and max_report_sections < 0:
+        raise click.BadParameter("--max-report-sections must be >= 0.")
+    dataid_default_value = _parse_hex_int(dataid_default, "--dataid-default")
+    if dataid_default_value is not None and not 0 <= dataid_default_value <= 0xFFFF:
+        raise click.BadParameter("--dataid-default must be a 16-bit value.")
 
     if (range_start is not None or range_end is not None) and range_mode != "custom_range":
         raise click.UsageError(
@@ -437,8 +518,16 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     # Expand directories up front: DBC selection samples trace files, so it
     # must never be handed a directory.
     cfg.traces = _expand_trace_paths(list(trace_files))
+    cfg.dbc_merge = dbc_merge
     cfg.crc_preset = algo or ""
     cfg.crc_custom = custom_data
+    cfg.crc_byte_swap = byte_swap
+    cfg.crc_auto_classify = auto_classify
+    cfg.crc_profile_by_width = profile_by_width
+    cfg.crc_overrides = _parse_json_object(overrides, "--overrides") or {}
+    cfg.crc_profiles = _parse_json_object(profiles, "--profiles") or {}
+    cfg.crc_skip = _parse_names(skip)
+    cfg.rc_max_valid = rc_max_valid
     cfg.range_mode = range_mode or "exclude_crc"
     cfg.range_start = range_start if range_start is not None else 0
     cfg.range_end = range_end if range_end is not None else -1
@@ -446,13 +535,19 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
     cfg.rc_pattern = rc_pattern
     cfg.patterns_file = patterns_file or ""
     cfg.dataid_xlsx = dataid_xlsx or ""
+    cfg.dataid_json = dataid_json or ""
     cfg.dataid_sheet = dataid_sheet or ""
     cfg.dataid_mapping = dataid_mapping or ""
+    cfg.dataid_mapping_file = dataid_mapping_file or ""
+    cfg.dataid_position = dataid_position or "prepend"
+    cfg.dataid_byte_order = dataid_byte_order or "lo_hi"
+    cfg.dataid_default = dataid_default_value
     cfg.frame_ids = _parse_frame_ids(frame_ids)
     cfg.max_frames = max_frames
     cfg.output_format = output_fmt
     cfg.output_file = output_file or ""
     cfg.only_failures = only_failures
+    cfg.max_report_sections = max_report_sections
 
     if verbose:
         _echo_verbose_config(cfg, None, cfg.traces, err=output_fmt == "json")
@@ -483,11 +578,13 @@ def verify(dbc_paths, trace_files, algo, custom_crc,
         _print_json_reports(reports, json_file or output_file, only_failures)
     else:
         multiple_reports = len(reports) > 1
+        table_only_failures = only_failures or not show_all
         for index, report in enumerate(reports, start=1):
             _output_report(report, output_fmt,
                            _report_output_path(output_file, report, multiple_reports,
                                                index=index),
-                           only_failures)
+                           only_failures,
+                           table_only_failures=table_only_failures)
     _exit_after_reports(reports, fail_on_failure, min_pass_rate,
                         allow_empty, allow_truncated)
 
@@ -517,6 +614,8 @@ def list_presets_cmd():
 @click.option("--config", "-c", "config_path", required=True,
               type=click.Path(exists=True), help="Path to JSON config file")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+@click.option("--show-all", is_flag=True,
+              help="Table output: also print passing checks (default: failures only)")
 @click.option("--fail-on-failure", is_flag=True,
               help="Exit 1 if any check fails (use in CI)")
 @click.option("--min-pass-rate", type=click.FloatRange(0, 100), default=None,
@@ -526,8 +625,8 @@ def list_presets_cmd():
 @click.option("--allow-truncated", is_flag=True,
               help="Allow a CI gate to pass when a trace hit its frame cap")
 # pylint: disable=too-many-branches,too-many-statements,too-many-arguments,too-many-positional-arguments
-def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate, allow_empty,
-            allow_truncated):
+def run_cmd(config_path, verbose, show_all, fail_on_failure, min_pass_rate,
+            allow_empty, allow_truncated):
     """Run verification from a JSON config file.
 
     Generate an example config:  crc-check gen-config example.json
@@ -585,11 +684,13 @@ def run_cmd(config_path, verbose, fail_on_failure, min_pass_rate, allow_empty,
         _print_json_reports(reports, cfg.output_file or None, cfg.only_failures)
     else:
         multiple_reports = len(reports) > 1
+        table_only_failures = cfg.only_failures or not show_all
         for index, report in enumerate(reports, start=1):
             _output_report(report, cfg.output_format,
                            _report_output_path(cfg.output_file, report, multiple_reports,
                                                index=index),
-                           cfg.only_failures, cfg.max_report_sections)
+                           cfg.only_failures, cfg.max_report_sections,
+                           table_only_failures=table_only_failures)
     _exit_after_reports(reports, fail_on_failure, min_pass_rate,
                         allow_empty, allow_truncated)
 

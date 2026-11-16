@@ -1,6 +1,11 @@
 <template>
   <div class="trend-card">
-    <div class="trend-head" @click="collapsed = !collapsed">
+    <button
+      type="button"
+      class="trend-head"
+      :aria-expanded="!collapsed"
+      @click="collapsed = !collapsed"
+    >
       <span class="arrow" :class="{ closed: collapsed }">&#9660;</span>
       <span class="mono id">{{ trend.frame_id_hex }}</span>
       <span class="mono name">{{ trend.signal }}</span>
@@ -16,7 +21,7 @@
         <template v-else><span class="pass-text">错误: 0</span></template>
         · 采样: {{ trend.samples }}
       </span>
-    </div>
+    </button>
     <div v-show="!collapsed" class="trend-body">
       <svg
         v-if="geo"
@@ -193,11 +198,20 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 8px 14px;
+  border: 0;
   background: var(--el-fill-color-dark);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
   cursor: pointer;
   user-select: none;
   font-size: 13px;
+}
+.trend-head:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
 }
 .trend-head .id {
   font-weight: 600;

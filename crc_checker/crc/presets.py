@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from crc_checker.crc.models import CRCParams
+from crc_checker.core.models import CRCParams
 
 PRESETS: dict[str, CRCParams] = {
     "CRC8/AUTOSAR": CRCParams(
@@ -133,7 +133,10 @@ def get_preset(name: str) -> CRCParams:
         if re.sub(r'[^A-Z0-9]', '', key.upper()) == normalized:
             return params
     available = ", ".join(PRESETS.keys())
-    raise KeyError(f"Unknown CRC preset '{name}'. Available: {available}")
+    # pylint: disable=import-outside-toplevel
+    from crc_checker.errors import PresetError
+    raise PresetError(
+        f"Unknown CRC preset '{name}'. Available: {available}")
 
 
 def list_presets() -> list[str]:

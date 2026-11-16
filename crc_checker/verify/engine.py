@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from crc_checker.trace.reader import TraceReader
 from crc_checker.dbc.models import DBCProtectionMap
-from crc_checker.crc.models import CRCParams, CRCRange
 from crc_checker.verify.cancellation import CancellationToken
 from crc_checker.verify.models import VerifyReport
 from crc_checker.protect.rolling_counter import RollingCounterVerifier
@@ -25,31 +24,6 @@ class VerifyEngine:
                  algorithms: list[ProtectionAlgorithm] | None = None):
         self.protection_map = protection_map
         self.algorithms: list[ProtectionAlgorithm] = algorithms or []
-
-    @classmethod
-    def create_default(cls,
-                       protection_map: DBCProtectionMap,
-                       crc_params: CRCParams | None = None,
-                       crc_range: CRCRange | None = None) -> "VerifyEngine":
-        """Factory: create engine with default CRC + RC verifiers.
-
-        Args:
-            protection_map: Parsed DBC protection map.
-            crc_params: Default CRC parameters (None = algorithm configured
-                per message via profiles/overrides only).
-            crc_range: Explicit range for every group (None = auto-detect, or
-                the per-group range applied on the protection map).
-
-        Returns:
-            Configured VerifyEngine instance.
-        """
-        algorithms: list = []
-
-        from crc_checker.protect.checksum import CRCVerifier  # pylint: disable=import-outside-toplevel
-        algorithms.append(CRCVerifier(crc_params, crc_range))
-        algorithms.append(RollingCounterVerifier())
-
-        return cls(protection_map, algorithms)
 
     @staticmethod
     def _filter_by_dlc(protections: list, frame) -> list:
@@ -158,6 +132,13 @@ class VerifyEngine:
             if cancellation_token is not None:
                 cancellation_token.raise_if_cancelled(frame_count)
 
+        # Emit verdicts that stateful algorithms held back for folding.
+        for algo in self.algorithms:
+            pending = algo.flush()
+            if pending:
+                report.verdicts.extend(pending)
+                report.total_verdicts += len(pending)
+
         # Collect the RC value series (every frame) for the HTML trend charts
         self._collect_rc_series(report)
 
@@ -176,40 +157,6 @@ class VerifyEngine:
                 for key, points in algo.get_series().items():
                     report.rc_series.setdefault(key, []).extend(points)
                 report.rc_series_meta.update(algo.get_series_meta())
-
-    def run_stream(self, reader: TraceReader,
-                   frame_ids: list[int] | None = None,
-                   max_frames: int | None = None):
-        """Stream verification results — yields VerifyVerdict as frames are processed.
-
-        Useful for TUI/progress display while processing large files.
-        """
-        target_ids = set(frame_ids) if frame_ids else set()
-        frame_count = 0
-
-        for frame in reader.frames():
-            if target_ids and frame.arbitration_id not in target_ids:
-                continue
-
-            if max_frames and frame_count >= max_frames:
-                break
-            frame_count += 1
-
-            protections = self.protection_map.get_protections(
-                frame.arbitration_id, channel=frame.channel)
-            if protections:
-                protections = self._filter_by_dlc(protections, frame)
-            if not protections:
-                continue
-
-            for prot in protections:
-                for algo in self.algorithms:
-                    result = algo.verify(frame, prot)
-                    if result is not None:
-                        if isinstance(result, list):
-                            yield from result
-                        else:
-                            yield result
 
     def reset(self):
         """Reset all stateful algorithms (e.g., RC state)."""

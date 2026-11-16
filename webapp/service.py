@@ -7,6 +7,7 @@ and a small cache of finished runs so the HTML report stays downloadable.
 
 from __future__ import annotations
 
+import json
 import re
 import secrets
 import shutil
@@ -18,8 +19,8 @@ from typing import Callable
 
 from crc_checker.config import DEFAULT_MAX_FRAMES, RunConfig, load_config
 from crc_checker.report.html import write_html
-from crc_checker.report.trends import (RC_MAX_POINTS, _minmax_decimate,
-                                       _split_trend_points, count_rc_episodes,
+from crc_checker.report.trends import (RC_MAX_POINTS, count_rc_episodes,
+                                       minmax_decimate, split_trend_points,
                                        crc_sample_stats, rc_sample_stats)
 from crc_checker.verify.cancellation import CancellationToken
 from crc_checker.verify.models import VerifyReport, VerifyVerdict
@@ -39,10 +40,12 @@ class RunError(RuntimeError):
 
 JOB_STATUSES = frozenset({"queued", "running", "succeeded", "failed", "cancelled"})
 MAX_JOBS = 100
+JOB_RESULT_TTL_SECONDS = 3600
+MAX_JOB_RESULT_BYTES = 8 * 1024 * 1024
 
 
 @dataclass
-class VerificationJob:
+class VerificationJob:  # pylint: disable=too-many-instance-attributes
     """Thread-safe-registry record for one asynchronous verification."""
 
     job_id: str
@@ -52,6 +55,7 @@ class VerificationJob:
     error: str | None = None
     result: dict | None = None
     created_at: float = field(default_factory=time.monotonic)
+    finished_at: float | None = None
 
     def to_dict(self) -> dict:
         """JSON state exposed by the jobs API."""
@@ -64,6 +68,52 @@ class VerificationJob:
         }
 
 
+def _serialized_size(value) -> int:
+    """Best-effort byte size of a JSON-serialisable value (0 if it is not)."""
+    try:
+        return len(json.dumps(value, ensure_ascii=False, default=str))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _bounded_result(result: dict) -> dict:
+    """Keep one job result under :data:`MAX_JOB_RESULT_BYTES`.
+
+    A successful run can retain thousands of failure rows and trend points.
+    The HTML report is the complete artefact; the in-memory job result only
+    needs enough for the results view, so heavy lists are truncated first and
+    dropped entirely as a last resort.
+    """
+    if _serialized_size(result) <= MAX_JOB_RESULT_BYTES:
+        return result
+
+    trimmed = dict(result)
+    reports = []
+    for original in result.get("reports", []) or []:
+        report = dict(original)
+        for key, cap in (("failures", 200), ("frames", 100)):
+            values = report.get(key)
+            if isinstance(values, list) and len(values) > cap:
+                report[key] = values[:cap]
+                report[f"{key}_truncated"] = True
+        trends = report.get("rc_trends")
+        if isinstance(trends, list) and len(trends) > 10:
+            report["rc_trends"] = trends[:10]
+            report["rc_trends_truncated"] = True
+        reports.append(report)
+    trimmed["reports"] = reports
+    trimmed["result_truncated"] = True
+    if _serialized_size(trimmed) <= MAX_JOB_RESULT_BYTES:
+        return trimmed
+
+    trimmed["reports"] = [
+        {key: value for key, value in report.items()
+         if key not in {"failures", "frames", "rc_trends", "signals"}}
+        for report in reports
+    ]
+    return trimmed
+
+
 class JobRegistry:
     """Bounded, per-app job state with atomic transitions and snapshots."""
 
@@ -72,9 +122,19 @@ class JobRegistry:
         self._jobs: dict[str, VerificationJob] = {}
         self._lock = threading.Lock()
 
+    def _prune_locked(self, now: float) -> None:
+        """Drop terminal jobs past their TTL; caller must hold ``self._lock``."""
+        for job in list(self._jobs.values()):
+            if (job.finished_at is not None
+                    and job.status in {"succeeded", "failed", "cancelled"}
+                    and now - job.finished_at > JOB_RESULT_TTL_SECONDS):
+                self._jobs.pop(job.job_id, None)
+
     def create(self, job_id: str | None = None) -> VerificationJob | None:
         """Create a queued job, evicting old terminal entries when full."""
         with self._lock:
+            now = time.monotonic()
+            self._prune_locked(now)
             if len(self._jobs) >= self.max_jobs:
                 terminal = sorted(
                     (job for job in self._jobs.values()
@@ -101,6 +161,7 @@ class JobRegistry:
     def get(self, job_id: str) -> dict | None:
         """Return a consistent state snapshot or ``None`` for an unknown job."""
         with self._lock:
+            self._prune_locked(time.monotonic())
             job = self._jobs.get(job_id)
             return job.to_dict() if job is not None else None
 
@@ -138,7 +199,8 @@ class JobRegistry:
                 job.processed_frames = max(job.processed_frames, processed_frames)
             job.status = status
             job.error = error
-            job.result = result
+            job.result = _bounded_result(result) if result is not None else None
+            job.finished_at = time.monotonic()
 
     def finish_success(self, job_id: str, result: dict, publish: Callable[[], None]) -> bool:
         """Publish the run and mark success atomically against cancellation."""
@@ -154,7 +216,8 @@ class JobRegistry:
             publish()
             job.status = "succeeded"
             job.error = None
-            job.result = result
+            job.result = _bounded_result(result)
+            job.finished_at = time.monotonic()
             return True
 
     def cancel(self, job_id: str) -> str | None:
@@ -166,6 +229,7 @@ class JobRegistry:
             if job.status == "queued":
                 job.status = "cancelled"
                 job.error = "任务已取消"
+                job.finished_at = time.monotonic()
                 return "queued"
             job.token.cancel()
             return job.status
@@ -180,6 +244,7 @@ class JobRegistry:
                     if job.status == "queued":
                         job.status = "cancelled"
                         job.error = "任务已取消"
+                        job.finished_at = time.monotonic()
                     else:
                         job.token.cancel()
             return identifiers
@@ -239,8 +304,8 @@ def _decimate_trend_points(points: list) -> list:
 
     Returns [[t, value, fail, category], ...] in time order.
     """
-    pass_pts, fail_pts = _split_trend_points(points)
-    merged = ([(t, v, 0, "") for t, v in _minmax_decimate(pass_pts, RC_MAX_POINTS)]
+    pass_pts, fail_pts = split_trend_points(points)
+    merged = ([(t, v, 0, "") for t, v in minmax_decimate(pass_pts, RC_MAX_POINTS)]
               + [(t, v, 1, cat) for t, v, cat in fail_pts])
     merged.sort(key=lambda p: p[0])
     return [[t, v, fail, cat] for t, v, fail, cat in merged]
@@ -359,7 +424,7 @@ def _frame_rows(report: VerifyReport) -> tuple[list[dict], bool]:
             signals[verdict.signal_name] = entry
         return entry
 
-    # Without the series (theoretically only run_stream) fall back to verdict
+    # Without the series fall back to verdict
     # counts rather than zeroing the RC rows.
     count_rc_verdicts = not report.rc_series
     for verdict in report.verdicts:

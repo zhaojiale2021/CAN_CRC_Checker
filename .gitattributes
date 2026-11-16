@@ -1,3 +1,9 @@
 # Batch files must use CRLF line endings (cmd.exe fails on LF-only files:
 # goto/labels and multi-line blocks are misparsed).
 *.bat text eol=crlf
+
+# Shell scripts (including the git hook copied by install-hooks.bat) must stay
+# LF-only, otherwise Git for Windows' autocrlf turns the hook into CRLF and
+# `sh` fails to run it.
+*.sh text eol=lf
+hooks/pre-push text eol=lf

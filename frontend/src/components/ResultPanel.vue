@@ -17,18 +17,21 @@
         <div class="label">失败</div>
         <div class="value">{{ checkFail }}</div>
       </div>
-      <div class="card" :class="checkFail ? 'fail' : 'pass'">
+      <div
+        class="card"
+        :class="rateClass(checkTotal ? checkPass / checkTotal : null)"
+      >
         <div class="label">总通过率</div>
         <div class="value">{{ formatRate(checkPass, checkTotal) }}</div>
       </div>
-      <div class="card" :class="rateClass(report.crc_rate)">
+      <div class="card" :class="rateClass(report.crc_rate, report.crc_total)">
         <div class="label">CRC</div>
         <div class="value">
           {{ formatRate(report.crc_pass, report.crc_total) }}
         </div>
         <div class="sub">{{ report.crc_pass }}/{{ report.crc_total }}</div>
       </div>
-      <div class="card" :class="rateClass(report.rc_rate)">
+      <div class="card" :class="rateClass(report.rc_rate, report.rc_total)">
         <div class="label">RollingCounter</div>
         <div class="value">
           {{ formatRate(report.rc_pass, report.rc_total) }}
@@ -209,6 +212,7 @@
           v-model="failureSearch"
           size="small"
           clearable
+          aria-label="按报文 / 信号 / 说明过滤失败项"
           placeholder="按报文 / 信号 / 说明过滤"
           class="search"
         />
@@ -257,6 +261,16 @@
           <template #default="{ row }"
             ><span class="mono fail-text">{{ row.actual_hex }}</span></template
           >
+        </el-table-column>
+        <el-table-column label="首次失败 (s)" width="120">
+          <template #default="{ row }">
+            <span class="mono">{{ formatTimestamp(row.timestamp) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="末次失败 (s)" width="120">
+          <template #default="{ row }">
+            <span class="mono">{{ formatTimestamp(row.last_timestamp) }}</span>
+          </template>
         </el-table-column>
         <el-table-column
           prop="detail"
@@ -433,8 +447,8 @@ const frameList = computed(() =>
   report.value ? frameRows(report.value, onlyFailingFrames.value) : [],
 )
 
-function rateClass(rate) {
-  if (rate === null || rate === undefined) return ''
+function rateClass(rate, total = 1) {
+  if (rate === null || rate === undefined || !total) return ''
   return rate >= 1 ? 'pass' : 'fail'
 }
 

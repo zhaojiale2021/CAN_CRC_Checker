@@ -9,11 +9,11 @@ keeps only transport concerns.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from crc_checker.config import RunConfig, apply_crc_config
-from crc_checker.crc.models import CRCParams
+from crc_checker.core.models import CRCParams
 from crc_checker.dbc.models import ChannelProtectionMap, DBCProtectionMap
 from crc_checker.dbc.parser import (
     parse_all_dbc,
@@ -202,12 +202,17 @@ def _apply_dataid(  # pylint: disable=too-many-locals,too-many-branches,too-many
         protection_map.apply_dataid_map(dataid_map)
         entries = len(dataid_map)
         sheet = dataid_map.sheet_name or ""
-        notes.append(f"DataID: {entries} entries (sheet: {sheet})")
+        detail = f"DataID: {entries} entries"
+        if sheet:
+            detail += f" (sheet: {sheet})"
+        notes.append(detail)
     return entries, sheet, 0
 
 
 def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
-                         trace_sample: str | list[str] | None = None) -> ProtectionSetup:
+                         trace_sample: str | list[str] | None = None,
+                         cancellation_token: CancellationToken | None = None,
+                         ) -> ProtectionSetup:
     """Parse DBCs and apply DataID + CRC configuration.
 
     Mirrors the order used by ``crc-check run`` (see ``apply_crc_config``).
@@ -218,10 +223,18 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
             configured trace so a channel that only appears later is still
             mapped. Only needed when several DBCs are configured and
             ``dbc_merge`` is off.
+        cancellation_token: Optional cooperative token checked between the
+            setup phases (DBC parse, DataID load, CRC config).
 
     Raises:
         RunnerError: no DBC configured, or no DBC matches the trace channels.
+        VerificationCancelled: cancellation was requested during setup.
     """
+    def check_cancelled() -> None:
+        if cancellation_token is not None:
+            cancellation_token.raise_if_cancelled()
+
+    check_cancelled()
     try:
         dbc_paths = cfg.get_dbc_paths()
     except FileNotFoundError as exc:
@@ -239,7 +252,9 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
                                  naming=cfg.build_naming_patterns())
     except FileNotFoundError as exc:
         raise RunnerError(str(exc)) from exc
+    check_cancelled()
     protection_map, ch_dbc = _select_dbcs(cfg, dbc_maps, trace_sample, notes)
+    check_cancelled()
 
     channels: dict[int, str] = {}
     channel_matches: dict[int, tuple[int, int, int]] = {}
@@ -257,6 +272,7 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
 
     dataid_entries, dataid_sheet, dataid_fallback = _apply_dataid(
         cfg, protection_map, ch_dbc, notes)
+    check_cancelled()
 
     if cfg.dataid_default is not None:
         applied = protection_map.apply_dataid_default(cfg.dataid_default)
@@ -265,6 +281,7 @@ def build_protection_map(cfg: RunConfig,  # pylint: disable=too-many-locals
                          f"{applied} groups")
 
     counts = apply_crc_config(cfg, protection_map)
+    check_cancelled()
     for key, label in (
         ("profiles", "E2E profiles applied"),
         ("range_overrides", "CRC range overrides applied"),
@@ -330,8 +347,9 @@ def run_config(cfg: RunConfig, trace_paths: list[str] | None = None,
         (setup, reports) — one report per trace file, in input order.
     """
     if cfg.crc_auto_classify and not cfg.crc_preset and not cfg.crc_custom:
-        # Comment-driven classification needs a fallback algorithm.
-        cfg.crc_preset = "CRC8/SAE-J1850"
+        # Comment-driven classification needs a fallback algorithm. Replace
+        # rather than mutate: callers keep the config they passed in.
+        cfg = replace(cfg, crc_preset="CRC8/SAE-J1850")
 
     paths = list(trace_paths) if trace_paths else cfg.get_trace_paths()
     if not paths:
@@ -339,12 +357,15 @@ def run_config(cfg: RunConfig, trace_paths: list[str] | None = None,
 
     # Sample every trace (not just the first): a channel that only appears in a
     # later file would otherwise be silently unmapped/unverified.
-    setup = build_protection_map(cfg, trace_sample=paths)
+    setup = build_protection_map(cfg, trace_sample=paths,
+                                 cancellation_token=cancellation_token)
     algorithms = build_algorithms(cfg.build_crc_params())
 
     reports = []
     processed_offset = 0
     for index, trace_path in enumerate(paths):
+        if cancellation_token is not None:
+            cancellation_token.raise_if_cancelled(processed_offset)
         trace_callback = None
         if frame_progress_callback:
             def _make_trace_callback(base_offset):

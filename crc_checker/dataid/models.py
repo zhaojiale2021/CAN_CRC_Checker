@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 import re
+import tempfile
 
 
 def normalize_signal_key(name: str) -> str:
@@ -74,9 +77,14 @@ class DataIDMap:
     def __len__(self) -> int:
         return len(self._map)
 
+    def items(self) -> list[tuple[tuple[int, str], int]]:
+        """Public read-only snapshot of ``(frame_id, signal_name) → dataid``."""
+        return list(self._map.items())
+
     def __contains__(self, key: tuple[int, str]) -> bool:
         return key in self._map
 
+    # pylint: disable=too-many-locals
     def to_json(self, file_path: str, source: str = "", mapping: str = "",
                 sheets: list[str] | None = None) -> None:
         """Serialize DataIDMap to a standardized JSON file.
@@ -109,8 +117,22 @@ class DataIDMap:
             "sheets": sheets or ([self.sheet_name] if self.sheet_name else []),
             "entries": entries,
         }
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        # Write through a sibling temp file and atomically replace the target:
+        # two concurrent web jobs may regenerate the same cache, and readers
+        # must never observe a half-written JSON document.
+        target = Path(file_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fd, temp_name = tempfile.mkstemp(
+            prefix=f".{target.name}.", suffix=".tmp", dir=str(target.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_name, target)
+        except BaseException:
+            Path(temp_name).unlink(missing_ok=True)
+            raise
 
     @classmethod
     def from_json(cls, file_path: str) -> "DataIDMap":

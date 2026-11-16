@@ -256,4 +256,33 @@ describe('App async verification', () => {
     await flushPromises()
     expect(fetchJob).toHaveBeenCalledTimes(1)
   })
+
+  it('shows upload progress and can cancel before a job id exists', async () => {
+    verifySample.mockImplementation(({ onProgress, signal }) => {
+      onProgress(5, 10)
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => {
+          const error = new Error('上传已取消')
+          error.name = 'AbortError'
+          reject(error)
+        })
+      })
+    })
+    const wrapper = await mountApp()
+    const run = wrapper.vm.runSample('demo.csv')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('上传中 50%')
+    const cancelButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('取消校验'))
+    expect(cancelButton).toBeTruthy()
+    await cancelButton.trigger('click')
+    await flushPromises()
+    await run
+
+    expect(wrapper.text()).toContain('校验已取消')
+    expect(fetchJob).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
 })

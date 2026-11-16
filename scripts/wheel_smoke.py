@@ -4,6 +4,7 @@
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -20,8 +21,17 @@ def _get(url: str) -> Tuple[int, bytes, str]:
         return response.status, response.read(), response.headers.get_content_type()
 
 
+def _check_entrypoint() -> None:
+    """The installed console script must exist and answer ``--version``."""
+    script = shutil.which("crc-check")
+    if not script:
+        raise RuntimeError("crc-check console script was not installed")
+    subprocess.run([script, "--version"], check=True, capture_output=True)
+
+
 def main() -> int:
     """Launch the installed web app from a temporary non-checkout directory."""
+    _check_entrypoint()
     with tempfile.TemporaryDirectory(prefix="crc-checker-wheel-smoke-") as temp_dir:
         work_dir = Path(temp_dir)
         data_dir = work_dir / "data"

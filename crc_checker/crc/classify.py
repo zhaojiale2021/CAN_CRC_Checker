@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 
-from crc_checker.crc.models import CRCParams
+from crc_checker.core.models import CRCParams
 from crc_checker.crc.presets import get_preset
 
 # Order matters: sum-XOR is matched before generic XOR-seed.

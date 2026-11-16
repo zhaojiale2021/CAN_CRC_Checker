@@ -9,6 +9,7 @@ fields come back unknown; verification itself is unaffected.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,6 +55,17 @@ def read_revision(root: Path) -> dict:
     unknown = {"commit": None, "branch": None, "subject": None,
                "committed_at": None, "dirty": None}
     if not (Path(root) / ".git").exists():
+        # Container images ship without .git; build-arg metadata keeps the
+        # version panel useful instead of showing "unknown".
+        commit = os.environ.get("CRC_GIT_COMMIT", "").strip()
+        if commit:
+            return {
+                "commit": commit,
+                "branch": os.environ.get("CRC_GIT_BRANCH") or None,
+                "subject": os.environ.get("CRC_GIT_SUBJECT") or None,
+                "committed_at": None,
+                "dirty": False,
+            }
         return unknown
     try:
         commit = _git(root, "rev-parse", "--verify", "HEAD")

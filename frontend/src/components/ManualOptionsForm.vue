@@ -11,6 +11,7 @@
       <span class="option-label">算法</span>
       <el-select
         v-model="form.preset"
+        :disabled="disabled"
         clearable
         filterable
         class="algo-select"
@@ -38,17 +39,27 @@
 
     <div class="option">
       <span class="option-label">开关</span>
-      <el-checkbox v-model="form.byteSwap">字节交换（Profile 5）</el-checkbox>
-      <el-checkbox v-model="form.autoClassify">按 DBC 注释识别算法</el-checkbox>
-      <el-checkbox v-model="form.profileByWidth"
+      <el-checkbox v-model="form.byteSwap" :disabled="disabled"
+        >字节交换（Profile 5）</el-checkbox
+      >
+      <el-checkbox v-model="form.autoClassify" :disabled="disabled"
+        >按 DBC 注释识别算法</el-checkbox
+      >
+      <el-checkbox v-model="form.profileByWidth" :disabled="disabled"
         >按 CRC 宽度选 E2E Profile</el-checkbox
       >
-      <el-checkbox v-model="form.dbcMerge">合并所有 DBC</el-checkbox>
+      <el-checkbox v-model="form.dbcMerge" :disabled="disabled"
+        >合并所有 DBC</el-checkbox
+      >
     </div>
 
     <div class="option">
       <span class="option-label">CRC 范围</span>
-      <el-radio-group v-model="form.rangeMode" size="small">
+      <el-radio-group
+        v-model="form.rangeMode"
+        :disabled="disabled"
+        size="small"
+      >
         <el-radio-button value="exclude_crc">排除 CRC 字节</el-radio-button>
         <el-radio-button value="full_payload">整帧</el-radio-button>
         <el-radio-button value="custom_range">自定义</el-radio-button>
@@ -56,6 +67,7 @@
       <template v-if="form.rangeMode === 'custom_range'">
         <el-input-number
           v-model="form.rangeStart"
+          :disabled="disabled"
           :min="0"
           :max="64"
           size="small"
@@ -64,6 +76,7 @@
         <span class="muted">..</span>
         <el-input-number
           v-model="form.rangeEnd"
+          :disabled="disabled"
           :min="-1"
           :max="64"
           size="small"
@@ -77,6 +90,7 @@
       <span class="option-label">DataID</span>
       <el-select
         v-model="form.dataidPosition"
+        :disabled="disabled"
         size="small"
         class="small-select"
       >
@@ -85,6 +99,7 @@
       </el-select>
       <el-select
         v-model="form.dataidByteOrder"
+        :disabled="disabled"
         size="small"
         class="small-select"
       >
@@ -97,6 +112,7 @@
       <span class="option-label">RC 上限</span>
       <el-input-number
         v-model="form.rcMaxValid"
+        :disabled="disabled"
         :min="0"
         :max="255"
         size="small"
@@ -115,6 +131,7 @@
             <span class="option-label">帧 ID</span>
             <el-input
               v-model="form.frameIds"
+              :disabled="disabled"
               placeholder="0x143, 0x299（留空 = 全部）"
             />
           </div>
@@ -122,6 +139,7 @@
             <span class="option-label">Checksum 正则</span>
             <el-input
               v-model="form.checksumPattern"
+              :disabled="disabled"
               placeholder="留空 = 内置命名规则"
             />
           </div>
@@ -129,6 +147,7 @@
             <span class="option-label">RC 正则</span>
             <el-input
               v-model="form.rcPattern"
+              :disabled="disabled"
               placeholder="留空 = 内置命名规则"
             />
           </div>
@@ -136,6 +155,7 @@
             <span class="option-label">DataID sheet</span>
             <el-input
               v-model="form.dataidSheet"
+              :disabled="disabled"
               placeholder="xlsx 工作表名（留空 = 自动匹配）"
             />
           </div>
@@ -143,6 +163,7 @@
             <span class="option-label">DataID 映射</span>
             <el-input
               v-model="form.dataidMapping"
+              :disabled="disabled"
               placeholder="如 hi_lo_two_cols（留空 = 默认）"
             />
           </div>
@@ -150,6 +171,7 @@
             <span class="option-label">DataID 默认值</span>
             <el-input
               v-model="form.dataidDefault"
+              :disabled="disabled"
               placeholder="如 0x0000（留空 = 不使用）"
             />
           </div>
@@ -167,6 +189,7 @@ defineProps({
   mode: { type: String, required: true },
   presets: { type: Array, default: () => [] },
   presetError: { type: String, default: '' },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:config'])
@@ -198,29 +221,10 @@ watch(form, (state) => emit('update:config', buildManualConfig(state)), {
 </script>
 
 <style scoped>
-.options {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
 .algorithm-form {
   margin-bottom: 22px;
   padding-bottom: 18px;
   border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.option {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  min-height: 32px;
-}
-.option-label {
-  flex: 0 0 100px;
-  width: 100px;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
-  line-height: 32px;
 }
 .algo-select {
   width: 280px;
@@ -234,12 +238,5 @@ watch(form, (state) => emit('update:config', buildManualConfig(state)), {
 }
 .advanced {
   margin-top: 2px;
-}
-.muted {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
-.mono {
-  font-family: 'SF Mono', Consolas, monospace;
 }
 </style>

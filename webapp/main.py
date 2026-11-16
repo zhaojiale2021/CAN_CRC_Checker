@@ -11,6 +11,7 @@ Design notes:
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -23,11 +24,18 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 
 from crc_checker.config import DEFAULT_MAX_FRAMES
+from crc_checker.file_types import (
+    DATAID_EXTENSIONS,
+    DBC_EXTENSIONS,
+    TRACE_EXTENSIONS,
+)
 from crc_checker.verify.cancellation import VerificationCancelled
 from crc_checker.crc.presets import get_preset, get_validation, list_presets
 from webapp.paths import FRONTEND_DIST, data_dir
@@ -47,10 +55,11 @@ from webapp.version import deployment_version
 logger = logging.getLogger("crc_checker.web")
 
 DEFAULT_MAX_UPLOAD_MB = 200
+DEFAULT_MAX_REQUEST_MB = 400
 MAX_DBC_UPLOADS = 10
-TRACE_SUFFIXES = frozenset({".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt"})
-DBC_SUFFIXES = frozenset({".dbc"})
-DATAID_SUFFIXES = frozenset({".json", ".xlsx", ".xls"})
+TRACE_SUFFIXES = TRACE_EXTENSIONS
+DBC_SUFFIXES = DBC_EXTENSIONS
+DATAID_SUFFIXES = DATAID_EXTENSIONS
 # Sections the manual-upload form may fill in. Everything path-bearing is set
 # server-side from the uploads, so the browser still never sends a path.
 MANUAL_SECTIONS = ("crc", "range", "dataid", "filter", "signals", "rc", "output")
@@ -91,6 +100,42 @@ def max_upload_bytes() -> int:
     except ValueError:
         megabytes = DEFAULT_MAX_UPLOAD_MB
     return max(megabytes, 1) * 1024 * 1024
+
+
+def max_request_bytes() -> int:
+    """Aggregate cap for one upload request (``CRC_WEB_MAX_REQUEST_MB``).
+
+    The per-file cap alone lets a manual request carry 10 DBCs + a trace +
+    a DataID workbook, so the combined request also needs a ceiling.
+    """
+    raw = os.environ.get("CRC_WEB_MAX_REQUEST_MB", "")
+    try:
+        megabytes = int(raw) if raw else DEFAULT_MAX_REQUEST_MB
+    except ValueError:
+        megabytes = DEFAULT_MAX_REQUEST_MB
+    return max(megabytes, 1) * 1024 * 1024
+
+
+def api_token() -> str:
+    """Optional shared token; when set, every ``/api/*`` call must present it."""
+    return os.environ.get("CRC_WEB_API_TOKEN", "").strip()
+
+
+class UploadBudget:  # pylint: disable=too-few-public-methods
+    """Tracks the aggregate byte budget shared by every file in one request."""
+
+    def __init__(self, limit: int):
+        self.remaining = limit
+        self.limit = limit
+
+    def consume(self, size: int) -> None:
+        """Raise 413 once the request as a whole exceeds its cap."""
+        self.remaining -= size
+        if self.remaining < 0:
+            raise HTTPException(
+                413,
+                f"本次请求总大小超过上限 {self.limit // (1024 * 1024)}MB,"
+                "请减少 DBC/日志数量或截取日志后重试")
 
 
 def safe_filename(name: str) -> str:
@@ -237,6 +282,23 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                 shutil.rmtree(uploads_dir / job_id, ignore_errors=True)
 
     api = FastAPI(title="CAN CRC Checker (Web)", lifespan=lifespan)
+    api.add_middleware(GZipMiddleware, minimum_size=1024)
+
+    @api.middleware("http")
+    async def _require_api_token(request, call_next):
+        """Gate ``/api/*`` when ``CRC_WEB_API_TOKEN`` is configured."""
+        token = api_token()
+        if token and request.url.path.startswith("/api/"):
+            supplied = request.headers.get("x-api-token", "")
+            authorization = request.headers.get("authorization", "")
+            if authorization.lower().startswith("bearer "):
+                supplied = authorization[7:].strip()
+            if not hmac.compare_digest(supplied, token):
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "未授权:缺少或错误的 API token"})
+        return await call_next(request)
+
     api.state.job_registry = job_registry
     api.state.worker_pool = worker_pool
     api.state.run_store = run_store
@@ -317,6 +379,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         """
         return {
             "max_upload_mb": max_upload_bytes() // (1024 * 1024),
+            "max_request_mb": max_request_bytes() // (1024 * 1024),
             "max_dbc_files": MAX_DBC_UPLOADS,
             "manual_default_frames": DEFAULT_MAX_FRAMES,
         }
@@ -355,10 +418,12 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
     async def _save_upload(file: UploadFile, run_id: str,
                            subdir: str = "",
                            allowed: frozenset = TRACE_SUFFIXES,
-                           label: str = "trace") -> Path:
+                           label: str = "trace",
+                           budget: UploadBudget | None = None) -> Path:
         """Stream one upload into ``data/web/uploads/<run_id>/`` (size-capped)."""
         upload_dir = uploads_dir / run_id / subdir
-        upload_dir.mkdir(parents=True, exist_ok=True)
+        await run_in_threadpool(
+            lambda: upload_dir.mkdir(parents=True, exist_ok=True))
         name = safe_filename(file.filename or "")
         if Path(name).suffix.lower() not in allowed:
             raise HTTPException(400, f"{label} 文件类型不支持: {name}")
@@ -374,7 +439,10 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                     raise HTTPException(
                         413, f"文件超过上限 {limit // (1024 * 1024)}MB,"
                              f"请截取日志后重试")
-                handle.write(chunk)
+                if budget is not None:
+                    budget.consume(len(chunk))
+                # Disk I/O is blocking; keep it off the event loop.
+                await run_in_threadpool(handle.write, chunk)
         if written == 0:
             raise HTTPException(400, f"上传的 {label} 文件为空")
         return target
@@ -394,8 +462,9 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
 
         run_id = secrets.token_urlsafe(9)
         upload_dir = uploads_dir / run_id
+        budget = UploadBudget(max_request_bytes())
         try:
-            trace_path = await _save_upload(file, run_id)
+            trace_path = await _save_upload(file, run_id, budget=budget)
             result = enqueue(project, trace_path, trace_path.name, frame_limit,
                              _parse_bool(only_failures), run_id, upload_dir)
         except BaseException:
@@ -422,21 +491,26 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
 
         run_id = secrets.token_urlsafe(9)
         upload_dir = uploads_dir / run_id
+        budget = UploadBudget(max_request_bytes())
         try:
             dbc_paths = []
             for item in dbcs:
                 dbc_paths.append(
-                    await _save_upload(item, run_id, "dbc", DBC_SUFFIXES, "DBC"))
-            trace_path = await _save_upload(trace, run_id)
+                    await _save_upload(item, run_id, "dbc", DBC_SUFFIXES, "DBC",
+                                       budget=budget))
+            trace_path = await _save_upload(trace, run_id, budget=budget)
             dataid_path = None
             if dataid is not None:
                 dataid_path = await _save_upload(
-                    dataid, run_id, allowed=DATAID_SUFFIXES, label="DataID")
+                    dataid, run_id, allowed=DATAID_SUFFIXES, label="DataID",
+                    budget=budget)
 
             config_data = _manual_config(config, dbc_paths, trace_path, dataid_path)
             config_path = upload_dir / "config.json"
-            config_path.write_text(
-                json.dumps(config_data, ensure_ascii=False), encoding="utf-8")
+            await run_in_threadpool(
+                lambda: config_path.write_text(
+                    json.dumps(config_data, ensure_ascii=False),
+                    encoding="utf-8"))
             project = _manual_project(upload_dir, config_path, dbc_paths)
             result = enqueue(project, trace_path, trace_path.name, frame_limit,
                              _parse_bool(only_failures), run_id, upload_dir)

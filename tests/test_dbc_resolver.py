@@ -6,7 +6,8 @@ from crc_checker.crc.models import CRCRange
 from crc_checker.crc.presets import get_preset
 from crc_checker.dbc.parser import DBCParser, parse_dbc
 from crc_checker.dbc.resolver import SignalResolver
-from crc_checker.dbc.models import DBCProtectionMap, MessageProtection, SignalInfo
+from crc_checker.dbc.models import (
+    ChannelProtectionMap, DBCProtectionMap, MessageProtection, SignalInfo)
 from crc_checker.dataid.parser import DataIDMap
 from crc_checker.trace.models import CanFrame
 
@@ -506,3 +507,50 @@ class TestDBCEncoding:
         assert crc_range.start_byte == 8
         assert engine.compute_for_frame(frame, crc_range, 71, 8, "big_endian") == \
             engine.compute(bytes([0xE9, 0x00]) + payload[10:16])
+
+class TestChannelProtectionMap:
+    """The per-channel wrapper fans config operations out to every map once."""
+
+    @staticmethod
+    def _prot(frame_id: int, name: str, signal: str) -> MessageProtection:
+        return MessageProtection(
+            frame_id=frame_id, frame_name=name, dlc=8,
+            checksum_signal=SignalInfo(name=signal, start_bit=0, length=8))
+
+    def _channel_map(self):
+        first = DBCProtectionMap(
+            dbc_paths=["a.dbc"],
+            messages={0x100: [self._prot(0x100, "MsgA", "CRC_A")]})
+        second = DBCProtectionMap(
+            dbc_paths=["b.dbc"],
+            messages={0x200: [self._prot(0x200, "MsgB", "CRC_B")]})
+        channel_map = ChannelProtectionMap()
+        channel_map.set_channel(0, first)
+        channel_map.set_channel(1, second)
+        # Same object as CH0: must not be processed twice.
+        channel_map.set_fallback(first)
+        return channel_map, first, second
+
+    def test_apply_crc_params_reaches_every_map(self):
+        """Both channel maps receive the same CRC parameters."""
+        channel_map, first, second = self._channel_map()
+        params = get_preset("CRC8/SAE-J1850")
+        channel_map.apply_crc_params(params)
+        assert first.messages[0x100][0].crc_params is params
+        assert second.messages[0x200][0].crc_params is params
+
+    def test_apply_dataid_map_counts_each_map_once(self):
+        """The deduplicated fallback is not counted twice."""
+        channel_map, _, _ = self._channel_map()
+        dataid_map = DataIDMap()
+        dataid_map.add(0x100, "CRC_A", 0x1111)
+        dataid_map.add(0x200, "CRC_B", 0x2222)
+        assert channel_map.apply_dataid_map(dataid_map) == 2
+
+    def test_paths_and_messages_are_deduplicated_views(self):
+        """Fallback duplication does not leak into paths or the message view."""
+        channel_map, _, _ = self._channel_map()
+        assert channel_map.dbc_paths == ["a.dbc", "b.dbc"]
+        assert set(channel_map.messages) == {0x100, 0x200}
+        assert channel_map.get_protections(0x100, channel=1) == []
+        assert channel_map.get_protections(0x100, channel=9)[0].frame_name == "MsgA"

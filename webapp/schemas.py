@@ -16,6 +16,7 @@ class LimitsResponse(BaseModel):
     """Upload caps and defaults the page renders (single source of truth)."""
 
     max_upload_mb: int
+    max_request_mb: int = 0
     max_dbc_files: int
     manual_default_frames: int
 

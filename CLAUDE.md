@@ -29,6 +29,7 @@ cd frontend && npm run build                      # rebuild committed frontend/d
 crc-check presets
 crc-check inspect path/to/file.dbc
 crc-check run -c examples/example/config.json -v
+crc-check run -c examples/example/config.json --show-all          # every verdict
 crc-check run -c examples/example/config.json --fail-on-failure   # CI gate
 crc-check gen-config example.json
 crc-check preprocess-dataid --xlsx dataid.xlsx -o dataid.json
@@ -39,8 +40,11 @@ python examples/generate_example.py     # regenerate the synthetic example
 ## Architecture
 
 Leaf modules (`crc/`, `dbc/`, `trace/`, `dataid/`, `patterns.py`, `bit_utils.py`)
-do not depend on each other. `protect/` depends on `crc/` + models. `verify/`
-assembles everything. `report/` consumes `verify/` models only.
+do not depend on each other; shared value types (`CRCParams`, `CRCRange`,
+`CanFrame`) live in `core/models.py`. `file_types.py` is the single source for
+trace/DBC/DataID extensions, and `errors.py` holds the semantic exception types.
+`protect/` depends on `core/`. `verify/` assembles everything. `report/`
+consumes `verify/` models only.
 
 - **`crc_checker/patterns.py` + `crc_checker/data/patterns.yaml`** — signal-name
   rules (prefix/suffix regexes, block-counter exclusion, bus-marker stripping,
@@ -50,7 +54,8 @@ assembles everything. `report/` consumes `verify/` models only.
 - **`crc_checker/crc/`** — lookup-table CRC engine (`engine.py`, CRC8/16/32 and
   the non-CRC `sum` / `sum_xor` / `xor_seed` types), presets (`presets.py`,
   including the validation registry), E2E profile table (`profiles.py`: `p01` /
-  `p05`, selected by DataID hint or CRC width), and DBC-comment classification
+  `p05`, selected by DataID hint or CRC width), custom-parameter parsing
+  (`custom.py`, shared by CLI + config) and DBC-comment classification
   (`classify.py`: Profile 1A / 5, SAE-J1850, SUM8, SUM8/XOR-FF, XOR8/SEED, skip).
   `CRCParams` is frozen and cached by value in `CRCVerifier`.
 - **`crc_checker/dbc/`** — `parser.py` wraps canmatrix (encoding auto-detected
@@ -58,7 +63,8 @@ assembles everything. `report/` consumes `verify/` models only.
   pairs checksums with counters (indexed instances stay separate groups; bus
   markers are stripped; block counters never count as rolling counters).
   `models.py` holds `DBCProtectionMap`, `ChannelProtectionMap`,
-  `MessageProtection` and the `apply_*` mutators.
+  `MessageProtection` and the shared `ProtectionMapOps.apply_*` API (the
+  single-map implementation lives on `DBCProtectionMap._apply_*`).
 - **`crc_checker/dataid/`** — Excel (`.xlsx` / legacy `.xls`) and JSON DataID
   parsing. Named column layouts come from
   `crc_checker/data/dataid_mappings.yaml`; `dataid.mapping_file` loads a custom
@@ -89,6 +95,10 @@ finished runs (LRU 20) under `data/web/runs/<run_id>/`. `POST /api/verify-manual
 adds a project-less mode: uploaded DBC/trace/DataID plus a page-filled config;
 `_manual_config()` overwrites every path and rejects path-bearing keys.
 `webapp/version.py` reports the running commit vs. the deploy directory commit.
+Optional `CRC_WEB_API_TOKEN` gates every `/api/*` call (`X-API-Token` or Bearer);
+uploads are capped per file (`CRC_WEB_MAX_UPLOAD_MB`, 200) and per request
+(`CRC_WEB_MAX_REQUEST_MB`, 400); job results are byte-bounded and expire after an
+hour; responses are gzipped; blocking disk writes run in the thread pool.
 See [docs/web-api.md](docs/web-api.md).
 
 ### Adding capabilities
@@ -119,7 +129,8 @@ See `crc_checker/config.py` (`CONFIG_SCHEMA_DOC`) and
 `tests/` covers CRC known vectors, comment classification, GBK DBC decoding,
 resolver matching, custom patterns, profile/DataID logic, RC folding and trend
 charts, report size limits and summary accounting, CLI exit-code gates, the web
-layer (catalog, version, sample-trace API, run store), and the synthetic example
-end to end. The frontend's pure-logic tests run with `cd frontend && npm test`,
+layer (catalog, version, sample-trace API, run store, API token, upload budget,
+bounded job results), config-schema/loader parity, and the synthetic example end
+to end. The frontend's pure-logic tests run with `cd frontend && npm test`,
 component smoke tests with `npm run test:component`, and `npm run lint`
 (eslint + prettier) gates CI alongside pylint.
