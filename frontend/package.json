@@ -17,10 +17,10 @@
     "vue": "^3.5.45"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.11",
     "@vue/test-utils": "^2.5.1",
-    "eslint": "^9.39.5",
+    "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.12.1",
     "globals": "^17.14.0",
