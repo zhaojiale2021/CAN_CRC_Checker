@@ -163,6 +163,22 @@ file. Built-in names: `hi_lo_two_cols`, `single_16bit`, `generic_abc`,
 
 **New project** — put `config.json` (+ DBC / DataID / trace) under `projects/`.
 
+### Generate a project config with an AI assistant
+
+Copy this prompt and attach or provide the DBC, trace, and optional DataID files:
+
+```text
+Create a CanVouch project configuration for my CAN data.
+
+Please:
+1. Identify the DBC file(s), trace file(s), and optional DataID Excel/JSON input.
+2. Inspect the DBC protection signals and suggest a CRC preset, range, and DataID layout.
+3. Produce `config.json` with paths, algorithm settings, frame filters, and HTML output.
+4. Keep every input path relative to the generated config file.
+5. Add comments explaining assumptions that need checking.
+6. Validate the final JSON and report the exact `canvouch run -c <config> -v` command.
+```
+
 ## ⚙️ Configuration
 
 A run is a JSON file (`canvouch gen-config` writes an annotated example). The

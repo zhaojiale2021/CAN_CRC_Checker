@@ -155,6 +155,22 @@ rolling_counter:
 
 **新增项目** —— 把 `config.json`（以及它引用的 DBC/DataID/trace）放进 `projects/`。
 
+### 用 AI 助手生成项目配置
+
+复制下面的提示词，并附上或提供 DBC、trace 和可选的 DataID 文件：
+
+```text
+请为我的 CAN 数据创建一个 CanVouch 项目配置。
+
+请完成：
+1. 识别 DBC 文件、trace 文件以及可选的 DataID Excel/JSON 输入。
+2. 检查 DBC 中的保护信号，并建议 CRC preset、校验范围和 DataID 布局。
+3. 生成 config.json，包含路径、算法参数、帧过滤和 HTML 输出。
+4. 所有输入路径都相对于生成的配置文件。
+5. 标注需要人工确认的假设及原因。
+6. 验证最终 JSON，并给出准确的 canvouch run -c <config> -v 命令。
+```
+
 ## ⚙️ 配置
 
 每次校验由一个 JSON 配置文件描述（`canvouch gen-config` 会生成带注释的示例）。
