@@ -9,6 +9,7 @@ DBC-aware CAN bus CRC / rolling-counter verification for BLF, ASC, MF4 and TRC t
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![CI](https://github.com/zhaojiale2021/canvouch/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaojiale2021/canvouch/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/zhaojiale2021/canvouch)](https://github.com/zhaojiale2021/canvouch/releases/latest)
 
 [English](./README.md) | [🌍 中文](./docs/zh-CN/README.md)
 
