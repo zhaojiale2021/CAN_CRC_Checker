@@ -63,6 +63,8 @@ verdict. Use it as a gate: `--fail-on-failure` exits 1 on any failed check, and
 canvouch run -c examples/example/config.json --fail-on-failure
 ```
 
+For a complete install, verify, Web UI, Docker, and CI/release walkthrough, see [Five-Minute Quickstart](docs/quickstart-5min.md).
+
 MF4/MDF traces need python-can's optional reader; `requirements.txt` already
 installs it. For a bare `pip install -e .`, add it with
 `pip install "python-can[mf4]"` (or `pip install -e ".[mf4]"`).
