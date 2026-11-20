@@ -37,6 +37,8 @@ from pathlib import Path
 from crc_checker.core.models import CRCParams, CRCRange, VALID_RANGE_MODES
 from crc_checker.file_types import TRACE_EXTENSIONS
 from crc_checker.crc.presets import get_preset
+from crc_checker.crc.custom import parse_custom_crc
+from crc_checker.crc.profiles import load_profiles
 from crc_checker.dataid.parser import (
     DataIDMap,
     load_dataid_mappings,
@@ -300,8 +302,6 @@ class RunConfig:
         """Build CRCParams from config."""
 
         if self.crc_custom:
-            # pylint: disable=import-outside-toplevel
-            from crc_checker.crc.custom import parse_custom_crc
             return parse_custom_crc(self.crc_custom)
         if self.crc_preset:
             return get_preset(self.crc_preset)
@@ -417,9 +417,6 @@ def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
         Counts per step, for verbose logging (keys: profiles, range_overrides,
         skip, auto_classify, overrides).
     """
-    # pylint: disable=import-outside-toplevel
-    from crc_checker.crc.profiles import load_profiles
-
     counts = {"profiles": 0, "range_overrides": 0, "skip": 0,
               "auto_classify": 0, "overrides": 0}
 
@@ -432,18 +429,20 @@ def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
     global_range = cfg.build_crc_range()
     protection_map.apply_crc_range(global_range)
 
+    profiles = load_profiles(cfg.crc_profiles)
     if cfg.crc_profiles or cfg.crc_profile_by_width:
         counts["profiles"] = protection_map.apply_profiles(
-            load_profiles(cfg.crc_profiles),
-            select_by_width=cfg.crc_profile_by_width)
+            profiles, select_by_width=cfg.crc_profile_by_width)
 
     if cfg.crc_skip:
         counts["skip"] = protection_map.apply_skip(cfg.crc_skip)
 
-    # Per-message algorithm from DBC comments (overrides the defaults above)
+    # Per-message algorithm from DBC comments (overrides the defaults above).
+    # Pass the merged profile table: a comment-selected P05/P01 must honor
+    # configured range/layout/counter overrides, not the built-in defaults.
     if cfg.crc_auto_classify:
         counts["auto_classify"] = protection_map.apply_comment_classification(
-            crc_params, fallback_range=global_range)
+            crc_params, fallback_range=global_range, profiles=profiles)
 
     if cfg.crc_range_overrides:
         counts["range_overrides"] = protection_map.apply_range_overrides(
@@ -734,10 +733,39 @@ def load_config(config_path: str) -> RunConfig:
         for key, preset_name in cfg.crc_overrides.items():
             if not isinstance(preset_name, str):
                 raise ValueError(f"crc.overrides[{key!r}] must be a preset name")
+            try:
+                get_preset(preset_name)
+            except KeyError as exc:
+                raise ValueError(str(exc.args[0])) from exc
         for key, profile in cfg.crc_profiles.items():
             _optional_type(profile, dict, f"crc.profiles[{key!r}]")
+        # Validate nested profile fields/domains (preset, layout, counter max).
+        load_profiles(cfg.crc_profiles)
         for key, override in cfg.crc_range_overrides.items():
             _optional_type(override, dict, f"crc.range_overrides[{key!r}]")
+            unknown = set(override) - {"mode", "start_byte", "end_byte"}
+            if unknown:
+                raise ValueError(
+                    f"crc.range_overrides[{key!r}]: unknown field(s) "
+                    f"{', '.join(sorted(unknown))}")
+            if "mode" in override:
+                _optional_type(override["mode"], str,
+                               f"crc.range_overrides[{key!r}].mode")
+                if override["mode"] not in VALID_RANGE_MODES:
+                    raise ValueError(
+                        f"crc.range_overrides[{key!r}].mode must be one of: "
+                        f"{', '.join(sorted(VALID_RANGE_MODES))}")
+            for field_name, minimum in (("start_byte", 0), ("end_byte", -1)):
+                if field_name in override:
+                    _require_int(override[field_name],
+                                 f"crc.range_overrides[{key!r}].{field_name}",
+                                 minimum=minimum)
+        if cfg.crc_preset:
+            _optional_type(cfg.crc_preset, str, "crc.preset")
+            try:
+                get_preset(cfg.crc_preset)
+            except KeyError as exc:
+                raise ValueError(str(exc.args[0])) from exc
         if cfg.crc_custom is not None:
             if not isinstance(cfg.crc_custom, dict):
                 raise ValueError("crc.custom must be a JSON object")
@@ -747,15 +775,20 @@ def load_config(config_path: str) -> RunConfig:
                     "crc.custom is missing required field(s): "
                     + ", ".join(sorted(missing)))
             checksum_type = cfg.crc_custom.get("type", "crc")
+            _optional_type(checksum_type, str, "crc.custom.type")
             if checksum_type not in _CHECKSUM_TYPES:
                 raise ValueError(
                     f"crc.custom.type must be one of: "
                     f"{', '.join(sorted(_CHECKSUM_TYPES))}")
+            # Validate width/poly/init/xor/reflect values too (this also
+            # rejects ambiguous non-0x numeric strings).
+            parse_custom_crc(cfg.crc_custom)
 
     # Range
     rng = _require_mapping(data, "range")
     if rng:
         cfg.range_mode = rng.get("mode", "exclude_crc")
+        _optional_type(cfg.range_mode, str, "range.mode")
         if cfg.range_mode not in VALID_RANGE_MODES:
             raise ValueError(
                 f"Unknown range.mode '{cfg.range_mode}'. Expected one of: "

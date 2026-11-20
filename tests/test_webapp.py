@@ -740,6 +740,12 @@ class TestManualApi:
         assert response.status_code == 400
         assert "crc.profiles" in response.json()["detail"]
 
+    def test_manual_rejects_enum_type_errors(self, client):
+        """Unhashable enum values are a 400, not a worker-side TypeError."""
+        response = self._post(client, {"range": {"mode": []}})
+        assert response.status_code == 400
+        assert "range.mode" in response.json()["detail"]
+
     def test_manual_rejects_browser_paths(self, client):
         """Path fields only come from uploads; hand-written config traces are rejected."""
         response = self._post(client, {"traces": ["C:/secret.blf"]})
@@ -1211,15 +1217,16 @@ class TestWebHardening:
 
     def test_oversized_content_length_is_rejected_before_parsing(
             self, client, monkeypatch):
-        """A declared body larger than the request cap fails fast (413)."""
+        """Both upload endpoints reject a declared oversized body early."""
         monkeypatch.setenv("CANVOUCH_MAX_REQUEST_MB", "1")
-        response = client.post(
-            "/api/verify-manual",
-            content=b"x" * (1024 * 1024 + 1024),
-            headers={"Content-Type": "multipart/form-data; boundary=x"},
-        )
-        assert response.status_code == 413
-        assert "总大小" in response.json()["detail"]
+        for path in ("/api/verify-manual", "/api/verify"):
+            response = client.post(
+                path,
+                content=b"x" * (1024 * 1024 + 1024),
+                headers={"Content-Type": "multipart/form-data; boundary=x"},
+            )
+            assert response.status_code == 413, path
+            assert "总大小" in response.json()["detail"]
 
     def test_aggregate_upload_budget_rejects_many_large_files(
             self, client, monkeypatch):

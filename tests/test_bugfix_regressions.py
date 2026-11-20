@@ -572,6 +572,95 @@ def test_custom_crc_rejects_bare_decimal_string():
         parse_custom_crc({"width": 8, "poly": "471"})
 
 
+def test_explicit_profile_counter_limit_survives_width_heuristic():
+    """An explicit 8-bit P01 counter limit must beat the 4-bit width rule."""
+    protection_map = DBCProtectionMap()
+    protection_map.messages[0x110] = [MessageProtection(
+        frame_id=0x110, frame_name="M", dlc=8,
+        checksum_signal=SignalInfo(name="CRC_X", start_bit=0, length=8),
+        rolling_counter_signal=SignalInfo(name="Counter_X", start_bit=8,
+                                          length=8))]
+
+    protection_map.apply_profiles(
+        load_profiles({"p01": {"counter_max_valid": 99}}),
+        select_by_width=True)
+    assert protection_map.messages[0x110][0].rc_max_valid == 99
+
+    # The inferred built-in 0..14 limit is still dropped for a wider counter.
+    other = DBCProtectionMap()
+    other.messages[0x111] = [MessageProtection(
+        frame_id=0x111, frame_name="N", dlc=8,
+        checksum_signal=SignalInfo(name="CRC_Y", start_bit=0, length=8),
+        rolling_counter_signal=SignalInfo(name="Counter_Y", start_bit=8,
+                                          length=8))]
+    other.apply_profiles(load_profiles({}), select_by_width=True)
+    assert other.messages[0x111][0].rc_max_valid is None
+
+
+def test_comment_selected_profile_uses_configured_overrides():
+    """A P05 comment must honor crc.profiles.p05 range, not the built-in 56."""
+    protection_map = DBCProtectionMap()
+    protection_map.messages[0x210] = [MessageProtection(
+        frame_id=0x210, frame_name="M", dlc=64,
+        checksum_signal=SignalInfo(name="CRC_ID", start_bit=0, length=16),
+        checksum_comment="E2E Profile 5 CRC")]
+
+    apply_crc_config(RunConfig(
+        crc_auto_classify=True,
+        crc_profiles={"p05": {"range": {"mode": "custom_range",
+                                        "start_byte": 0, "end_byte": 32}}},
+    ), protection_map)
+    group = protection_map.messages[0x210][0]
+    assert group.crc_range.mode == "custom_range"
+    assert group.crc_range.end_byte == 32
+
+    # The same applies to a comment-selected P01 layout/counter override.
+    p01_map = DBCProtectionMap()
+    p01_map.messages[0x310] = [MessageProtection(
+        frame_id=0x310, frame_name="M", dlc=8,
+        checksum_signal=SignalInfo(name="CRC_ID", start_bit=0, length=8),
+        rolling_counter_signal=SignalInfo(name="Counter_ID", start_bit=8,
+                                          length=8),
+        checksum_comment="Profile 1A DataID:0x00EB")]
+    apply_crc_config(RunConfig(
+        crc_auto_classify=True,
+        crc_profiles={"p01": {"dataid_position": "append",
+                              "counter_max_valid": 7}},
+    ), p01_map)
+    p01_group = p01_map.messages[0x310][0]
+    assert p01_group.crc_range.dataid_position == "append"
+    assert p01_group.rc_max_valid == 7
+
+
+def test_reclassification_drops_guessed_four_bit_limit():
+    """A 4-bit SUM8 counter is 0..15, not P01's 0..14, after reclassification."""
+    protection_map = DBCProtectionMap()
+    protection_map.messages[0x120] = [MessageProtection(
+        frame_id=0x120, frame_name="M", dlc=8,
+        checksum_signal=SignalInfo(name="Checksum_ID", start_bit=0, length=8),
+        rolling_counter_signal=SignalInfo(name="Counter_ID", start_bit=8,
+                                          length=4),
+        checksum_comment="Checksum = (byte0+byte7) and 0xFF")]
+
+    apply_crc_config(RunConfig(crc_profile_by_width=True,
+                               crc_auto_classify=True), protection_map)
+    group = protection_map.messages[0x120][0]
+    assert group.e2e_profile == ""
+    assert group.rc_max_valid is None
+
+    # A deliberate 0..14 range can still be configured globally.
+    with_limit = DBCProtectionMap()
+    with_limit.messages[0x121] = [MessageProtection(
+        frame_id=0x121, frame_name="N", dlc=8,
+        checksum_signal=SignalInfo(name="Checksum_ID", start_bit=0, length=8),
+        rolling_counter_signal=SignalInfo(name="Counter_ID", start_bit=8,
+                                          length=4),
+        checksum_comment="Checksum = (byte0+byte7) and 0xFF")]
+    apply_crc_config(RunConfig(crc_profile_by_width=True, crc_auto_classify=True,
+                               rc_max_valid=14), with_limit)
+    assert with_limit.messages[0x121][0].rc_max_valid == 14
+
+
 def test_select_dbcs_samples_every_trace_and_backfills(monkeypatch):
     """Later traces contribute channels; unmatched channels get a fallback DBC."""
     # pylint: disable=import-outside-toplevel

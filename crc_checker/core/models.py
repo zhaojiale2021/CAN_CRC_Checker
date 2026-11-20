@@ -30,11 +30,17 @@ class CRCParams:
     checksum_type: str = "crc"
 
     def __post_init__(self):
-        # The lookup table shifts by (width - 8); widths below 8 raise an
-        # obscure "negative shift count" from deep inside table construction.
+        # Lookup-table construction shifts by (width - 8); widths below 8
+        # raise an obscure "negative shift count" from deep inside it.
+        if isinstance(self.width, bool) or not isinstance(self.width, int):
+            raise ValueError(f"CRC width must be an integer, got {self.width!r}")
         if not 8 <= self.width <= 32:
             raise ValueError(
                 f"CRC width must be between 8 and 32 bits, got {self.width}")
+        if not isinstance(self.checksum_type, str):
+            raise ValueError(
+                f"Unknown checksum type {self.checksum_type!r}. "
+                f"Expected one of: {', '.join(sorted(CHECKSUM_TYPES))}")
         if self.checksum_type not in CHECKSUM_TYPES:
             raise ValueError(
                 f"Unknown checksum type '{self.checksum_type}'. "

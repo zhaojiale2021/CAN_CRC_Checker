@@ -15,7 +15,9 @@ import tempfile
 import unittest
 
 from crc_checker.file_types import TRACE_EXTENSIONS
-from crc_checker.trace.reader import TraceReader
+from crc_checker.trace.reader import TraceReader, _reject_mdf3, open_log_reader
+
+# pylint: disable=protected-access
 
 CANOE7_ASC = """date Mon Oct 12 06:42:09 PM 2026
 base hex timestamps absolute
@@ -105,6 +107,36 @@ class TestTraceExtensions(unittest.TestCase):
         self.assertIn(".db", TRACE_EXTENSIONS)
         # python-can has no reader for .txt; accepting it only delayed the error.
         self.assertNotIn(".txt", TRACE_EXTENSIONS)
+
+
+class TestMdfVersion(unittest.TestCase):
+    """python-can's MF4Reader only extracts MDF4; MDF3 must fail clearly."""
+
+    def test_mdf3_is_rejected_before_iteration(self):
+        """An MDF3 header is rejected at open time with an actionable error."""
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".mdf", delete=False
+        ) as tmp:
+            tmp.write(b"MDF     3.00    " + b"\x00" * 64)
+            path = tmp.name
+        try:
+            with self.assertRaises(ValueError) as caught:
+                open_log_reader(path)
+            self.assertIn("MDF3", str(caught.exception))
+        finally:
+            os.unlink(path)
+
+    def test_mdf4_header_is_not_rejected_by_the_version_guard(self):
+        """The version guard accepts MDF4 headers (asammdf handles the rest)."""
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".mdf", delete=False
+        ) as tmp:
+            tmp.write(b"MDF     4.10    " + b"\x00" * 64)
+            path = tmp.name
+        try:
+            _reject_mdf3(path)  # must not raise
+        finally:
+            os.unlink(path)
 
 
 if __name__ == "__main__":

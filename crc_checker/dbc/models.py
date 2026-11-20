@@ -58,9 +58,11 @@ class ProtectionMapOps:  # pylint: disable=protected-access
             pm._apply_crc_params(params)
 
     def apply_comment_classification(self, default_params=None,
-                                     fallback_range=None) -> int:
+                                     fallback_range=None,
+                                     profiles=None) -> int:
         """Auto-classify checksum algorithms from DBC comments."""
-        return sum(pm._apply_comment_classification(default_params, fallback_range)
+        return sum(pm._apply_comment_classification(default_params,
+                                                    fallback_range, profiles)
                    for pm in self._maps())
 
     def apply_crc_overrides(self, overrides: dict) -> int:
@@ -121,7 +123,9 @@ def _profile_counter_limit(profile, prot: MessageProtection):
     if limit is None:
         return None
     rc_signal = prot.rolling_counter_signal
-    if profile.key == "p01" and rc_signal is not None and rc_signal.length > 4:
+    if (profile.key == "p01"
+            and not getattr(profile, "_counter_max_explicit", False)
+            and rc_signal is not None and rc_signal.length > 4):
         return None
     return limit
 
@@ -192,7 +196,8 @@ class DBCProtectionMap(ProtectionMapOps):
                 prot.crc_params = params
 
     def _apply_comment_classification(self, default_params=None,
-                                     fallback_range: CRCRange | None = None) -> int:
+                                     fallback_range: CRCRange | None = None,
+                                     profiles: dict | None = None) -> int:
         """Auto-classify checksum algorithms from DBC comments.
 
         ``fallback_range`` is the run-wide range (before any profile was
@@ -212,7 +217,10 @@ class DBCProtectionMap(ProtectionMapOps):
             build_crc_params_from_comment, classify_crc_algo,
             parse_dataid_from_comment, parse_sum_byte_range,
         )
-        from crc_checker.crc.profiles import BUILTIN_PROFILES, profile_key_from_hint
+        from crc_checker.crc.profiles import (
+            BUILTIN_PROFILES, load_profiles, profile_key_from_hint,
+        )
+        profiles = profiles or load_profiles({})
 
         applied = 0
 
@@ -239,7 +247,7 @@ class DBCProtectionMap(ProtectionMapOps):
                     # auto_classify alone it never ran, and keeping the global
                     # 8-bit preset would fail every frame — apply the built-in.
                     if profile_key_from_hint(prot.e2e_profile) != 'p05':
-                        profile = BUILTIN_PROFILES['p05']
+                        profile = profiles.get('p05', BUILTIN_PROFILES['p05'])
                         prot.crc_params = profile.to_params()
                         prot.e2e_profile = profile.name
                         _apply_profile_layout(prot, profile, fallback_range)
@@ -263,13 +271,12 @@ class DBCProtectionMap(ProtectionMapOps):
                     if not confirmed_p01:
                         prot.crc_range = fallback_range
                         prot.e2e_profile = ""
-                        # The guessed profile's counter limit stays only when
-                        # it fits the actual counter width; a 0..14 limit on
-                        # an 8-bit SUM8 counter would mark every value >14
-                        # INVALID (the profile helper already refused it).
-                        if prot.rolling_counter_signal is None or \
-                                prot.rolling_counter_signal.length > 4:
-                            prot.rc_max_valid = None
+                        # The counter limit was inferred from the guessed
+                        # profile, not configured: a reclassified SUM8/CRC8
+                        # message may use the full 0..15 range. A deliberate
+                        # restriction belongs in the global rc.max_valid,
+                        # which is applied after classification.
+                        prot.rc_max_valid = None
                 if algo == 'p01':
                     # Profile 1A: CRC8/SAE-J1850-ZERO, DataID parsed
                     # from the comment ("DataID：0x00EB"). The DataID workbook
@@ -281,8 +288,8 @@ class DBCProtectionMap(ProtectionMapOps):
                         prot.dataid = dataid
                     if profile_key_from_hint(prot.e2e_profile) != 'p01':
                         # Comment-only P01 (no profile table): apply the
-                        # prepended-DataID layout and the 0..14 counter limit.
-                        profile = BUILTIN_PROFILES['p01']
+                        # configured (or built-in) P01 layout and counter limit.
+                        profile = profiles.get('p01', BUILTIN_PROFILES['p01'])
                         _apply_profile_layout(prot, profile, fallback_range)
                         prot.e2e_profile = profile.name
                 elif (algo in ('sum_xor', 'sum') and prot.dlc > 8

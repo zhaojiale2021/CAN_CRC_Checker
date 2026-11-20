@@ -60,7 +60,8 @@ python -m cli.main run -c examples/example/config_bad.json -v
 canvouch run -c examples/example/config.json --fail-on-failure
 ```
 
-MF4/MDF 需要 python-can 的可选 reader；`requirements.txt` 已包含。若只执行
+MF4/MDF4 需要 python-can 的可选 reader；`requirements.txt` 已包含。MDF3 需先
+转换为 MDF4（python-can 的 reader 只提取 MDF4 中的 CAN 日志）。若只执行
 `pip install -e .`，请补 `pip install "python-can[mf4]"`（或
 `pip install -e ".[mf4]"`）。
 
@@ -104,7 +105,7 @@ docker run --rm -p 8000:8000 canvouch
 | **自动识别保护信号** | 前缀（`Checksum_*`、`CRC_*`）与后缀（`*_CRC`、`*_Counter`）、多 E2E 实例、传感器总线标记、BlockCounter 排除 —— 全部由 YAML 正则驱动 |
 | **E2E Profile 校验** | Profile 5（CRC16/CCITT，DataID 追加，字节交换）与 Profile 1/1A（CRC8/SAE-J1850-ZERO，DataID 前置，4-bit 计数器） |
 | **非 CRC 校验和** | SUM8、SUM8/XOR-FF、XOR8/SEED，可按 DBC 注释逐报文选择 |
-| **多种 trace 格式** | BLF、ASC、MF4/MDF、TRC、CSV、LOG、SQLite（MF4/MDF 需要 `python-can[mf4]`） |
+| **多种 trace 格式** | BLF、ASC、MF4/MDF4、TRC、CSV、LOG、SQLite（MF4/MDF4 需要 `python-can[mf4]`） |
 | **大 trace** | 流式校验、CRC 引擎缓存、RC 趋势图抽稀、报告体积上限保护 |
 | **CI 门禁** | `--fail-on-failure` / `--min-pass-rate`；帧上限截断一定会提示 |
 | **DataID 表** | `.xlsx`、旧版 `.xls` 与预处理 JSON；列布局由 YAML 命名映射提供 |
@@ -211,7 +212,7 @@ crc_checker/            核心包
   crc/                  CRC 引擎、预设、E2E Profile、注释分类
   dbc/                  DBC 解析 + 信号解析
   dataid/               DataID Excel/JSON 解析
-  trace/                trace 读取（BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite）
+  trace/                trace 读取（BLF/ASC/MF4/MDF4/TRC/CSV/LOG/SQLite）
   protect/              CRC 与滚动计数器校验器
   verify/               校验编排（CLI 与网页版共用）
   report/               自包含 HTML 报告 + RC 趋势图

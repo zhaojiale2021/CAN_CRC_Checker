@@ -65,9 +65,10 @@ canvouch run -c examples/example/config.json --fail-on-failure
 
 For a complete install, verify, Web UI, Docker, and CI/release walkthrough, see [Five-Minute Quickstart](docs/quickstart-5min.md).
 
-MF4/MDF traces need python-can's optional reader; `requirements.txt` already
-installs it. For a bare `pip install -e .`, add it with
-`pip install "python-can[mf4]"` (or `pip install -e ".[mf4]"`).
+MF4/MDF4 traces need python-can's optional reader; `requirements.txt` already
+installs it. MDF3 files must be converted to MDF4 first (python-can's reader
+only extracts CAN logging from MDF4). For a bare `pip install -e .`, add the
+reader with `pip install "python-can[mf4]"` (or `pip install -e ".[mf4]"`).
 
 ### Docker
 
@@ -115,7 +116,7 @@ Server environment variables use the `CANVOUCH_` prefix (`CANVOUCH_DATA_DIR`, `C
 | **Find protection signals automatically** | Prefix (`Checksum_*`, `CRC_*`) and suffix (`*_CRC`, `*_Counter`) naming, indexed E2E instances, sensor bus markers, block-counter exclusion — all driven by YAML regexes |
 | **Verify E2E profiles** | Profile 5 (CRC16/CCITT, DataID append, byte swap) and Profile 1/1A (CRC8/SAE-J1850-ZERO, DataID prepend, 4-bit counter) |
 | **Non-CRC checksums** | SUM8, SUM8/XOR-FF, XOR8/SEED, selected per message from DBC comments |
-| **Many trace formats** | BLF, ASC, MF4/MDF, TRC, CSV, LOG and SQLite via python-can (MF4/MDF via the `python-can[mf4]` extra) |
+| **Many trace formats** | BLF, ASC, MF4/MDF4, TRC, CSV, LOG and SQLite via python-can (MF4/MDF4 via the `python-can[mf4]` extra) |
 | **Big traces** | Streaming verification, cached CRC engines, decimated RC trend charts, report size guard |
 | **CI gating** | `--fail-on-failure` / `--min-pass-rate`; the frame cap is never silent |
 | **DataID tables** | `.xlsx`, legacy `.xls` and preprocessed JSON; named column layouts from YAML |
@@ -225,7 +226,7 @@ crc_checker/            Core package
   crc/                  CRC engine, presets, E2E profiles, comment classifier
   dbc/                  DBC parser + signal resolver
   dataid/               DataID Excel/JSON parser
-  trace/                Trace reader (BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite)
+  trace/                Trace reader (BLF/ASC/MF4/MDF4/TRC/CSV/LOG/SQLite)
   protect/              CRC and rolling-counter verifiers
   verify/               Verification orchestration (shared by CLI and web)
   report/               Self-contained HTML report + RC trend charts

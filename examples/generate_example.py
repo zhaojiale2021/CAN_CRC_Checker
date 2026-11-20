@@ -119,6 +119,7 @@ CONFIG = {
         },
     },
     "range": {"mode": "exclude_crc"},
+    "rc": {"max_valid": 14},
     "dataid": {
         "json": "dbc/dataid.json",
         "mapping": "hi_lo_two_cols",

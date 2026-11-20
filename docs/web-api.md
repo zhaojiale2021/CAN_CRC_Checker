@@ -136,7 +136,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `project_id` | 是 | `/api/projects` 里的 `id` |
-| `file` | 是 | trace 文件（BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite） |
+| `file` | 是 | trace 文件（BLF/ASC/MF4/MDF4/TRC/CSV/LOG/SQLite） |
 | `max_frames` | 否 | 帧数上限：`""`=用项目配置默认，`0`=不限，`N`=前 N 帧 |
 | `only_failures` | 否 | `"true"` 时 HTML 报告只保留含失败校验的帧(帧内通过的校验仍显示) |
 
@@ -223,7 +223,7 @@ body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{j
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `dbcs` | 是 | 1..10 个 `.dbc`（按 trace 通道自动选 DBC，或 `dbc_merge` 合并） |
-| `trace` | 是 | trace 文件（BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite） |
+| `trace` | 是 | trace 文件（BLF/ASC/MF4/MDF4/TRC/CSV/LOG/SQLite） |
 | `dataid` | 否 | 预处理后的 `.json` 或 `.xlsx`/`.xls` |
 | `config` | 否 | JSON 字符串（默认 `{}`），允许的顶层键见下 |
 | `max_frames` | 否 | 同 `/api/verify` |

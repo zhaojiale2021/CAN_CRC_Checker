@@ -316,7 +316,8 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
         directory first. Chunked requests have no declared length and still hit
         the streaming per-file/aggregate caps in ``_save_upload``.
         """
-        if request.method == "POST" and request.url.path == "/api/verify-manual":
+        if (request.method == "POST"
+                and request.url.path in ("/api/verify", "/api/verify-manual")):
             declared = request.headers.get("content-length")
             if declared:
                 try:
@@ -553,7 +554,7 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             # not a worker-side "服务器内部错误" after the client got a 202.
             try:
                 load_config(str(config_path))
-            except (OSError, ValueError) as exc:
+            except (OSError, ValueError, TypeError) as exc:
                 raise HTTPException(400, f"配置无效: {exc}") from exc
             project = _manual_project(upload_dir, config_path, dbc_paths)
             result = enqueue(project, trace_path, trace_path.name, frame_limit,

@@ -53,6 +53,13 @@ class TestLoadConfigTypeValidation:
 
     @pytest.mark.parametrize("crc, needle", [
         ({"profiles": [1]}, "crc.profiles"),
+        ({"profiles": {"p01": {"counter_max_valid": "bad"}}},
+         "counter_max_valid"),
+        ({"profiles": {"p11": {"crc_width": 8}}}, "preset"),
+        ({"range_overrides": {"X": {"mode": []}}}, "mode"),
+        ({"range_overrides": {"X": {"start_byte": "0"}}}, "start_byte"),
+        ({"custom": {"width": 8, "poly": 0x2F, "type": []}}, "crc.custom.type"),
+        ({"custom": {"width": 8, "poly": "471"}}, "0x"),
         ({"skip": 5}, "crc.skip"),
         ({"overrides": ["SUM8"]}, "crc.overrides"),
         ({"range_overrides": ["x"]}, "crc.range_overrides"),
@@ -73,6 +80,7 @@ class TestLoadConfigTypeValidation:
         ({"output": {"only_failures": "true"}}, "output.only_failures"),
         ({"dataid": {"mapping": [1]}}, "dataid.mapping"),
         ({"dataid": {"default": 0x10000}}, "dataid.default"),
+        ({"range": {"mode": []}}, "range.mode"),
     ])
     def test_other_section_types(self, tmp_path, section, needle):
         """Filter/signals/output/dataid option types are checked at load time."""

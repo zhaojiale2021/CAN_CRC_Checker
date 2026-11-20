@@ -12,7 +12,7 @@ it, and compare runs over time.
 
 | Area | Shipped today | Confidence |
 | --- | --- | --- |
-| Input | DBC (single/list/merge, per-channel selection), BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite traces, DataID `.xlsx`/`.xls`/JSON | High |
+| Input | DBC (single/list/merge, per-channel selection), BLF/ASC/MF4/MDF4/TRC/CSV/LOG/SQLite traces (MDF3 rejected with a clear error), DataID `.xlsx`/`.xls`/JSON | High |
 | Signal discovery | Prefix/suffix regexes, bus markers, indexed instances, block-counter exclusion, custom YAML | High |
 | Algorithms | E2E P1/1A/P5, CRC8/16/32 presets, SUM8, SUM8/XOR-FF, XOR8/SEED, custom params, DBC-comment classification, per-message overrides/profiles | High |
 | Verification | CRC, RC continuity (PASS/STALE/SKIP/RESET/INVALID), per-channel state, DLC gate, folded failure episodes | High |
