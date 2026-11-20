@@ -52,7 +52,8 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
   `dataid.xlsx`/`dataid.json`/`dataid.mapping_file`、`signals.patterns_file` 会被拒绝
   （400）或忽略，手写 config 无法让服务端读取任意文件。
 - DBC 选择、DataID 应用、报告生成与项目模式走同一条 `crc_checker/verify/runner.py`。
-- 算法下拉来自 `GET /api/presets`，并标注是否已用仓库内真实 trace 验证过。
+- 算法下拉来自 `GET /api/presets`，并标注是否已在开发阶段用真实 trace 验证过
+  （仓库本身只包含合成示例数据）。
 
 ## 查看部署版本（commit 节点）
 
@@ -135,7 +136,7 @@ npm run build              # 构建到 frontend/dist,提交 dist 后部署机 gi
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `project_id` | 是 | `/api/projects` 里的 `id` |
-| `file` | 是 | trace 文件（BLF/ASC/MF4/TRC/CSV/LOG） |
+| `file` | 是 | trace 文件（BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite） |
 | `max_frames` | 否 | 帧数上限：`""`=用项目配置默认，`0`=不限，`N`=前 N 帧 |
 | `only_failures` | 否 | `"true"` 时 HTML 报告只保留含失败校验的帧(帧内通过的校验仍显示) |
 
@@ -207,7 +208,8 @@ body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{j
 }
 ```
 
-`validated` 表示该算法已在仓库里的真实 trace 上复现过（与 `canvouch presets`
+`validated` 表示该算法在开发阶段用真实 trace 复现过（仓库只提供合成示例数据；与
+`canvouch presets`
 的标注一致）。
 
 > 已完成运行的报告索引在进程内存里（LRU 20），因此 `run_web.sh` 只启动单个
@@ -221,7 +223,7 @@ body 与 `/api/verify` 相同（任务状态提交），使用 `GET /api/jobs/{j
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `dbcs` | 是 | 1..10 个 `.dbc`（按 trace 通道自动选 DBC，或 `dbc_merge` 合并） |
-| `trace` | 是 | trace 文件（BLF/ASC/MF4/TRC/CSV/LOG） |
+| `trace` | 是 | trace 文件（BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite） |
 | `dataid` | 否 | 预处理后的 `.json` 或 `.xlsx`/`.xls` |
 | `config` | 否 | JSON 字符串（默认 `{}`），允许的顶层键见下 |
 | `max_frames` | 否 | 同 `/api/verify` |

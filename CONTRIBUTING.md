@@ -33,9 +33,10 @@ npm run test:component
 npm run build                          # also mirrors dist into webapp/static/dist
 ```
 
-`pylint` is pinned in `requirements.txt` (3.3.9) so the pre-push hook and CI
-agree. CI additionally runs Python 3.11/3.12/3.13, Windows, the wheel smoke
-test and the committed-`dist` freshness check.
+`pylint` is pinned in `requirements.txt` (4.1.3) so the pre-push hook and CI
+agree. CI additionally runs Python 3.11/3.12/3.13 pytest jobs, Windows, the
+wheel smoke test and the committed-`dist` freshness check (pylint runs on the
+3.11 job).
 
 ## Conventions
 

@@ -34,7 +34,7 @@
           </el-tag>
         </el-option>
       </el-select>
-      <span class="muted">未验证 = 仓库里没有用真实 trace 跑通过</span>
+      <span class="muted">未验证 = 开发阶段未用真实 trace 跑通过</span>
     </div>
 
     <div class="option">

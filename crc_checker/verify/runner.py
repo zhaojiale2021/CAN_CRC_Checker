@@ -140,6 +140,11 @@ def _select_dbcs(
     channel_map = ChannelProtectionMap()
     for ch, pm in ch_dbc.items():
         channel_map.set_channel(ch, pm)
+    # Channels that first appear after the sampling window are absent from
+    # ``ch_ids``. Without a fallback they would verify nothing while their
+    # frames still counted toward the report — a silently clean result.
+    if best_global is not None:
+        channel_map.set_fallback(best_global)
     return channel_map, ch_dbc
 
 

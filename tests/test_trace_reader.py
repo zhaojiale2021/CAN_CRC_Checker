@@ -14,6 +14,7 @@ import os
 import tempfile
 import unittest
 
+from crc_checker.file_types import TRACE_EXTENSIONS
 from crc_checker.trace.reader import TraceReader
 
 CANOE7_ASC = """date Mon Oct 12 06:42:09 PM 2026
@@ -93,6 +94,17 @@ class TestCanoe7Asc(unittest.TestCase):
         fd = [f for f in frames if f.is_fd and f.arbitration_id == 0x1D3]
         self.assertEqual(len(fd), 1)
         self.assertEqual(fd[0].data.hex(), "7888000000000ce6")
+
+
+class TestTraceExtensions(unittest.TestCase):
+    """The accepted-extension list must match what the reader can actually open."""
+
+    def test_mdf_is_accepted_and_txt_is_not(self):
+        """The extension list matches the reader's real format support."""
+        self.assertIn(".mdf", TRACE_EXTENSIONS)
+        self.assertIn(".db", TRACE_EXTENSIONS)
+        # python-can has no reader for .txt; accepting it only delayed the error.
+        self.assertNotIn(".txt", TRACE_EXTENSIONS)
 
 
 if __name__ == "__main__":

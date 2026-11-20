@@ -324,12 +324,13 @@ def _print_table(report, only_failures: bool = False):
         return
 
     # Column widths
-    ts_w, id_w, sig_w, algo_w, exp_w, act_w = 12, 10, 25, 16, 10, 10
+    ts_w, id_w, ch_w, sig_w, algo_w, exp_w, act_w = 12, 10, 5, 25, 16, 10, 10
 
     # Header
     header = (
-        f"{'Timestamp':<{ts_w}} {'CAN ID':<{id_w}} {'Signal':<{sig_w}} "
-        f"{'Algorithm':<{algo_w}} {'Expected':<{exp_w}} {'Actual':<{act_w}} Verdict"
+        f"{'Timestamp':<{ts_w}} {'CAN ID':<{id_w}} {'CH':<{ch_w}} "
+        f"{'Signal':<{sig_w}} {'Algorithm':<{algo_w}} {'Expected':<{exp_w}} "
+        f"{'Actual':<{act_w}} Verdict"
     )
     click.echo(header)
     click.echo("-" * len(header))
@@ -342,12 +343,16 @@ def _print_table(report, only_failures: bool = False):
         )
         exp_str = f"0x{v.expected_value:0{max(1, (v.expected_value.bit_length() + 7) // 8) * 2}X}"
         act_str = f"0x{v.actual_value:0{max(1, (v.actual_value.bit_length() + 7) // 8) * 2}X}"
+        # ``algorithm`` is only "crc"/"rolling_counter"; the real preset lives
+        # in ``crc_algorithm`` and matters when a bus mixes algorithms.
+        algorithm = v.crc_algorithm or v.algorithm
 
         line = (
             f"{v.timestamp:>{ts_w}.6f} "
             f"{f'0x{v.frame_id:03X}':<{id_w}} "
+            f"{getattr(v, 'channel', 0):<{ch_w}} "
             f"{_fit(v.signal_name, sig_w):<{sig_w}} "
-            f"{_fit(v.algorithm, algo_w):<{algo_w}} "
+            f"{_fit(algorithm, algo_w):<{algo_w}} "
             f"{exp_str:<{exp_w}} "
             f"{act_str:<{act_w}} "
             f"{status}"
@@ -429,8 +434,9 @@ def cli():
               help="Output format")
 @click.option("--output-file", default=None, type=click.Path(), help="Output file path")
 @click.option("--only-failures", is_flag=True,
-              help="Only show/write frames with failed verdicts "
-                   "(each frame keeps all its verdicts)")
+              help="Only show frames with failed verdicts. Table output prints "
+                   "just the failed verdicts; HTML output keeps the failing "
+                   "frame's passing verdicts too for context")
 @click.option("--show-all", is_flag=True,
               help="Table output: also print passing checks (default: failures only)")
 @click.option("--max-report-sections", type=int, default=None,

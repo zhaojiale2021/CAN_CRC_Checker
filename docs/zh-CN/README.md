@@ -104,7 +104,7 @@ docker run --rm -p 8000:8000 canvouch
 | **自动识别保护信号** | 前缀（`Checksum_*`、`CRC_*`）与后缀（`*_CRC`、`*_Counter`）、多 E2E 实例、传感器总线标记、BlockCounter 排除 —— 全部由 YAML 正则驱动 |
 | **E2E Profile 校验** | Profile 5（CRC16/CCITT，DataID 追加，字节交换）与 Profile 1/1A（CRC8/SAE-J1850-ZERO，DataID 前置，4-bit 计数器） |
 | **非 CRC 校验和** | SUM8、SUM8/XOR-FF、XOR8/SEED，可按 DBC 注释逐报文选择 |
-| **多种 trace 格式** | BLF、ASC、MF4、TRC、CSV/LOG（MF4 需要 `python-can[mf4]`） |
+| **多种 trace 格式** | BLF、ASC、MF4/MDF、TRC、CSV、LOG、SQLite（MF4/MDF 需要 `python-can[mf4]`） |
 | **大 trace** | 流式校验、CRC 引擎缓存、RC 趋势图抽稀、报告体积上限保护 |
 | **CI 门禁** | `--fail-on-failure` / `--min-pass-rate`；帧上限截断一定会提示 |
 | **DataID 表** | `.xlsx`、旧版 `.xls` 与预处理 JSON；列布局由 YAML 命名映射提供 |
@@ -195,10 +195,14 @@ rolling_counter:
 | | `checksum_pattern(s)` / `rc_pattern(s)` | 正则覆盖 |
 | `filter` | `frame_ids` / `max_frames` | CAN ID 过滤；帧上限（`0` = 不限，默认 6000） |
 | `rc` | `max_valid` | 计数器最大值（默认 `2^位数 - 1`） |
-| `output` | `format` / `file` / `only_failures` | `table` 或 `html`、输出路径、只写失败帧 |
+| `output` | `format` / `file` / `only_failures` | `table`、`html` 或 `json`、输出路径、只写失败帧 |
 | | `max_report_sections` | 报告帧段上限（默认 30000，0 = 不限） |
 
 完整 schema 见 `crc_checker/config.py`（`CONFIG_SCHEMA_DOC`）。
+
+`output.format` 设为 `json`（或命令行 `--output json --json-file result.json`）
+会输出带 `schema_version: 1` 的机器可读文档，便于接入 CI 看板或自定义报表；
+`--only-failures` 只裁剪明细行，汇总计数保持完整。
 
 ## 📁 目录结构
 
@@ -207,7 +211,7 @@ crc_checker/            核心包
   crc/                  CRC 引擎、预设、E2E Profile、注释分类
   dbc/                  DBC 解析 + 信号解析
   dataid/               DataID Excel/JSON 解析
-  trace/                trace 读取（BLF/ASC/MF4/TRC/CSV）
+  trace/                trace 读取（BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite）
   protect/              CRC 与滚动计数器校验器
   verify/               校验编排（CLI 与网页版共用）
   report/               自包含 HTML 报告 + RC 趋势图
@@ -233,16 +237,17 @@ cd frontend && npm ci && npm run build            # 重新构建 dist
 python examples/generate_example.py               # 重新生成示例
 ```
 
-CI 在 Python 3.11、3.12、3.13 上运行 pylint 与带覆盖率门槛的 pytest，另有一个
-Windows pytest 作业，以及前端 lint、单测、组件测试和 `frontend/dist`
-新鲜度检查。pre-push 钩子会运行 pylint 和同样要求 80% 覆盖率的后端 pytest；
-安装了 `uv` 时使用 Python 3.11，否则使用当前 Python 环境。钩子不替代完整 CI
-矩阵或前端检查。
+CI 在 Python 3.11 上运行 pylint，在 3.11、3.12、3.13 上运行带覆盖率门槛的
+pytest；另有一个 Windows pytest 作业、wheel 冒烟测试，以及前端 lint、单测、
+组件测试和 `frontend/dist` 新鲜度检查。pre-push 钩子会运行 pylint 和同样
+要求 80% 覆盖率的后端 pytest；安装了 `uv` 时使用 Python 3.11，否则使用当前
+Python 环境。钩子不替代完整 CI 矩阵或前端检查。
 
 ## 🤝 贡献
 
 欢迎提 issue / PR。提交前请运行上面的开发检查；CI 还会覆盖 Python 矩阵、Windows、
-前端检查和已提交 `dist` 的新鲜度。
+前端检查和已提交 `dist` 的新鲜度。计划方向与已知问题见
+[docs/roadmap.md](../roadmap.md)。
 
 ## 📄 许可证
 

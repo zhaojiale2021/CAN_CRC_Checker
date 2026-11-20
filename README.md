@@ -115,7 +115,7 @@ Server environment variables use the `CANVOUCH_` prefix (`CANVOUCH_DATA_DIR`, `C
 | **Find protection signals automatically** | Prefix (`Checksum_*`, `CRC_*`) and suffix (`*_CRC`, `*_Counter`) naming, indexed E2E instances, sensor bus markers, block-counter exclusion — all driven by YAML regexes |
 | **Verify E2E profiles** | Profile 5 (CRC16/CCITT, DataID append, byte swap) and Profile 1/1A (CRC8/SAE-J1850-ZERO, DataID prepend, 4-bit counter) |
 | **Non-CRC checksums** | SUM8, SUM8/XOR-FF, XOR8/SEED, selected per message from DBC comments |
-| **Many trace formats** | BLF, ASC, MF4, TRC, CSV/LOG via python-can (MF4 via the `python-can[mf4]` extra) |
+| **Many trace formats** | BLF, ASC, MF4/MDF, TRC, CSV, LOG and SQLite via python-can (MF4/MDF via the `python-can[mf4]` extra) |
 | **Big traces** | Streaming verification, cached CRC engines, decimated RC trend charts, report size guard |
 | **CI gating** | `--fail-on-failure` / `--min-pass-rate`; the frame cap is never silent |
 | **DataID tables** | `.xlsx`, legacy `.xls` and preprocessed JSON; named column layouts from YAML |
@@ -206,12 +206,17 @@ main sections:
 | | `checksum_pattern(s)` / `rc_pattern(s)` | Regex overrides |
 | `filter` | `frame_ids` / `max_frames` | CAN ID filter; frame cap (`0` = unlimited, default 6000) |
 | `rc` | `max_valid` | Max valid counter value (default `2^bits - 1`) |
-| `output` | `format` / `file` / `only_failures` | `table` or `html`, path, failures-only view |
+| `output` | `format` / `file` / `only_failures` | `table`, `html` or `json`, path, failures-only view |
 | | `max_report_sections` | Frame-section cap (default 30 000, 0 = unlimited) |
 
 Full schema: `crc_checker/config.py` (`CONFIG_SCHEMA_DOC`). Editors can use
 [`config.schema.json`](config.schema.json) for completion and validation
 (`"$schema": "./config.schema.json"` in your config file).
+
+Set `output.format` to `json` (or use `--output json --json-file result.json`)
+to emit a machine-readable document with `schema_version: 1` — handy for CI
+dashboards and custom report tooling. `--only-failures` filters the detail rows
+but keeps the aggregate counts.
 
 ## 📁 Repository layout
 
@@ -220,7 +225,7 @@ crc_checker/            Core package
   crc/                  CRC engine, presets, E2E profiles, comment classifier
   dbc/                  DBC parser + signal resolver
   dataid/               DataID Excel/JSON parser
-  trace/                Trace reader (BLF/ASC/MF4/TRC/CSV)
+  trace/                Trace reader (BLF/ASC/MF4/MDF/TRC/CSV/LOG/SQLite)
   protect/              CRC and rolling-counter verifiers
   verify/               Verification orchestration (shared by CLI and web)
   report/               Self-contained HTML report + RC trend charts
@@ -246,8 +251,9 @@ cd frontend && npm ci && npm run build            # rebuild committed dist
 python examples/generate_example.py               # regenerate the example
 ```
 
-CI runs pylint and coverage-gated pytest on Python 3.11, 3.12 and 3.13, plus a
-Windows pytest job and frontend lint/tests/build freshness checks. The pre-push
+CI runs pylint on Python 3.11 and coverage-gated pytest on Python 3.11, 3.12
+and 3.13, plus a Windows pytest job, a wheel smoke test and frontend
+lint/tests/build freshness checks. The pre-push
 hook runs pylint and the same 80%-coverage backend pytest command using Python
 3.11 when `uv` is installed; otherwise it uses the active Python environment.
 It does not replace the full CI matrix or frontend checks.
@@ -256,7 +262,8 @@ It does not replace the full CI matrix or frontend checks.
 
 Issues and pull requests are welcome. Before opening a PR, run the development
 checks above; CI additionally covers the Python matrix, Windows, frontend
-checks, and committed-`dist` freshness.
+checks, and committed-`dist` freshness. See [docs/roadmap.md](docs/roadmap.md)
+for the planned direction and known gaps.
 
 ## 📄 License
 

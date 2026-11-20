@@ -117,7 +117,7 @@
             <span class="step">2</span>
             <span>上传 trace{{ mode === 'manual' ? ' / DataID' : '' }}</span>
             <span class="muted"
-              >BLF / ASC / MF4 / TRC / CSV，上限
+              >BLF / ASC / MF4 / MDF / TRC / CSV，上限
               {{ limits.maxUploadMb ?? '…' }}MB</span
             >
           </div>
@@ -125,7 +125,7 @@
         <el-upload
           drag
           action="#"
-          accept=".blf,.asc,.mf4,.trc,.csv,.log,.txt"
+          accept=".blf,.asc,.mf4,.mdf,.trc,.csv,.log,.db"
           :auto-upload="false"
           :disabled="running"
           :limit="1"

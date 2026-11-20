@@ -98,7 +98,10 @@ def _crc_label(crc: dict) -> str:
 def _dataid_label(dataid: dict) -> str:
     if not dataid:
         return "none"
-    source = Path(dataid.get("json") or dataid.get("xlsx") or "").name
+    # Normalize separators: on POSIX Path(r"C:\x\y.xlsx").name is the whole
+    # Windows path, which would leak the server filesystem layout.
+    source = Path(str(dataid.get("json") or dataid.get("xlsx") or "")
+                  .replace("\\", "/")).name
     parts = [p for p in (source, dataid.get("mapping"), dataid.get("position")) if p]
     return " / ".join(parts) if parts else "yes"
 

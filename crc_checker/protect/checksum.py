@@ -65,7 +65,8 @@ class CRCVerifier(ProtectionAlgorithm):
                     cs_signal.start_bit, dataid=protection.dataid)
             else:
                 crc_range = CRCRange(mode="exclude_crc")
-        elif crc_range.mode == "exclude_crc" and protection.dataid is not None and frame.dlc > 8:
+        elif (crc_range.mode in ("exclude_crc", "full_payload")
+              and protection.dataid is not None and frame.dlc > 8):
             # Override: if explicit range is default exclude_crc but we have DataID + CAN FD,
             # use segment mode instead (the explicit default shouldn't override smarter behavior)
             crc_range = CRCRange.for_segment(

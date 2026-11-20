@@ -371,6 +371,33 @@ class RunConfig:
         )
 
 
+def _warn_crc_width_mismatches(cfg: "RunConfig", protection_map) -> None:
+    """Warn when a CRC preset's width differs from the DBC signal width.
+
+    A 16-bit ``*_CRC`` signal checked with an 8-bit preset fails on every
+    frame, and the table shows only ``expected 0x65, got 0x93AB`` — easy to
+    mistake for a firmware bug. ``crc.profile_by_width`` / ``crc.profiles``
+    are the supported way to pick the algorithm per message.
+    """
+    reported: set[tuple[str, str, int, int]] = set()
+    for protections in protection_map.messages.values():
+        for protection in protections:
+            signal = protection.checksum_signal
+            params = protection.crc_params
+            if signal is None or params is None or params.checksum_type != "crc":
+                continue
+            if signal.length == params.width:
+                continue
+            key = (protection.frame_name, signal.name, params.width, signal.length)
+            if key in reported:
+                continue
+            reported.add(key)
+            cfg.warnings.append(
+                f"{protection.frame_name}.{signal.name}: DBC signal is "
+                f"{signal.length} bits but {params.name} is {params.width} bits "
+                "(use crc.profiles / crc.overrides to pick the right algorithm)")
+
+
 def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
     """Apply every CRC-related section of a RunConfig to a protection map.
 
@@ -428,6 +455,8 @@ def apply_crc_config(cfg: "RunConfig", protection_map) -> dict[str, int]:
 
     if cfg.rc_max_valid is not None:
         protection_map.apply_rc_config(max_valid=cfg.rc_max_valid)
+
+    _warn_crc_width_mismatches(cfg, protection_map)
 
     return counts
 
@@ -596,6 +625,19 @@ def _require_int(value, label: str, minimum: int | None = None) -> int:
     return value
 
 
+def _optional_type(value, expected: type | tuple[type, ...], label: str):
+    """Reject a present-but-wrong-typed option at load time.
+
+    Without this, e.g. ``crc.profiles: [1]`` reached the profile loader as a
+    list and crashed with ``AttributeError`` mid-run instead of a config error.
+    """
+    if value is not None and not isinstance(value, expected):
+        names = (expected.__name__ if isinstance(expected, type)
+                 else " or ".join(t.__name__ for t in expected))
+        raise ValueError(f"{label} must be {names}")
+    return value
+
+
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def load_config(config_path: str) -> RunConfig:
     """Load and validate a JSON configuration file.
@@ -633,11 +675,15 @@ def load_config(config_path: str) -> RunConfig:
 
     # Required
     cfg.dbc = data.get("dbc", "")
+    _optional_type(cfg.dbc, str, "dbc")
     # NEW: dbcs array
     dbcs_raw = data.get("dbcs", [])
     if isinstance(dbcs_raw, str):
         dbcs_raw = [dbcs_raw]
     cfg.dbcs = dbcs_raw
+    if not isinstance(cfg.dbcs, list) or not all(
+            isinstance(item, str) for item in cfg.dbcs):
+        raise ValueError("dbcs must be a path string or a list of path strings")
     # Merge all DBCs into a single map instead of per-channel DBC selection
     # (use when every trace channel can carry frames from every DBC)
     raw_merge = data.get("dbc_merge", False)
@@ -649,6 +695,9 @@ def load_config(config_path: str) -> RunConfig:
     if isinstance(traces_raw, str):
         traces_raw = [traces_raw]
     cfg.traces = traces_raw
+    if not isinstance(cfg.traces, list) or not all(
+            isinstance(item, str) for item in cfg.traces):
+        raise ValueError("traces must be a path string or a list of path strings")
 
     if not cfg.dbc and not cfg.dbcs:
         raise ValueError("Config must specify 'dbc' or 'dbcs' path.")
@@ -661,20 +710,34 @@ def load_config(config_path: str) -> RunConfig:
         cfg.crc_preset = crc.get("preset", "")
         cfg.crc_custom = crc.get("custom")
         cfg.crc_byte_swap = crc.get("byte_swap", False)
+        _optional_type(cfg.crc_byte_swap, bool, "crc.byte_swap")
         # Auto-classify per-message algorithm from DBC comments
         cfg.crc_auto_classify = crc.get("auto_classify", False)
+        _optional_type(cfg.crc_auto_classify, bool, "crc.auto_classify")
         # Per-message algorithm overrides (frame id/name → preset), applied
         # after auto-classification so they always win.
         cfg.crc_overrides = crc.get("overrides") or {}
+        _optional_type(cfg.crc_overrides, dict, "crc.overrides")
         # E2E profile table (one bus can mix Profile 5 and Profile 1).
         # "profile_by_width" selects the profile from the CRC signal width the
         # way the firmware does (2-byte CRC → Profile 5, 1-byte → Profile 1).
         cfg.crc_profiles = crc.get("profiles") or {}
+        _optional_type(cfg.crc_profiles, dict, "crc.profiles")
         cfg.crc_profile_by_width = crc.get("profile_by_width", False)
+        _optional_type(cfg.crc_profile_by_width, bool, "crc.profile_by_width")
         # Per-message CRC range overrides (frame id/name/signal → range dict).
         cfg.crc_range_overrides = crc.get("range_overrides") or {}
+        _optional_type(cfg.crc_range_overrides, dict, "crc.range_overrides")
         # Protection groups to leave unverified (frame ids/names/signal names).
         cfg.crc_skip = crc.get("skip") or []
+        _optional_type(cfg.crc_skip, list, "crc.skip")
+        for key, preset_name in cfg.crc_overrides.items():
+            if not isinstance(preset_name, str):
+                raise ValueError(f"crc.overrides[{key!r}] must be a preset name")
+        for key, profile in cfg.crc_profiles.items():
+            _optional_type(profile, dict, f"crc.profiles[{key!r}]")
+        for key, override in cfg.crc_range_overrides.items():
+            _optional_type(override, dict, f"crc.range_overrides[{key!r}]")
         if cfg.crc_custom is not None:
             if not isinstance(cfg.crc_custom, dict):
                 raise ValueError("crc.custom must be a JSON object")
@@ -712,12 +775,21 @@ def load_config(config_path: str) -> RunConfig:
         cfg.dataid_xlsx = did.get("xlsx", "")
         sheet_raw = did.get("sheet", "")
         if isinstance(sheet_raw, list):
+            _optional_type(sheet_raw, list, "dataid.sheet")
+            if not all(isinstance(item, str) for item in sheet_raw):
+                raise ValueError("dataid.sheet entries must be strings")
             cfg.dataid_sheet = ",".join(sheet_raw)
         else:
+            _optional_type(sheet_raw, str, "dataid.sheet")
             cfg.dataid_sheet = sheet_raw
         cfg.dataid_mapping = did.get("mapping", "")
+        _optional_type(cfg.dataid_mapping, (str, dict), "dataid.mapping")
         cfg.dataid_mapping_file = did.get("mapping_file") or ""
         cfg.dataid_json = did.get("json", "")
+        for value, label in ((cfg.dataid_xlsx, "dataid.xlsx"),
+                             (cfg.dataid_mapping_file, "dataid.mapping_file"),
+                             (cfg.dataid_json, "dataid.json")):
+            _optional_type(value, str, label)
         cfg.dataid_position = did.get("position", "prepend")
         if cfg.dataid_position not in ("prepend", "append"):
             raise ValueError(
@@ -736,16 +808,26 @@ def load_config(config_path: str) -> RunConfig:
             )
         elif raw_default is not None:
             cfg.dataid_default = raw_default
+        _optional_type(cfg.dataid_default, int, "dataid.default")
+        if cfg.dataid_default is not None and not 0 <= cfg.dataid_default <= 0xFFFF:
+            raise ValueError("dataid.default must be between 0 and 0xFFFF")
 
     # Filter
     flt = _require_mapping(data, "filter")
     if flt:
         raw_ids = flt.get("frame_ids")
         if raw_ids:
-            cfg.frame_ids = [
-                int(x, 16) if isinstance(x, str) and x.lower().startswith("0x") else int(x)
-                for x in raw_ids
-            ]
+            _optional_type(raw_ids, list, "filter.frame_ids")
+            try:
+                cfg.frame_ids = [
+                    int(x, 16) if isinstance(x, str) and x.lower().startswith("0x")
+                    else int(x)
+                    for x in raw_ids
+                ]
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "filter.frame_ids entries must be integers or 0x-prefixed "
+                    "strings") from exc
         raw_max = flt.get("max_frames")
         if raw_max is not None:
             cfg.max_frames = _require_int(raw_max, "filter.max_frames",
@@ -759,6 +841,14 @@ def load_config(config_path: str) -> RunConfig:
         cfg.patterns_file = sig.get("patterns_file") or ""
         cfg.checksum_patterns = sig.get("checksum_patterns") or None
         cfg.rc_patterns = sig.get("rc_patterns") or None
+        for value, label in ((cfg.checksum_pattern, "signals.checksum_pattern"),
+                             (cfg.rc_pattern, "signals.rc_pattern"),
+                             (cfg.patterns_file, "signals.patterns_file")):
+            _optional_type(value, str, label)
+        for value, label in ((cfg.checksum_patterns, "signals.checksum_patterns"),
+                             (cfg.rc_patterns, "signals.rc_patterns")):
+            if value is not None:
+                _optional_type(value, (list, str), label)
 
     # Output
     out = _require_mapping(data, "output")
@@ -767,7 +857,9 @@ def load_config(config_path: str) -> RunConfig:
         if cfg.output_format not in ("table", "html", "json"):
             raise ValueError("output.format must be 'table', 'html', or 'json'")
         cfg.output_file = out.get("file", "")
+        _optional_type(cfg.output_file, str, "output.file")
         cfg.only_failures = out.get("only_failures", False)
+        _optional_type(cfg.only_failures, bool, "output.only_failures")
         raw_sections = out.get("max_report_sections")
         if raw_sections is not None:
             cfg.max_report_sections = _require_int(

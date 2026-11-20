@@ -62,23 +62,25 @@
           <code>git pull</code> 后未重启服务时两者会不一致。缺少
           <code>.git</code> 或 Git 不可用时显示“版本未知”,不影响校验功能。
         </p>
-        <el-divider />
-        <div class="token-row">
-          <el-input
-            v-model="token"
-            size="small"
-            show-password
-            clearable
-            aria-label="API token"
-            placeholder="服务端设置了 CANVOUCH_API_TOKEN 时填写"
-          />
-          <el-button size="small" @click="saveToken">保存 token</el-button>
-        </div>
-        <p class="hint">
-          token 仅保存在本机浏览器的 localStorage;服务端未设置 token
-          时留空即可。
-        </p>
       </template>
+      <!-- The token row stays outside the v-else branch: when the API answers
+           401 the version request fails, and the token input is exactly what
+           the user needs to fix it. -->
+      <el-divider />
+      <div class="token-row">
+        <el-input
+          v-model="token"
+          size="small"
+          show-password
+          clearable
+          aria-label="API token"
+          placeholder="服务端设置了 CANVOUCH_API_TOKEN 时填写"
+        />
+        <el-button size="small" @click="saveToken">保存 token</el-button>
+      </div>
+      <p class="hint">
+        token 仅保存在本机浏览器的 localStorage;服务端未设置 token 时留空即可。
+      </p>
       <template #footer>
         <el-button @click="load">刷新版本</el-button>
         <el-button
