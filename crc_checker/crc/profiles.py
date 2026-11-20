@@ -21,7 +21,7 @@ differ per group (append for P05, prepend for P01) — something a single global
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 
 from crc_checker.core.models import CRCParams, CRCRange
 from crc_checker.crc.presets import get_preset
@@ -46,6 +46,9 @@ class E2EProfile:  # pylint: disable=too-many-instance-attributes
     range_start: int = 0
     range_end: int = -1                # -1 = end of payload
     counter_max_valid: int | None = None   # max rolling counter value (None = 2^n - 1)
+    # True when counter_max_valid came from crc.profiles, so the width
+    # heuristic must not discard an explicit limit on a wider counter.
+    _counter_max_explicit: bool = field(default=False, repr=False, compare=False)
 
     def to_params(self) -> CRCParams:
         """CRC parameters for this profile."""
@@ -64,8 +67,49 @@ class E2EProfile:  # pylint: disable=too-many-instance-attributes
                         end_byte=self.range_end, **dataid_layout)
 
 
-# Field names accepted in a profile override (validated by load_profiles)
-_PROFILE_FIELDS = frozenset(f.name for f in fields(E2EProfile))
+# Field names accepted in a profile override (validated by load_profiles).
+# Internal fields (leading underscore) are never user-settable.
+_PROFILE_FIELDS = frozenset(
+    f.name for f in fields(E2EProfile) if not f.name.startswith("_"))
+
+_INT_PROFILE_FIELDS = frozenset({"crc_width", "range_start", "range_end"})
+_BOOL_PROFILE_FIELDS = frozenset({"byte_swap"})
+_ENUM_PROFILE_FIELDS = {
+    "dataid_position": ("append", "prepend"),
+    "dataid_byte_order": ("lo_hi", "hi_lo"),
+    "range_mode": ("", "exclude_crc", "custom_range", "segment", "full_payload"),
+}
+
+
+def _validate_profile_value(key: str, field_name: str, value) -> None:
+    """Reject a wrongly typed or out-of-domain profile override value."""
+    label = f"profile '{key}': '{field_name}'"
+    if field_name in _INT_PROFILE_FIELDS:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"{label} must be an integer")
+        if field_name in ("range_start",) and value < 0:
+            raise ValueError(f"{label} must be >= 0")
+        if field_name == "range_end" and value < -1:
+            raise ValueError(f"{label} must be >= -1")
+        if field_name == "crc_width" and value <= 0:
+            raise ValueError(f"{label} must be > 0")
+        return
+    if field_name in _BOOL_PROFILE_FIELDS:
+        if not isinstance(value, bool):
+            raise ValueError(f"{label} must be true or false")
+        return
+    if field_name == "counter_max_valid":
+        if value is None:
+            return
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"{label} must be a non-negative integer or null")
+        return
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string")
+    allowed = _ENUM_PROFILE_FIELDS.get(field_name)
+    if allowed is not None and value not in allowed:
+        raise ValueError(
+            f"{label} must be one of: {', '.join(repr(v) for v in allowed)}")
 
 
 # Built-in profiles. "Profile 1A" is CRC8/SAE-J1850-ZERO with a prepended
@@ -133,6 +177,8 @@ def load_profiles(overrides: dict | None = None) -> dict[str, E2EProfile]:
     profiles = dict(BUILTIN_PROFILES)
     for key, field_values in (overrides or {}).items():
         profile_key = str(key).lower()
+        if field_values is not None and not isinstance(field_values, dict):
+            raise ValueError(f"profile '{key}' must be an object")
         base = profiles.get(profile_key, E2EProfile(key=profile_key, name=str(key), preset=""))
         updates = {}
         for field_name, value in (field_values or {}).items():
@@ -148,5 +194,13 @@ def load_profiles(overrides: dict | None = None) -> dict[str, E2EProfile]:
             if field_name not in _PROFILE_FIELDS:
                 raise ValueError(f"profile '{key}': unknown field '{field_name}'")
             updates[field_name] = value
-        profiles[profile_key] = replace(base, **updates)
+        for field_name, value in updates.items():
+            _validate_profile_value(str(key), field_name, value)
+        if "counter_max_valid" in updates:
+            updates["_counter_max_explicit"] = True
+        profile = replace(base, **updates)
+        if not profile.preset:
+            raise ValueError(
+                f"profile '{key}': 'preset' is required for a custom profile")
+        profiles[profile_key] = profile
     return profiles

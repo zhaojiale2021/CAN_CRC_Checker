@@ -115,6 +115,19 @@ class TestCatalog:
         blob = json.dumps(project.to_dict(), ensure_ascii=False)
         assert str(REPO_ROOT) not in blob
 
+    def test_windows_dataid_path_is_reduced_to_basename(self, tmp_path):
+        """A POSIX server must not echo a Windows path from a project config."""
+        project_dir = tmp_path / "oem" / "win"
+        project_dir.mkdir(parents=True)
+        (project_dir / "config.json").write_text(json.dumps({
+            "dbc": "network.dbc",
+            "traces": ["trace.blf"],
+            "dataid": {"xlsx": r"D:\customer\secret\dataid.xlsx"},
+        }), encoding="utf-8")
+        summary = scan_projects(tmp_path)[0].summary
+        assert summary["dataid"] == "dataid.xlsx"
+        assert "secret" not in summary["dataid"]
+
     def test_get_project_unknown(self):
         """Unknown ids resolve to None (API turns that into 404)."""
         assert get_project("nope/nothing") is None
@@ -352,6 +365,20 @@ class TestServiceHelpers:
         assert store.acquire_report("r0", "r0_p2") is None
         assert store.acquire_report("r0", "../r0") is None
 
+    def test_report_dir_failure_keeps_verification_result(self, tmp_path):
+        """An unwritable report location must not turn success into failure."""
+        # pylint: disable=import-outside-toplevel
+        from webapp.service import run_project
+
+        blocked = tmp_path / "blocked"
+        blocked.write_text("not a directory", encoding="utf-8")
+        outcome = run_project(get_project(EXAMPLE_PROJECT), EXAMPLE_TRACE,
+                              EXAMPLE_TRACE.name, max_frames=50,
+                              run_id="run1", report_dir=blocked)
+        assert outcome.html_path is None
+        assert "HTML 报告写入失败" in outcome.payload["report_note"]
+        assert outcome.payload["reports"][0]["total_frames"] == 50
+
     def test_new_store_purges_stale_reports(self, tmp_path):
         """After a restart the run index is gone, but stale report files
         must still be purged (otherwise they pile up forever).
@@ -359,7 +386,11 @@ class TestServiceHelpers:
         (tmp_path / "old.html").write_text("x", encoding="utf-8")
         (tmp_path / "old_p2.html").write_text("x", encoding="utf-8")
         (tmp_path / ".canvouch-run-store").write_text("", encoding="utf-8")
-        RunStore(tmp_path)
+        store = RunStore(tmp_path)
+        # Construction alone must not delete files: importing webapp.main in a
+        # second process (tests, scripts) shares no lock with a live server.
+        assert (tmp_path / "old.html").exists()
+        store.startup()
         assert not list(tmp_path.glob("*.html"))
 
 
@@ -687,6 +718,33 @@ class TestManualApi:
         assert body["setup"]["dbc_names"] == ["network.dbc"]
         assert body["setup"]["dataid_entries"] > 0
         assert body["reports"][0]["total_frames"] > 0
+
+    def test_manual_dataid_named_config_is_not_overwritten(self, client, tmp_path):
+        """An uploaded DataID literally named config.json must survive.
+
+        The server writes its generated run config next to the uploads; a
+        leading-dot name ensures the two can never collide.
+        """
+        dataid = tmp_path / "config.json"
+        dataid.write_bytes((EXAMPLE_DIR / "dbc" / "dataid.json").read_bytes())
+        config = {"crc": {"preset": "CRC8/SAE-J1850", "auto_classify": True},
+                  "filter": {"max_frames": 200}}
+        response = self._post(client, config, dataid=dataid)
+        assert response.status_code == 202, response.text
+        body = wait_for_result(client, response)
+        assert body["setup"]["dataid_entries"] > 0
+
+    def test_manual_rejects_malformed_section_types(self, client):
+        """Nested type errors are a 400 at submit, not a worker-side 500."""
+        response = self._post(client, {"crc": {"profiles": [1]}})
+        assert response.status_code == 400
+        assert "crc.profiles" in response.json()["detail"]
+
+    def test_manual_rejects_enum_type_errors(self, client):
+        """Unhashable enum values are a 400, not a worker-side TypeError."""
+        response = self._post(client, {"range": {"mode": []}})
+        assert response.status_code == 400
+        assert "range.mode" in response.json()["detail"]
 
     def test_manual_rejects_browser_paths(self, client):
         """Path fields only come from uploads; hand-written config traces are rejected."""
@@ -1149,6 +1207,26 @@ class TestWebHardening:
         assert client.get(
             "/api/limits",
             headers={"Authorization": "Bearer s3cret"}).status_code == 200
+
+    def test_api_token_non_ascii_header_is_401_not_500(self, client, monkeypatch):
+        """Non-ASCII header bytes must be a clean 401 (compare_digest raises)."""
+        monkeypatch.setenv("CANVOUCH_API_TOKEN", "s3cret")
+        response = client.get("/api/limits",
+                              headers={"X-API-Token": b"\xff"})
+        assert response.status_code == 401
+
+    def test_oversized_content_length_is_rejected_before_parsing(
+            self, client, monkeypatch):
+        """Both upload endpoints reject a declared oversized body early."""
+        monkeypatch.setenv("CANVOUCH_MAX_REQUEST_MB", "1")
+        for path in ("/api/verify-manual", "/api/verify"):
+            response = client.post(
+                path,
+                content=b"x" * (1024 * 1024 + 1024),
+                headers={"Content-Type": "multipart/form-data; boundary=x"},
+            )
+            assert response.status_code == 413, path
+            assert "总大小" in response.json()["detail"]
 
     def test_aggregate_upload_budget_rejects_many_large_files(
             self, client, monkeypatch):

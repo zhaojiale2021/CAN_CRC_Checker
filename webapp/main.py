@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
-from crc_checker.config import DEFAULT_MAX_FRAMES
+from crc_checker.config import DEFAULT_MAX_FRAMES, load_config
 from crc_checker.env import getenv
 from crc_checker.file_types import (
     DATAID_EXTENSIONS,
@@ -266,13 +266,17 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
     run_store = store if store is not None else RunStore(runs_dir)
     job_registry = JobRegistry()
     worker_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="crc-job")
-    # Uploads are deleted in each job's terminal cleanup. A crash or killed
-    # process leaves them behind forever, so clear staging on startup.
-    shutil.rmtree(uploads_dir, ignore_errors=True)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
-        """Cancel queued jobs, signal active runs, and clean staged uploads."""
+        """Clean stale staging, then cancel jobs and runs on shutdown.
+
+        The cleanup lives here rather than at import time: importing
+        ``webapp.main`` (tests, scripts, a second process) must never delete a
+        live server's staged uploads or cached reports.
+        """
+        shutil.rmtree(uploads_dir, ignore_errors=True)
+        run_store.startup()
         yield
         job_ids = job_registry.cancel_all()
         worker_pool.shutdown(wait=False, cancel_futures=True)
@@ -293,10 +297,42 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
             authorization = request.headers.get("authorization", "")
             if authorization.lower().startswith("bearer "):
                 supplied = authorization[7:].strip()
-            if not hmac.compare_digest(supplied, token):
+            # Compare bytes: compare_digest rejects non-ASCII str values with
+            # TypeError, which a crafted header would turn into a 500.
+            if not hmac.compare_digest(supplied.encode("utf-8"),
+                                       token.encode("utf-8")):
                 return JSONResponse(
                     status_code=401,
                     content={"detail": "未授权:缺少或错误的 API token"})
+        return await call_next(request)
+
+    @api.middleware("http")
+    async def _reject_oversized_request(request, call_next):
+        """Refuse an oversized upload before Starlette spools the body to disk.
+
+        ``_save_upload`` can only count bytes after FastAPI has parsed (and
+        Starlette has fully received) the multipart body. Checking the declared
+        Content-Length here keeps a single huge upload from filling the temp
+        directory first. Chunked requests have no declared length and still hit
+        the streaming per-file/aggregate caps in ``_save_upload``.
+        """
+        if (request.method == "POST"
+                and request.url.path in ("/api/verify", "/api/verify-manual")):
+            declared = request.headers.get("content-length")
+            if declared:
+                try:
+                    length = int(declared)
+                except ValueError:
+                    return JSONResponse(status_code=400,
+                                        content={"detail": "Content-Length 无效"})
+                limit = max_request_bytes()
+                if length > limit:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail":
+                                 f"本次请求总大小超过上限 "
+                                 f"{limit // (1024 * 1024)}MB,请减少 DBC/日志数量"
+                                 "或截取日志后重试"})
         return await call_next(request)
 
     api.state.job_registry = job_registry
@@ -506,11 +542,20 @@ def create_app(store: RunStore | None = None) -> FastAPI:  # pylint: disable=too
                     budget=budget)
 
             config_data = _manual_config(config, dbc_paths, trace_path, dataid_path)
-            config_path = upload_dir / "config.json"
+            # A leading dot cannot survive safe_filename(), so an uploaded
+            # DataID file can never collide with (and be overwritten by) the
+            # server-generated run config.
+            config_path = upload_dir / ".canvouch-run-config.json"
             await run_in_threadpool(
                 lambda: config_path.write_text(
                     json.dumps(config_data, ensure_ascii=False),
                     encoding="utf-8"))
+            # Validate before enqueueing so malformed section values are a 400,
+            # not a worker-side "服务器内部错误" after the client got a 202.
+            try:
+                load_config(str(config_path))
+            except (OSError, ValueError, TypeError) as exc:
+                raise HTTPException(400, f"配置无效: {exc}") from exc
             project = _manual_project(upload_dir, config_path, dbc_paths)
             result = enqueue(project, trace_path, trace_path.name, frame_limit,
                              _parse_bool(only_failures), run_id, upload_dir)

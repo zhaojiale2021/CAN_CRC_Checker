@@ -50,14 +50,17 @@ def classify_crc_algo(comment: str) -> str:  # pylint: disable=too-many-return-s
     # profile *number* ("Profile 1" / "1A"), not the bare substring "1A" —
     # "Profile 5 ... DataID:0x01A5" contains "1A" inside the DataID literal
     # and was wrongly classified as Profile 1A.
-    if 'PROFILE' in desc_u and re.search(r'PROFILE[^0-9]{0,12}1[AB]?', desc_u):
+    # The digit boundary matters: without it "Profile 11" matched the "1"
+    # branch and was verified as Profile 1A.
+    if 'PROFILE' in desc_u and re.search(r'PROFILE[^0-9]{0,12}1[AB]?(?![0-9])',
+                                         desc_u):
         return 'p01'
 
     # AUTOSAR E2E Profile 5 ("E2E Profile 5 CRC"): the description names a
     # profile, not a CRC polynomial. The algorithm/range/DataID layout come
     # from the profile table (crc/profiles.py), so this must not fall through
     # to the generic "CRC" → crc8 branch below.
-    if 'PROFILE' in desc_u and re.search(r'PROFILE[^0-9]{0,12}5', desc_u):
+    if 'PROFILE' in desc_u and re.search(r'PROFILE[^0-9]{0,12}5(?![0-9])', desc_u):
         return 'p05'
 
     # Sum checksums list the participating bytes ("byte0/byte1/...") and AND

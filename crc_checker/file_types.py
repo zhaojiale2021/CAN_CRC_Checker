@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 TRACE_EXTENSIONS = frozenset({
-    ".blf", ".asc", ".mf4", ".trc", ".csv", ".log", ".txt",
+    # Formats python-can's LogReader dispatches (``.db`` = SQLite, ``.log`` =
+    # canutils). ``.mdf`` is routed to MF4Reader explicitly (MDF4 only; MDF3
+    # is rejected by the reader). ``.txt`` is deliberately absent: python-can
+    # has no reader for it.
+    ".blf", ".asc", ".mf4", ".mdf", ".trc", ".csv", ".log", ".db",
 })
 DBC_EXTENSIONS = frozenset({".dbc"})
 DATAID_EXTENSIONS = frozenset({".json", ".xlsx", ".xls"})

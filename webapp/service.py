@@ -642,9 +642,9 @@ def run_project(  # pylint: disable=too-many-locals,too-many-arguments,too-many-
         # only ever land in their own directory, so the route cannot reach
         # another run's files (cleanup removes the whole directory).
         run_dir = Path(report_dir) / run_id
-        run_dir.mkdir(parents=True, exist_ok=True)
         html_path = run_dir / f"{run_id}.html"
         try:
+            run_dir.mkdir(parents=True, exist_ok=True)
             report_note = write_html(reports[0], str(html_path), only_failures,
                                      max_sections=cfg.max_report_sections)
         except OSError:
@@ -719,14 +719,23 @@ class RunStore:
     _MARKER = ".canvouch-run-store"
 
     def __post_init__(self) -> None:
-        """Purge the report directory (run index is memory-only).
-
-        After a restart the old reports are unreachable anyway. Without the
-        purge they accumulate forever — a frame-unlimited big trace alone can
-        produce a dozen 30MB split parts (measured 2026-10-20: data/web/runs
-        had grown to 11GB / 834 files).
-        """
+        """Create the report directory (purging happens in :meth:`startup`)."""
         self.runs_dir.mkdir(parents=True, exist_ok=True)
+
+    def startup(self) -> None:
+        """Purge stale reports, but only from a directory this store owns.
+
+        Called from the app lifespan, never from ``__init__``: importing
+        ``webapp.main`` in tests or a second process must not delete a live
+        server's cached reports.
+
+        After a restart the run index is memory-only, so old reports are
+        unreachable anyway. Without the purge they accumulate forever — a
+        frame-unlimited big trace alone can produce a dozen 30MB split parts
+        (measured 2026-10-20: data/web/runs had grown to 11GB / 834 files).
+        The marker guards against deleting files in a shared
+        ``CANVOUCH_DATA_DIR`` that were not written by this store.
+        """
         marker = self.runs_dir / self._MARKER
         if marker.exists():
             self.purge_disk()

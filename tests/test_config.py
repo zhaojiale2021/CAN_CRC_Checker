@@ -1,6 +1,7 @@
 """Tests for RunConfig JSON loading (crc.overrides, dbc_merge)."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -45,6 +46,67 @@ class TestLoadConfigCrcOverrides:
         path = _write_config(tmp_path, {"dbc": "x.dbc", "traces": ["t.blf"]})
         cfg = load_config(path)
         assert not cfg.crc_overrides
+
+
+class TestLoadConfigTypeValidation:
+    """Wrongly typed nested options fail at load time, not mid-run."""
+
+    @pytest.mark.parametrize("crc, needle", [
+        ({"profiles": [1]}, "crc.profiles"),
+        ({"profiles": {"p01": {"counter_max_valid": "bad"}}},
+         "counter_max_valid"),
+        ({"profiles": {"p11": {"crc_width": 8}}}, "preset"),
+        ({"range_overrides": {"X": {"mode": []}}}, "mode"),
+        ({"range_overrides": {"X": {"start_byte": "0"}}}, "start_byte"),
+        ({"custom": {"width": 8, "poly": 0x2F, "type": []}}, "crc.custom.type"),
+        ({"custom": {"width": 8, "poly": "471"}}, "0x"),
+        ({"skip": 5}, "crc.skip"),
+        ({"overrides": ["SUM8"]}, "crc.overrides"),
+        ({"range_overrides": ["x"]}, "crc.range_overrides"),
+        ({"profile_by_width": "yes"}, "crc.profile_by_width"),
+    ])
+    def test_crc_section_types(self, tmp_path, crc, needle):
+        """CRC sub-sections reject wrong types with the offending key named."""
+        path = _write_config(tmp_path, {
+            "dbc": "x.dbc", "traces": ["t.blf"], "crc": crc,
+        })
+        with pytest.raises(ValueError, match=needle):
+            load_config(path)
+
+    @pytest.mark.parametrize("section, needle", [
+        ({"filter": {"frame_ids": "0x143"}}, "filter.frame_ids"),
+        ({"filter": {"frame_ids": ["nope"]}}, "filter.frame_ids"),
+        ({"signals": {"patterns_file": 3}}, "signals.patterns_file"),
+        ({"output": {"only_failures": "true"}}, "output.only_failures"),
+        ({"dataid": {"mapping": [1]}}, "dataid.mapping"),
+        ({"dataid": {"default": 0x10000}}, "dataid.default"),
+        ({"range": {"mode": []}}, "range.mode"),
+    ])
+    def test_other_section_types(self, tmp_path, section, needle):
+        """Filter/signals/output/dataid option types are checked at load time."""
+        data = {"dbc": "x.dbc", "traces": ["t.blf"]}
+        data.update(section)
+        with pytest.raises(ValueError, match=needle):
+            load_config(_write_config(tmp_path, data))
+
+
+class TestCrcWidthWarning:  # pylint: disable=too-few-public-methods
+    """A preset width that cannot match the DBC signal is reported up front."""
+
+    def test_width_mismatch_warns(self):
+        """An 8-bit preset against a 16-bit CRC signal produces a warning."""
+        # pylint: disable=import-outside-toplevel
+        from crc_checker.config import RunConfig, apply_crc_config
+        from crc_checker.dbc.parser import parse_dbc
+
+        dbc = str(Path(__file__).resolve().parent.parent
+                  / "examples" / "example" / "dbc" / "network.dbc")
+        map_ = parse_dbc(dbc)
+        cfg = RunConfig(dbc=dbc, traces=["trace.blf"], crc_preset="CRC8/AUTOSAR")
+        apply_crc_config(cfg, map_)
+        # Beta_CRC is a 16-bit signal; the 8-bit preset can never match it.
+        assert any("Beta_CRC" in warning and "16 bits" in warning
+                   for warning in cfg.warnings)
 
 
 class TestLoadConfigDbcMerge:

@@ -130,21 +130,50 @@ class _CanoeAscReader(can.ASCReader):  # pylint: disable=too-few-public-methods
         return candidates[0]
 
 
+def _reject_mdf3(file_path: str) -> None:
+    """Fail clearly for MDF3 files, which python-can's MF4Reader cannot read.
+
+    python-can only extracts CAN bus logging from MDF4 containers. asammdf can
+    open MDF3, but the conformance layer around it does not, so silently
+    routing ``.mdf`` here produced an error during iteration instead of at
+    open time. The header is ``"MDF     "`` + an 8-byte version string.
+    """
+    try:
+        with open(file_path, "rb") as handle:
+            header = handle.read(16)
+    except OSError:
+        return  # the reader below produces the normal file-not-found error
+    if not header.startswith(b"MDF"):
+        return
+    version = header[8:].lstrip(b"\x00 ")
+    if version.startswith(b"3"):
+        raise ValueError(
+            f"MDF3 is not supported by python-can's MF4Reader: {file_path}. "
+            "Convert the file to MDF4, or export a BLF/ASC trace instead.")
+
+
 def open_log_reader(file_path: str):
     """Dispatch to the right python-can reader, with CANoe 7.x ASC fallback.
 
     Use this for any direct trace-file access that needs one python-can
     reader instance (sampling helpers, ...) — never ``can.LogReader`` directly.
-    Optional-dependency gaps (MF4 needs asammdf) become actionable errors.
+    Optional-dependency gaps (MF4/MDF need asammdf) become actionable errors.
     """
-    if str(file_path).lower().endswith(".asc"):
+    suffix = Path(file_path).suffix.lower()
+    if suffix == ".asc":
         return _CanoeAscReader(file_path)
     try:
+        if suffix in (".mf4", ".mdf"):
+            # python-can's LogReader only knows ".mf4"; asammdf's MDF loader
+            # accepts MDF4 containers regardless of the extension. MDF3 is
+            # rejected up front (its conformance layer only supports MDF4).
+            _reject_mdf3(file_path)
+            return can.MF4Reader(file_path)
         return can.LogReader(file_path)
     except (ImportError, NotImplementedError) as exc:
-        if Path(file_path).suffix.lower() in (".mf4", ".mdf"):
+        if suffix in (".mf4", ".mdf"):
             raise ValueError(
-                "MF4 support needs the optional asammdf dependency; install it "
+                "MF4/MDF support needs the optional asammdf dependency; install it "
                 "with: pip install \"python-can[mf4]\""
             ) from exc
         raise ValueError(f"Cannot open trace {file_path}: {exc}") from exc
@@ -153,7 +182,8 @@ def open_log_reader(file_path: str):
 class TraceReader:
     """Reads CAN trace files in various formats using python-can.
 
-    Supports: BLF, ASC, TRC, MF4, MDF, CSV, LOG
+    Supports: BLF, ASC, TRC, MF4/MDF4, CSV, LOG, SQLite (python-can readers).
+    MDF3 is rejected with a clear error (the reader only handles MDF4).
     Uses iterator pattern to handle large files without loading everything into memory.
     """
 
